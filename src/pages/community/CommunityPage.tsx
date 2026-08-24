@@ -9,13 +9,8 @@ import {
   MessageSquare,
   Calendar,
   MapPin,
-  Share2,
-  Leaf,
   Trophy,
-  Sparkles,
   ArrowLeftRight,
-  Plus,
-  CheckCircle,
 } from 'lucide-react';
 
 export const CommunityPage: React.FC = () => {
@@ -63,11 +58,11 @@ export const CommunityPage: React.FC = () => {
   };
 
   const leaderboards = [
-    { rank: 1, name: 'Berke Çelik', avatar: currentUser.avatarUrl, co2: 127.4, trades: 7, isMe: true },
-    { rank: 2, name: 'Zeynep Kaya', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200', co2: 112.8, trades: 6 },
-    { rank: 3, name: 'Mehmet Demir', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200', co2: 98.2, trades: 5 },
-    { rank: 4, name: 'Elif Arslan', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200', co2: 84.5, trades: 4 },
-    { rank: 5, name: 'Can Yılmaz', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200', co2: 65.0, trades: 3 },
+    { rank: 1, name: 'Berke Çelik', avatar: currentUser.avatarUrl, trades: 7, isMe: true },
+    { rank: 2, name: 'Zeynep Kaya', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200', trades: 6 },
+    { rank: 3, name: 'Mehmet Demir', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200', trades: 5 },
+    { rank: 4, name: 'Elif Arslan', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200', trades: 4 },
+    { rank: 5, name: 'Can Yılmaz', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200', trades: 3 },
   ];
 
   return (
@@ -161,15 +156,10 @@ export const CommunityPage: React.FC = () => {
 
                 {/* Trade Story Highlight Box */}
                 {post.tradeStory && (
-                  <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="font-semibold text-stone-800">{post.tradeStory.itemGiven}</span>
-                      <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-700" />
-                      <span className="font-semibold text-stone-800">{post.tradeStory.itemReceived}</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
-                      +{post.tradeStory.co2Saved} kg CO₂e
-                    </span>
+                  <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center gap-2 text-xs">
+                    <span className="font-semibold text-stone-800">{post.tradeStory.itemGiven}</span>
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span className="font-semibold text-stone-800">{post.tradeStory.itemReceived}</span>
                   </div>
                 )}
 
@@ -267,7 +257,7 @@ export const CommunityPage: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                <h3 className="text-sm font-bold text-stone-900">Ayın SVS Karbon Liderleri</h3>
+                <h3 className="text-sm font-bold text-stone-900">Ayın En Çok Takas Yapanları</h3>
               </div>
               <span className="text-xs text-stone-400">İstanbul / Kadıköy</span>
             </div>
@@ -311,9 +301,9 @@ export const CommunityPage: React.FC = () => {
 
                   <div className="text-right">
                     <span className="text-sm font-extrabold text-emerald-800 block">
-                      +{user.co2} kg
+                      {user.trades}
                     </span>
-                    <span className="text-[9px] text-stone-400 uppercase">CO₂e Kurtarıldı</span>
+                    <span className="text-[9px] text-stone-400 uppercase">Takas</span>
                   </div>
                 </div>
               ))}

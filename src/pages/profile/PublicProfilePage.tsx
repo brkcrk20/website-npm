@@ -4,27 +4,35 @@ import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
-import { OTHER_USERS } from '../../data/mockData';
+import { authService } from '../../services/authService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { TrustCard } from '../../components/common/TrustCard';
-import { Listing, Review } from '../../types';
-import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Leaf } from 'lucide-react';
+import { Listing, Review, UserProfile } from '../../types';
+import { ArrowLeft, MessageSquare, MapPin, Calendar } from 'lucide-react';
 
 export const PublicProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const { currentUser, showToast } = useApp();
-  const user = id && OTHER_USERS[id] ? OTHER_USERS[id] : Object.values(OTHER_USERS)[0];
+  const [user, setUser] = useState<UserProfile | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
 
   useEffect(() => {
-    listingService.getUserListings(user.id).then(setUserListings);
-    tradeService.getReviewsForUser(user.id).then(setUserReviews);
-  }, [user.id]);
+    if (!id) return;
+    setIsLoading(true);
+    authService.getUserProfileById(id).then((data) => {
+      setUser(data);
+      setIsLoading(false);
+    });
+    listingService.getUserListings(id).then(setUserListings);
+    tradeService.getReviewsForUser(id).then(setUserReviews);
+  }, [id]);
 
   const handleStartChat = async () => {
+    if (!user) return;
     const conv = await messageService.getOrCreateConversationWithUser(currentUser.id, user.id);
     if (conv) {
       navigate(`/mesajlar/${conv.id}`);
@@ -32,6 +40,29 @@ export const PublicProfilePage: React.FC = () => {
       showToast('Sohbet açılamadı', 'Lütfen tekrar deneyin.', 'error');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 text-center">
+        <h2 className="text-xl font-bold text-stone-900 mb-2">Kullanıcı Bulunamadı</h2>
+        <button
+          type="button"
+          onClick={() => navigate('/kesfet')}
+          className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold"
+        >
+          Keşfet'e Dön
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
@@ -91,14 +122,7 @@ export const PublicProfilePage: React.FC = () => {
             </p>
           )}
 
-          {/* SVS Stats */}
-          <div className="grid grid-cols-3 gap-2 pt-3 mt-3 border-t border-stone-100 text-center">
-            <div className="p-2 rounded-xl bg-stone-50">
-              <span className="text-sm font-bold text-emerald-800">
-                +{user.stats.totalCo2Prevented} kg
-              </span>
-              <span className="text-[10px] text-stone-500 block">CO₂e Engellendi</span>
-            </div>
+          <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-stone-100 text-center">
             <div className="p-2 rounded-xl bg-stone-50">
               <span className="text-sm font-bold text-stone-900">{user.stats.totalTrades}</span>
               <span className="text-[10px] text-stone-500 block">Tamamlanan Takas</span>

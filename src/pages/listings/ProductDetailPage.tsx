@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { listingService } from '../../services/listingService';
 import { messageService } from '../../services/messageService';
-import { ImpactCard } from '../../components/common/ImpactCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { Listing } from '../../types';
 import {
@@ -237,9 +236,6 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* SVS Environmental Impact Detailed Card */}
-        <ImpactCard impact={listing.estimatedImpact} variant="detailed" />
-
         {/* Owner Profile & Explainable Trust Card */}
         <div className="space-y-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500">İlan Sahibi</h3>
@@ -257,7 +253,18 @@ export const ProductDetailPage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => navigate('/mesajlar/chat-1')}
+              onClick={async () => {
+                const conv = await messageService.getOrCreateConversationWithUser(
+                  currentUser.id,
+                  listing.user.id,
+                  listing.id
+                );
+                if (conv) {
+                  navigate(`/mesajlar/${conv.id}`);
+                } else {
+                  showToast('Sohbet açılamadı', 'Lütfen tekrar deneyin.', 'error');
+                }
+              }}
               className="px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-xs font-semibold text-stone-700"
             >
               Mesaj Yaz
@@ -326,7 +333,7 @@ export const ProductDetailPage: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => navigate(`/teklif-olustur/${listing.id}`)}
+            onClick={() => navigate(`/teklif-ver?targetId=${listing.id}`)}
             className="flex-1 py-3 sm:py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-950/20 flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
           >
             <Repeat className="w-4 h-4 stroke-[2.5] shrink-0" />

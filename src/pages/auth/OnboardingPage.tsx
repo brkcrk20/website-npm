@@ -3,14 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { SwaloopLogo, CircularExchangeIcon } from '../../components/common/SwaloopLogo';
 import {
   ArrowRight,
-  ArrowLeft,
-  Leaf,
   ShieldCheck,
   Repeat,
   Sparkles,
-  MapPin,
-  PlusCircle,
-  CheckCircle2,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 
@@ -36,11 +31,11 @@ export const OnboardingPage: React.FC = () => {
       accentColor: 'from-amber-700 to-orange-800',
     },
     {
-      title: 'Çevresel Etki (SVS) Nedir?',
-      subtitle: 'SVS Kesinlikle Para veya Fiyat Değildir!',
+      title: 'Güvenli Takas Güvencesi',
+      subtitle: 'Doğrulanmış Üyeler & Güvenli Buluşma Noktaları',
       description:
-        'Her takas sıfırdan üretim yerine mevcut bir eşyayı dolaşıma sokar. Swaloop; önlenen CO₂e salımını, tasarruf edilen suyu ve korunan hammaddeyi hesaplayarak doğaya kazandırdığın faydayı gösterir.',
-      icon: Leaf,
+        'Her kullanıcının telefon doğrulaması ve geçmiş takaslara dayalı bir güven puanı vardır. Takaslarını metro çıkışı, AVM gibi kameralı güvenli noktalarda gerçekleştirebilirsin.',
+      icon: ShieldCheck,
       accentColor: 'from-emerald-900 to-emerald-700',
     },
     {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SwaloopLogo, CircularExchangeIcon } from '../../components/common/SwaloopLogo';
-import { Sparkles, ShieldCheck, Leaf, ArrowRight, RefreshCw, Zap } from 'lucide-react';
+import { Sparkles, ShieldCheck, Repeat, ArrowRight, RefreshCw } from 'lucide-react';
 
 export const SplashPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,9 +20,9 @@ export const SplashPage: React.FC = () => {
       color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
     },
     {
-      icon: Leaf,
-      title: 'Çevresel Etki (SVS)',
-      desc: 'Her takasın doğaya kazandırdığı su, enerji ve CO₂e katkısını hesaplar.',
+      icon: Repeat,
+      title: 'Çoklu Döngü Takasları',
+      desc: 'Ürünlerin doğrudan uyuşmadığı durumlarda 3+ kişilik dairesel takaslar önerir.',
       color: 'text-teal-400 bg-teal-400/10 border-teal-400/20',
     },
     {

@@ -123,10 +123,6 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       totalTrades: completedTrades,
       activeListings: 0,
       completedLoops: 0,
-      totalCo2Prevented: 0,
-      totalWaterSaved: 0,
-      totalEnergySaved: 0,
-      totalRawMaterialsSaved: 0,
       totalItemsReused: 0,
       responseRatePercent: Math.round((trust?.response_rate ?? 1) * 100),
       avgResponseTimeMinutes: 0,
@@ -139,6 +135,29 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
 }
 
 export const authService = {
+  /**
+   * Herhangi bir kullanıcının genel profilini id ile getirir (bkz.
+   * PublicProfilePage.tsx). Önceden bu sayfa her zaman mockData'daki
+   * OTHER_USERS'tan sabit bir kullanıcı gösteriyordu; gerçek ilan
+   * sahiplerinin id'leri (Supabase UUID) OTHER_USERS'ta hiç bulunmadığı
+   * için tıklanan kullanıcıdan bağımsız olarak hep aynı profil açılıyordu.
+   */
+  async getUserProfileById(userId: string): Promise<UserProfile | undefined> {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !profile) {
+      if (error) console.error('Kullanıcı profili alınamadı:', error);
+      return undefined;
+    }
+
+    const trust = await getTrustProfileRow(profile.id);
+    return mapProfile(profile, trust);
+  },
+
   async getSupabaseSession() {
     const { data, error } = await supabase.auth.getSession();
 

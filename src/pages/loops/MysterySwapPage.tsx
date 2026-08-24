@@ -1,63 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { listingService } from '../../services/listingService';
+import { Listing } from '../../types';
 import {
   ArrowLeft,
   Gift,
   Sparkles,
-  HelpCircle,
-  CheckCircle2,
   RefreshCw,
-  Zap,
-  ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
 
 export const MysterySwapPage: React.FC = () => {
   const navigate = useNavigate();
-  const { showToast } = useApp();
+  const { currentUser, showToast } = useApp();
 
+  const [pool, setPool] = useState<Listing[]>([]);
   const [isOpening, setIsOpening] = useState(false);
-  const [revealedItem, setRevealedItem] = useState<{
-    title: string;
-    category: string;
-    svsPoints: number;
-    co2e: string;
-    photo: string;
-    sender: string;
-  } | null>(null);
+  const [revealedItem, setRevealedItem] = useState<Listing | null>(null);
 
-  const sampleRewards = [
-    {
-      title: 'Analog Vintage Fotoğraf Makinesi',
-      category: 'Fotoğraf & Hobi',
-      svsPoints: 480,
-      co2e: '5.4 kg CO₂e',
-      photo: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&auto=format&fit=crop&q=80',
-      sender: 'Zeynep B.',
-    },
-    {
-      title: 'Retro Mekanik Klavye & Tuş Takımı',
-      category: 'Elektronik',
-      svsPoints: 520,
-      co2e: '4.8 kg CO₂e',
-      photo: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80',
-      sender: 'Kerem D.',
-    },
-    {
-      title: 'Deri Sırt Çantası & Defter Seti',
-      category: 'Moda & Aksesuar',
-      svsPoints: 360,
-      co2e: '3.2 kg CO₂e',
-      photo: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&auto=format&fit=crop&q=80',
-      sender: 'Merve A.',
-    },
-  ];
+  useEffect(() => {
+    listingService
+      .getAllListings()
+      .then((all) => setPool(all.filter((l) => l.user.id !== currentUser.id)));
+  }, [currentUser.id]);
 
   const handleOpenBox = () => {
+    if (pool.length === 0) return;
     setIsOpening(true);
     setTimeout(() => {
-      const reward = sampleRewards[Math.floor(Math.random() * sampleRewards.length)];
+      const reward = pool[Math.floor(Math.random() * pool.length)];
       setRevealedItem(reward);
       setIsOpening(false);
       showToast('Kutu Açıldı! 🎁', `Tebrikler: ${reward.title}`, 'success');
@@ -103,12 +75,12 @@ export const MysterySwapPage: React.FC = () => {
               Sürpriz bir takas seni bekliyor!
             </h2>
             <p className="text-xs text-amber-300 font-semibold">
-              250 - 600 SVS aralığında sürpriz ürünler.
+              Topluluktaki gerçek ilanlardan rastgele bir sürpriz.
             </p>
           </div>
 
           <p className="text-xs text-stone-400 max-w-xs mx-auto leading-relaxed">
-            Eşit SVS değerine sahip sürpriz bir eşya havuzundan rastgele bir ürün seç ve takası hemen başlat.
+            Sürpriz bir eşya havuzundan rastgele bir ürün seç ve takası hemen başlat.
           </p>
 
           {/* Button Matching Screen 18 */}
@@ -116,8 +88,8 @@ export const MysterySwapPage: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenBox}
-              disabled={isOpening}
-              className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-base shadow-lg shadow-amber-500/30 transition-all cursor-pointer flex items-center justify-center gap-2"
+              disabled={isOpening || pool.length === 0}
+              className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-stone-950 font-black text-base shadow-lg shadow-amber-500/30 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               {isOpening ? (
                 <>
@@ -143,14 +115,14 @@ export const MysterySwapPage: React.FC = () => {
                 Kutudan Çıkan Eşya
               </span>
               <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                {revealedItem.co2e}
+                {revealedItem.condition}
               </span>
             </div>
 
             <div className="flex gap-3.5 items-center">
               <div className="w-20 h-20 rounded-2xl overflow-hidden bg-stone-100 shrink-0 border border-stone-200">
                 <img
-                  src={revealedItem.photo}
+                  src={revealedItem.images[0]}
                   alt={revealedItem.title}
                   className="w-full h-full object-cover"
                 />
@@ -160,10 +132,10 @@ export const MysterySwapPage: React.FC = () => {
                   {revealedItem.title}
                 </h3>
                 <span className="text-xs text-stone-500 block mt-0.5">
-                  {revealedItem.category} • Gönderen: {revealedItem.sender}
+                  Gönderen: {revealedItem.user.fullName}
                 </span>
                 <span className="text-xs font-bold text-amber-700 mt-1 block">
-                  Değer: {revealedItem.svsPoints} SVS Puanı
+                  {revealedItem.location.district}
                 </span>
               </div>
             </div>
@@ -171,7 +143,7 @@ export const MysterySwapPage: React.FC = () => {
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => navigate('/ilan/canon-eos-200d')}
+                onClick={() => navigate(`/ilan/${revealedItem.id}`)}
                 className="flex-1 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-colors shadow-xs"
               >
                 Takası Kabul Et
@@ -187,12 +159,12 @@ export const MysterySwapPage: React.FC = () => {
           </div>
         )}
 
-        {/* Safety & SVS Fair Exchange Guarantee */}
+        {/* Safety Guarantee */}
         <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-3">
           <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
           <div className="text-xs text-emerald-900 leading-relaxed">
-            <strong className="block font-bold">Eşit SVS Değer Güvencesi</strong>
-            Tüm Mystery Swap ürünleri onaylanmış, çalışır durumda ve belirlenen SVS etki puanı aralığındadır.
+            <strong className="block font-bold">Güvenli Takas Güvencesi</strong>
+            Tüm Mystery Swap ürünleri gerçek, onaylanmış ve çalışır durumdaki topluluk ilanlarından seçilir.
           </div>
         </div>
       </div>

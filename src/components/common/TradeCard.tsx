@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TradeOffer } from '../../types';
-import { ArrowLeftRight, Check, X, Clock, Leaf, ShieldCheck, CornerUpRight } from 'lucide-react';
+import { ArrowLeftRight, Check, X, Clock, ShieldCheck, CornerUpRight } from 'lucide-react';
 import { CircularExchangeIcon } from './SwaloopLogo';
 
 interface TradeCardProps {
@@ -112,12 +112,6 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <span className="text-xs font-bold text-stone-800 line-clamp-1">
             {isIncoming ? requestedItem?.title : offeredItem?.title}
           </span>
-          <span className="text-[10px] text-emerald-700 font-semibold mt-0.5">
-            {isIncoming
-              ? requestedItem?.estimatedImpact.co2eKg
-              : offeredItem?.estimatedImpact.co2eKg}{' '}
-            kg CO₂e
-          </span>
         </div>
 
         {/* Center Exchange Icon badge */}
@@ -144,12 +138,6 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <span className="text-xs font-bold text-stone-800 line-clamp-1">
             {isIncoming ? offeredItem?.title : requestedItem?.title}
           </span>
-          <span className="text-[10px] text-emerald-700 font-semibold mt-0.5">
-            {isIncoming
-              ? offeredItem?.estimatedImpact.co2eKg
-              : requestedItem?.estimatedImpact.co2eKg}{' '}
-            kg CO₂e
-          </span>
         </div>
       </div>
 
@@ -160,13 +148,7 @@ export const TradeCard: React.FC<TradeCardProps> = ({
         </div>
       )}
 
-      {/* Combined SVS impact benefit badge */}
-      <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs text-stone-500">
-        <div className="flex items-center gap-1.5 text-emerald-800 font-medium">
-          <Leaf className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Toplam +{trade.combinedImpact.co2eKg} kg CO₂e</span>
-        </div>
-
+      <div className="flex items-center justify-end pt-2 border-t border-stone-100 text-xs text-stone-500">
         {/* Quick action buttons if incoming and waiting */}
         {isIncoming && trade.status === 'offer_received' && onAccept && onReject ? (
           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>

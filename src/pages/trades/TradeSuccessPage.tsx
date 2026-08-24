@@ -1,33 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { tradeService } from '../../services/tradeService';
+import { TradeOffer } from '../../types';
 import {
   ArrowLeft,
   CheckCircle2,
   Star,
-  Leaf,
-  Share2,
   Sparkles,
-  Award,
-  ThumbsUp,
-  Heart,
 } from 'lucide-react';
 
 export const TradeSuccessPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { showToast } = useApp();
+  const { currentUser, showToast } = useApp();
+
+  const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
+
+  useEffect(() => {
+    if (!id) return;
+    tradeService.getTradeById(id).then(setTrade);
+  }, [id]);
+
+  const otherUser = trade
+    ? trade.initiatorId === currentUser.id
+      ? trade.receiver
+      : trade.initiator
+    : undefined;
+  const isReviewed = trade
+    ? trade.initiatorId === currentUser.id
+      ? trade.isReviewedByInitiator
+      : trade.isReviewedByReceiver
+    : false;
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('Harika bir takastı, ürün tam açıklandığı gibiydi.');
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [isReviewed, setIsReviewed] = useState(false);
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsReviewed(true);
+    if (!trade || !otherUser) return;
+
+    await tradeService.submitReview({
+      tradeId: trade.id,
+      authorId: currentUser.id,
+      authorName: currentUser.fullName,
+      authorAvatar: currentUser.avatarUrl,
+      targetUserId: otherUser.id,
+      overallRating: rating,
+      categories: {
+        trustworthiness: rating,
+        communication: rating,
+        itemAccuracy: rating,
+        delivery: rating,
+      },
+      comment,
+    });
+
     setShowReviewModal(false);
     showToast('Değerlendirme Kaydedildi! ⭐', 'Güven puanına katkı sağladınız.', 'success');
+    tradeService.getTradeById(trade.id).then(setTrade);
   };
 
   return (
@@ -62,19 +94,6 @@ export const TradeSuccessPage: React.FC = () => {
           <p className="text-sm text-stone-500 mt-1 max-w-xs">
             Swaloop'a katkın için teşekkürler.
           </p>
-        </div>
-
-        {/* Environmental Impact Card Matching Screen 12 */}
-        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-3xl p-5 text-center space-y-1 shadow-xs">
-          <span className="text-xs font-bold text-emerald-900 block">
-            Bu takasın çevresel etkisi
-          </span>
-          <div className="text-3xl font-black text-emerald-950 font-display">
-            8.6 kg CO₂e
-          </div>
-          <span className="text-xs font-medium text-emerald-800/80 block">
-            önlenmesine katkı sağladın.
-          </span>
         </div>
 
         {/* Additional Badge Unlocked Notification */}
@@ -122,7 +141,9 @@ export const TradeSuccessPage: React.FC = () => {
           <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-bold text-stone-900">Takas Partnerini Değerlendir</h3>
-              <p className="text-xs text-stone-500">Aslı T. ile gerçekleştirdiğin takası puanla</p>
+              <p className="text-xs text-stone-500">
+                {otherUser ? `${otherUser.fullName} ile gerçekleştirdiğin takası puanla` : 'Takas partnerini puanla'}
+              </p>
             </div>
 
             {/* Stars */}

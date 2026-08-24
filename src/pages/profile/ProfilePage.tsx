@@ -5,17 +5,11 @@ import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
 import { Listing, Review } from '../../types';
 import { ProductCard } from '../../components/common/ProductCard';
-import { ImpactCard } from '../../components/common/ImpactCard';
 import { TrustCard } from '../../components/common/TrustCard';
-import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
 import { BADGES_LIST } from '../../data/mockData';
 import {
   ShieldCheck,
   Award,
-  Leaf,
-  Droplets,
-  Zap,
-  Repeat,
   MapPin,
   Calendar,
   Settings,
@@ -44,8 +38,7 @@ export const ProfilePage: React.FC = () => {
     toggleTheme,
     t,
   } = useApp();
-  const [activeTab, setActiveTab] = useState<'listings' | 'impact' | 'badges' | 'reviews'>('listings');
-  const [showSvsModal, setShowSvsModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'listings' | 'badges' | 'reviews'>('listings');
 
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myReviews, setMyReviews] = useState<Review[]>([]);
@@ -170,69 +163,6 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Highlighted SVS Total Environmental Impact Banner */}
-        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-3xl p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                <Leaf className="w-4 h-4 text-emerald-300" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-emerald-200 uppercase tracking-wider">
-                  Kişisel SVS Çevresel Etkiniz
-                </h3>
-                <p className="text-[10px] text-emerald-100/70">Dolaşıma kattığınız eşyaların toplam tasarrufu</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/etkim')}
-              className="text-[11px] font-bold text-emerald-300 hover:text-white flex items-center gap-0.5 cursor-pointer"
-            >
-              <span>Detaylı Rapor</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-emerald-200 block">Engellenen Karbon</span>
-              <span className="text-lg font-black text-white">
-                {currentUser.stats.totalCo2Prevented} kg
-              </span>
-              <span className="text-[9px] text-emerald-300 block">CO₂e</span>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-cyan-200 block">Kurtarılan Su</span>
-              <span className="text-lg font-black text-white">
-                {currentUser.stats.totalWaterSaved} L
-              </span>
-              <span className="text-[9px] text-cyan-300 block">Sanal Su</span>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-amber-200 block">Korunan Enerji</span>
-              <span className="text-lg font-black text-white">
-                {currentUser.stats.totalEnergySaved} kWh
-              </span>
-              <span className="text-[9px] text-amber-300 block">Tasarruf</span>
-            </div>
-          </div>
-        </div>
-
-        {/* SVS Environmental Impact Today Banner */}
-        <ImpactCard
-          impact={{
-            co2eKg: 12.4,
-            waterLiters: 320,
-            energyKwh: 45,
-            rawMaterialKg: 2.1,
-            wasteReductionKg: 1.8,
-            reuseCount: 1,
-            methodologyVersion: 'SVS-v2.1',
-          }}
-          variant="banner"
-        />
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-1.5 p-1 bg-stone-200/60 dark:bg-stone-800 rounded-2xl">
@@ -494,18 +424,6 @@ export const ProfilePage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => navigate('/etkim')}
-            className="w-full p-3.5 flex items-center justify-between hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors text-xs font-semibold text-stone-800 dark:text-stone-200 cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5">
-              <Leaf className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-              <span>{language === 'en' ? 'SVS Carbon & Water Footprint Report' : 'SVS Karbon & Su Ayak İzi Raporum'}</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-stone-400" />
-          </button>
-
-          <button
-            type="button"
             onClick={() => navigate('/takas-yolculugum')}
             className="w-full p-3.5 flex items-center justify-between hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors text-xs font-semibold text-stone-800 dark:text-stone-200 cursor-pointer"
           >
@@ -565,8 +483,6 @@ export const ProfilePage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {showSvsModal && <SvsExplanationModal onClose={() => setShowSvsModal(false)} />}
     </div>
   );
 };

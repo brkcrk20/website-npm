@@ -63,7 +63,7 @@ export const BottomNav: React.FC = () => {
       icon: User,
       path: '/profil',
       activeCheck: (p: string) =>
-        p === '/profil' || p.startsWith('/ayarlar') || p.startsWith('/etkim') || p.startsWith('/rozetler'),
+        p === '/profil' || p.startsWith('/ayarlar') || p.startsWith('/rozetler'),
     },
   ];
 

@@ -1,5 +1,4 @@
 import { TradeOffer, TradeStatus, UserProfile, Listing, Review, TradeEvent } from '../types';
-import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import { enrichListings } from './listingService';
@@ -96,11 +95,6 @@ async function hydrateOffer(
     requestedItemRows.map((i) => i.listing).filter(Boolean)
   );
 
-  const combinedImpact = impactService.calculateCombinedTradeImpact([
-    ...offeredListings.map((l) => l.estimatedImpact),
-    ...requestedListings.map((l) => l.estimatedImpact),
-  ]);
-
   // Frontend durumu: teklif reddedilmediyse ve henüz `trades` satırı yoksa
   // teklifin kendi durumu (offer_sent / counter_offered) geçerli; `trades`
   // satırı oluştuktan sonra asıl ilerleme onun `status`'una göre okunur.
@@ -185,8 +179,8 @@ async function hydrateOffer(
       title: 'Takas Tamamlandı',
       description:
         status === 'completed'
-          ? `Takas başarıyla tamamlandı. Toplam +${combinedImpact.co2eKg} kg CO₂e tasarrufu sağlandı.`
-          : 'SVS Çevresel etki hesaplaması ve profil güncellemesi.',
+          ? 'Takas başarıyla tamamlandı.'
+          : 'Takas tamamlandığında profiliniz güncellenecek.',
       timestamp: fmtDateTime(completedEvent?.created_at ?? tradeRow?.completed_at ?? null),
       actorId: 'system',
       actorName: 'Swaloop Sistemi',
@@ -220,7 +214,6 @@ async function hydrateOffer(
     updatedAt: offerRow.updated_at,
     counterOfferFromId: offerRow.parent_offer_id ?? undefined,
     timeline,
-    combinedImpact,
     // DB tarafında review'ların hangi teklife ait olduğunu görmek için ayrı
     // bir sorgu gerekiyor; bu iki alan getTradeById içinde ayrıca dolduruluyor.
     isReviewedByInitiator: undefined,
@@ -553,36 +546,6 @@ export const tradeService = {
       trade_id: tradeRow.id,
       event_type: eventType,
     } as TablesInsert<'trade_events'>);
-
-    if (targetStep === 6) {
-      const offer = await this.getTradeById(tradeId);
-      if (offer) {
-        // DÜZELTİLDİ (6. tur): src/types/supabase.ts'teki gerçek şemaya göre
-        // kolon adları `material_kg` / `waste_kg` (önceden yanlışlıkla
-        // `raw_material_kg` / `waste_reduction_kg` kullanılıyordu — bu, `as
-        // TablesInsert<'impact_records'>` cast'i tip kontrolünü bastırdığı
-        // için tsc tarafından hiç yakalanmamıştı, gerçek DB'de "column does
-        // not exist" hatası verirdi).
-        const impactInsert: TablesInsert<'impact_records'> = {
-          trade_id: tradeRow.id,
-          co2e_kg: offer.combinedImpact.co2eKg,
-          water_liters: offer.combinedImpact.waterLiters,
-          energy_kwh: offer.combinedImpact.energyKwh,
-          material_kg: offer.combinedImpact.rawMaterialKg,
-          waste_kg: offer.combinedImpact.wasteReductionKg,
-          reuse_count: offer.combinedImpact.reuseCount,
-          methodology_version: offer.combinedImpact.methodologyVersion,
-        };
-
-        const { error: impactError } = await supabase
-          .from('impact_records')
-          .insert(impactInsert);
-
-        if (impactError) {
-          console.error('Etki kaydı oluşturulamadı:', impactError);
-        }
-      }
-    }
 
     return this.getTradeById(tradeId);
   },

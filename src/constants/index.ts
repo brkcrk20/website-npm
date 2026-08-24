@@ -10,8 +10,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Laptop',
     color: '#059669', // emerald
     itemCount: 428,
-    avgCo2Savings: 14.5,
-    avgWaterSavings: 380,
   },
   {
     id: 'sports',
@@ -19,8 +17,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Bike',
     color: '#d97706', // amber
     itemCount: 312,
-    avgCo2Savings: 9.8,
-    avgWaterSavings: 240,
   },
   {
     id: 'home-living',
@@ -28,8 +24,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Home',
     color: '#047857',
     itemCount: 520,
-    avgCo2Savings: 7.2,
-    avgWaterSavings: 190,
   },
   {
     id: 'fashion',
@@ -37,8 +31,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Shirt',
     color: '#b45309',
     itemCount: 684,
-    avgCo2Savings: 6.4,
-    avgWaterSavings: 850,
   },
   {
     id: 'hobby',
@@ -46,8 +38,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Gamepad2',
     color: '#10b981',
     itemCount: 260,
-    avgCo2Savings: 4.8,
-    avgWaterSavings: 120,
   },
   {
     id: 'books',
@@ -55,8 +45,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'BookOpen',
     color: '#059669',
     itemCount: 260,
-    avgCo2Savings: 3.1,
-    avgWaterSavings: 95,
   },
   {
     id: 'music',
@@ -64,8 +52,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Music',
     color: '#0d9488',
     itemCount: 135,
-    avgCo2Savings: 3.6,
-    avgWaterSavings: 80,
   },
   {
     id: 'photography',
@@ -73,8 +59,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Camera',
     color: '#7c3aed',
     itemCount: 98,
-    avgCo2Savings: 12.1,
-    avgWaterSavings: 260,
   },
   {
     id: 'collectibles',
@@ -82,8 +66,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Sparkles',
     color: '#db2777',
     itemCount: 121,
-    avgCo2Savings: 4.2,
-    avgWaterSavings: 110,
   },
   {
     id: 'other',
@@ -91,8 +73,6 @@ export const CATEGORIES: Category[] = [
     iconName: 'Package',
     color: '#78716c',
     itemCount: 96,
-    avgCo2Savings: 5.0,
-    avgWaterSavings: 150,
   },
 ];
 
@@ -186,15 +166,15 @@ export const INITIAL_BADGES: Badge[] = [
   },
   {
     id: 'b-3',
-    title: 'Çevre Dostu',
-    description: '50 kg CO₂e emisyonunun önlenmesine katkı sağladın.',
-    iconName: 'Leaf',
-    category: 'eco',
+    title: 'Sosyal Takasçı',
+    description: 'Topluluğa bir takas hikayesi paylaştın.',
+    iconName: 'Share2',
+    category: 'community',
     isEarned: true,
     earnedDate: '8 Mayıs 2024',
     progressPercent: 100,
-    maxProgress: 50,
-    currentProgress: 127.4,
+    maxProgress: 1,
+    currentProgress: 1,
   },
   {
     id: 'b-4',
@@ -262,7 +242,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'Kırmızı Ataç',
     category: 'Kırtasiye',
     image: 'https://images.unsplash.com/photo-1585336261026-7f12384a28bb?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 0.05,
     dateCompleted: '10 Mart 2024',
     isCompleted: true,
     isCurrent: false,
@@ -272,7 +251,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'Vintage Dolma Kalem',
     category: 'Kırtasiye',
     image: 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 0.4,
     dateCompleted: '22 Mart 2024',
     isCompleted: true,
     isCurrent: false,
@@ -282,7 +260,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'Dune Klasik Ciltli Kitap',
     category: 'Kitap',
     image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 1.8,
     dateCompleted: '8 Nisan 2024',
     isCompleted: true,
     isCurrent: false,
@@ -292,7 +269,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'Kablosuz ANC Kulaklık',
     category: 'Elektronik',
     image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 5.2,
     dateCompleted: '25 Nisan 2024',
     isCompleted: true,
     isCurrent: false,
@@ -302,7 +278,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'Canon DSLR Fotoğraf Makinesi',
     category: 'Elektronik',
     image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 8.6,
     isCompleted: false,
     isCurrent: true,
   },
@@ -311,7 +286,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'Bianchi Şehir Bisikleti',
     category: 'Spor',
     image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 14.2,
     isCompleted: false,
     isCurrent: false,
   },
@@ -320,7 +294,6 @@ export const PAPERCLIP_STAGES: PaperclipStage[] = [
     itemTitle: 'MacBook Air Dizüstü Bilgisayar',
     category: 'Elektronik',
     image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 22.0,
     isCompleted: false,
     isCurrent: false,
   },

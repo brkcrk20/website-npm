@@ -40,7 +40,6 @@ import { NotificationsPage } from './pages/notifications/NotificationsPage';
 import { ProfilePage } from './pages/profile/ProfilePage';
 import { EditProfilePage } from './pages/profile/EditProfilePage';
 import { PublicProfilePage } from './pages/profile/PublicProfilePage';
-import { ImpactBreakdownPage } from './pages/profile/ImpactBreakdownPage';
 import { BadgesPage } from './pages/profile/BadgesPage';
 
 // Loops & Community Pages
@@ -111,7 +110,6 @@ export default function App() {
                 <Route path="/profil" element={<ProfilePage />} />
                 <Route path="/profil/duzenle" element={<EditProfilePage />} />
                 <Route path="/profil/:id" element={<PublicProfilePage />} />
-                <Route path="/etkim" element={<ImpactBreakdownPage />} />
                 <Route path="/rozetlerim" element={<BadgesPage />} />
 
                 {/* Loops & Community */}

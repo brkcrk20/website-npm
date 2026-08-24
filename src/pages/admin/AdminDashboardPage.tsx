@@ -5,7 +5,6 @@ import { adminService } from '../../services/adminService';
 import {
   Users,
   Repeat,
-  Leaf,
   ShieldAlert,
   BarChart3,
   Layers,
@@ -45,7 +44,6 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'events', label: 'Etkinlikler', icon: Calendar },
     { id: 'community', label: 'Topluluk', icon: Users },
     { id: 'content', label: 'İçerikler', icon: FileText },
-    { id: 'svs', label: 'SVS & Etki', icon: Leaf },
     { id: 'notifications', label: 'Bildirimler', icon: Bell },
     { id: 'settings', label: 'Ayarlar', icon: Settings },
   ];
@@ -84,14 +82,6 @@ export const AdminDashboardPage: React.FC = () => {
       icon: Layers,
     },
     {
-      id: 'svs_impact',
-      title: 'Toplam SVS Etkisi',
-      value: '18.247 kg',
-      change: '+19.1%',
-      isPositive: true,
-      icon: Leaf,
-    },
-    {
       id: 'pending_reports',
       title: 'Bekleyen Rapor',
       value: '23',
@@ -107,7 +97,7 @@ export const AdminDashboardPage: React.FC = () => {
       user: 'Aslı T. & Mehmet K.',
       action: 'Takas tamamlandı (Canon EOS 200D ⇄ Bianchi Bisiklet)',
       time: '2 dakika önce',
-      badge: '+8.6 kg CO₂e',
+      badge: 'Takas Tamamlandı',
     },
     {
       id: 'act-2',
@@ -416,12 +406,12 @@ export const AdminDashboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  showToast('SVS Raporu İndirildi', 'Mayıs 2024 karbon tasarrufu dışa aktarıldı.', 'success');
+                  showToast('Rapor İndirildi', 'Mayıs 2024 takas raporu dışa aktarıldı.', 'success');
                 }}
                 className="w-full py-2.5 px-3 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-xs font-bold text-white text-left flex items-center justify-between"
               >
-                <span>Aylık SVS Raporunu İndir</span>
-                <Leaf className="w-4 h-4" />
+                <span>Aylık Takas Raporunu İndir</span>
+                <BarChart3 className="w-4 h-4" />
               </button>
             </div>
 

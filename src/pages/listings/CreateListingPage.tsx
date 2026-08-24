@@ -2,19 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingService, uploadListingImages } from '../../services/listingService';
 import { supabase } from '../../lib/supabase';
-import { impactService } from '../../services/impactService';
 import { CATEGORIES } from '../../constants';
 import { CategoryId, ProductCondition } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { ImpactCard } from '../../components/common/ImpactCard';
 import {
   ArrowLeft,
   Camera,
-  Upload,
-  Plus,
   X,
   CheckCircle2,
-  Leaf,
   Sparkles,
   ArrowRight,
   ShieldCheck,
@@ -55,9 +50,6 @@ export const CreateListingPage: React.FC = () => {
     'in_person',
     'safe_point',
   ]);
-
-  // Live estimated SVS environmental impact
-  const liveImpact = impactService.calculateEstimatedImpact(categoryId, condition);
 
   const handleAddSampleImage = (url: string) => {
     if (images.length >= 6) {
@@ -507,26 +499,23 @@ export const CreateListingPage: React.FC = () => {
               onClick={() => setStep(3)}
               className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
-              <span>Sonraki Adım: Çevresel Etki & Yayınla</span>
+              <span>Sonraki Adım: Onayla & Yayınla</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* STEP 3: Instant SVS Environmental Impact Preview & Confirm */}
+        {/* STEP 3: Confirm & Publish */}
         {step === 3 && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
-                Çevresel Etki & Onay
+                Onayla & Yayınla
               </h1>
               <p className="text-xs text-stone-500 mt-0.5">
-                Bu ürünü yeniden dolaşıma soktuğunda doğaya kazandıracağın fayda:
+                İlanını son bir kez kontrol et ve takasa hazır hale getir.
               </p>
             </div>
-
-            {/* Instant Calculated SVS Impact Card */}
-            <ImpactCard impact={liveImpact} variant="detailed" />
 
             {/* Listing Summary Preview Box */}
             <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">

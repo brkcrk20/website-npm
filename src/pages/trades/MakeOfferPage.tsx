@@ -3,15 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
-import { impactService } from '../../services/impactService';
 import { Listing } from '../../types';
 import {
   ArrowLeft,
   ArrowLeftRight,
   ShieldCheck,
-  Leaf,
-  Droplets,
-  Zap,
   MapPin,
   Truck,
   Check,
@@ -95,12 +91,6 @@ export const MakeOfferPage: React.FC = () => {
 
   const selectedListings = myListings.filter((l) => selectedMyListingIds.includes(l.id));
 
-  // Combined Environmental Impact Calculation
-  const combinedImpact = impactService.calculateCombinedTradeImpact([
-    targetListing.estimatedImpact,
-    ...selectedListings.map((l) => l.estimatedImpact),
-  ]);
-
   const handleSubmitOffer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedListings.length === 0) {
@@ -141,10 +131,6 @@ export const MakeOfferPage: React.FC = () => {
             totalTrades: 4,
             activeListings: 2,
             completedLoops: 1,
-            totalCo2Prevented: 35.2,
-            totalWaterSaved: 850,
-            totalEnergySaved: 320,
-            totalRawMaterialsSaved: 4.1,
             totalItemsReused: 5,
             responseRatePercent: 98,
             avgResponseTimeMinutes: 15,
@@ -259,9 +245,7 @@ export const MakeOfferPage: React.FC = () => {
                     />
                     <div className="min-w-0 flex-1">
                       <h4 className="text-xs font-bold text-stone-800 truncate">{item.title}</h4>
-                      <span className="text-[10px] text-emerald-700 font-semibold">
-                        +{item.estimatedImpact.co2eKg} kg CO₂e
-                      </span>
+                      <span className="text-[10px] text-stone-500">{item.location.district}</span>
                     </div>
                   </div>
                 );
@@ -279,50 +263,6 @@ export const MakeOfferPage: React.FC = () => {
               </button>
             </div>
           )}
-        </div>
-
-        {/* Real-time Environmental Benefit Calculation */}
-        <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-2xl p-4 shadow-md">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Leaf className="w-4 h-4 text-emerald-300" />
-              <span className="text-xs font-bold text-emerald-200 uppercase tracking-wider">
-                Ortak SVS Çevresel Kazanç
-              </span>
-            </div>
-            <span className="text-[10px] bg-emerald-800/80 px-2 py-0.5 rounded-full border border-emerald-600/40 text-emerald-200">
-              Gerçek Zamanlı
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <div className="flex items-center justify-center gap-1 text-emerald-300 text-xs mb-0.5">
-                <Leaf className="w-3.5 h-3.5" />
-                <span className="font-bold">CO₂e</span>
-              </div>
-              <div className="text-base font-extrabold text-white">+{combinedImpact.co2eKg} kg</div>
-              <div className="text-[9px] text-emerald-200/80">Karbon Tasarrufu</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <div className="flex items-center justify-center gap-1 text-cyan-300 text-xs mb-0.5">
-                <Droplets className="w-3.5 h-3.5" />
-                <span className="font-bold">Su</span>
-              </div>
-              <div className="text-base font-extrabold text-white">+{combinedImpact.waterLiters} L</div>
-              <div className="text-[9px] text-cyan-200/80">Sanal Su Tasarrufu</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <div className="flex items-center justify-center gap-1 text-amber-300 text-xs mb-0.5">
-                <Zap className="w-3.5 h-3.5" />
-                <span className="font-bold">Enerji</span>
-              </div>
-              <div className="text-base font-extrabold text-white">+{combinedImpact.energyKwh} kWh</div>
-              <div className="text-[9px] text-amber-200/80">Üretim Enerjisi</div>
-            </div>
-          </div>
         </div>
 
         {/* Delivery Method Selection */}

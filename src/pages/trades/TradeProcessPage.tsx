@@ -1,30 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { tradeService } from '../../services/tradeService';
+import { TradeOffer, TradeStatus } from '../../types';
 import {
   ArrowLeft,
   CheckCircle2,
-  Lock,
-  Truck,
   MapPin,
   Calendar,
-  Clock,
   ShieldCheck,
-  PackageCheck,
   ChevronDown,
   ArrowRight,
 } from 'lucide-react';
 
+const STATUS_TO_STEP: Partial<Record<TradeStatus, number>> = {
+  offer_sent: 1,
+  offer_received: 1,
+  counter_offered: 1,
+  accepted: 2,
+  locked: 3,
+  delivery_planned: 4,
+  shipped: 4,
+  received: 4,
+  verified: 5,
+  completed: 6,
+};
+
 export const TradeProcessPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { currentUser, showToast } = useApp();
+  const { showToast } = useApp();
 
-  const [currentStep, setCurrentStep] = useState<number>(3); // Step 3: Takas Kilitlendi in mockup
-  const [deliveryType, setDeliveryType] = useState('Elden teslim - Kadıköy');
-  const [deliveryDate, setDeliveryDate] = useState('18 Mayıs 2024, Cumartesi 16:00');
-  const [safeMeetingPoint, setSafeMeetingPoint] = useState('Kadıköy Boğa Heykeli & Güvenli Takas Noktası');
+  const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdvancing, setIsAdvancing] = useState(false);
+
+  const loadTrade = useCallback(async () => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const t = await tradeService.getTradeById(id);
+    setTrade(t);
+    setIsLoading(false);
+  }, [id]);
+
+  useEffect(() => {
+    loadTrade();
+  }, [loadTrade]);
+
+  const currentStep = trade ? STATUS_TO_STEP[trade.status] ?? 3 : 3;
 
   const steps = [
     { num: 1, title: 'Teklif', desc: 'Teklif iletildi' },
@@ -32,21 +58,69 @@ export const TradeProcessPage: React.FC = () => {
     { num: 3, title: 'Kilitlendi', desc: 'Ürünler rezerve edildi' },
     { num: 4, title: 'Teslimat', desc: 'Fiziki buluşma / Kargo' },
     { num: 5, title: 'Onay', desc: 'Ürün kontrolü ve doğrulama' },
-    { num: 6, title: 'Tamamlandı', desc: 'SVS etkisi işlendi' },
+    { num: 6, title: 'Tamamlandı', desc: 'Takas tamamlandı' },
   ];
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
+    if (!trade) return;
+    setIsAdvancing(true);
     if (currentStep === 3) {
-      setCurrentStep(4);
-      showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
+      const updated = await tradeService.advanceTradeStep(trade.id, 4);
+      setIsAdvancing(false);
+      if (updated) {
+        setTrade(updated);
+        showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
+      }
     } else if (currentStep === 4) {
-      setCurrentStep(5);
-      showToast('Teslimat Gerçekleşti', 'Ürün teslim alındı, lütfen onaylayınız.', 'info');
+      const updated = await tradeService.advanceTradeStep(trade.id, 5);
+      setIsAdvancing(false);
+      if (updated) {
+        setTrade(updated);
+        showToast('Teslimat Gerçekleşti', 'Ürün teslim alındı, lütfen onaylayınız.', 'info');
+      }
     } else if (currentStep === 5) {
-      setCurrentStep(6);
-      navigate(`/takas-tamamlandi/${id || 'trade-1'}`);
+      const updated = await tradeService.advanceTradeStep(trade.id, 6);
+      setIsAdvancing(false);
+      if (updated) {
+        setTrade(updated);
+        navigate(`/takas-tamamlandi/${trade.id}`);
+      }
+    } else {
+      setIsAdvancing(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!trade) {
+    return (
+      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
+        <h2 className="text-base font-bold text-stone-800 mb-2">Takas bulunamadı</h2>
+        <button
+          type="button"
+          onClick={() => navigate('/takaslarim')}
+          className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold"
+        >
+          Takaslarıma Dön
+        </button>
+      </div>
+    );
+  }
+
+  const deliveryType =
+    trade.deliveryMethod === 'cargo'
+      ? 'Kargo ile Gönderim'
+      : trade.deliveryMethod === 'safe_point'
+      ? 'Güvenli Takas Noktası'
+      : 'Elden Buluşma';
+  const safeMeetingPoint = trade.deliveryDetails?.locationName || 'Buluşma noktası henüz belirlenmedi';
+  const deliveryDate = trade.deliveryDetails?.scheduledDate || 'Sohbet üzerinden kararlaştırılabilir';
 
   return (
     <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
@@ -77,8 +151,7 @@ export const TradeProcessPage: React.FC = () => {
               return (
                 <div key={step.num} className="flex flex-col items-center relative z-10">
                   <div
-                    onClick={() => setCurrentStep(step.num)}
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all ${
                       isCurrent
                         ? 'bg-emerald-900 text-white ring-3 ring-emerald-100 scale-105'
                         : isPassed
@@ -169,21 +242,29 @@ export const TradeProcessPage: React.FC = () => {
         </div>
 
         {/* Bottom Action Button Matching Screen 11 */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={handleNextStep}
-            className="w-full py-4 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <span>
-              {currentStep === 3 && 'Teslimatı Planla'}
-              {currentStep === 4 && 'Teslim Edildi Olarak İşaretle'}
-              {currentStep === 5 && 'Ürünü Onayla & Tamamla'}
-              {currentStep >= 6 && 'Tamamlandı'}
-            </span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </div>
+        {currentStep < 6 && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleNextStep}
+              disabled={isAdvancing || currentStep < 3}
+              className="w-full py-4 rounded-2xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>
+                {isAdvancing
+                  ? 'İşleniyor...'
+                  : currentStep === 3
+                  ? 'Teslimatı Planla'
+                  : currentStep === 4
+                  ? 'Teslim Edildi Olarak İşaretle'
+                  : currentStep === 5
+                  ? 'Ürünü Onayla & Tamamla'
+                  : 'Takas onaylanmayı bekliyor'}
+              </span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

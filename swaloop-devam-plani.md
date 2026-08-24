@@ -1,6 +1,15 @@
 # Swaloop — Supabase Entegrasyonu Devam Planı
 
-> **GÜNCELLEME (bu turda, 7. tur):** Topluluk gönderileri (community
+> **GÜNCELLEME (bu turda, 8. tur):** Uygulamadaki tüm SVS / çevresel
+> etki (CO₂e, su, enerji tasarrufu) sistemi kullanıcı talebiyle
+> TAMAMEN kaldırıldı — Swaloop artık saf bir takas pazar yeri (Letgo
+> benzeri), asla parasal veya "değer" ölçümü içermiyor. Ayrıca birkaç
+> gerçek çalışmayan/ölü buton düzeltildi (bkz. **§12**). `impact_records`
+> tablosunu ve `community_posts.trade_co2_saved` kolonunu düşüren bir
+> migration hazırlandı ama uygulanmadı — kullanıcı kendi ortamında
+> `supabase db push` çalıştırmalı.
+>
+> **GÜNCELLEME (7. tur):** Topluluk gönderileri (community
 > posts) gerçek Supabase'e bağlandı — beğeni sayısı DB trigger'ıyla
 > tutuluyor. Etkinlikler ve rozetler HÂLÂ mock (bkz. §11). Ayrıntı için
 > **§11**'e bakın.
@@ -809,3 +818,94 @@ hatalarını yakalar) — temiz çıktı.
    "Etki kaydı oluşturulamadı" hatası görünmemeli.
 5. Test başarılıysa, `createLoop`/`joinLoop` için bir UI eklenmesi ya da
    plan §6 madde 4'teki (topluluk/rozet) işe geçilmesi düşünülebilir.
+
+## 12. YAPILDI — SVS/CO2 sisteminin tamamen kaldırılması + bozuk buton düzeltmeleri (bu turda, 8. tur)
+
+### 12.1 Kapsam: neden kaldırıldı
+
+Kullanıcı isteği: Swaloop, Letgo'ya benzer, tamamen takas odaklı bir
+platform olacak — hiçbir zaman parasal değer veya "SVS puanı" gibi bir
+değerleme sistemi olmayacak. SVS zaten para değildi (bkz. eski
+`SvsExplanationModal.tsx`), ama CO₂e/su/enerji tasarrufu hesaplayan
+tüm katman (bir tür "değer/skor" göstergesi olarak algılanabildiği ve
+ürün deneyimini karmaşıklaştırdığı için) tamamen kaldırıldı.
+
+### 12.2 Silinen dosyalar
+
+- `src/services/impactService.ts`
+- `src/components/common/SvsExplanationModal.tsx`
+- `src/components/common/ImpactCard.tsx`
+- `src/pages/profile/ImpactBreakdownPage.tsx` (+ `/etkim` route'u App.tsx'ten kaldırıldı)
+
+### 12.3 Değiştirilen tip/veri katmanı
+
+- `src/types/index.ts`: `EnvironmentalImpact` tipi silindi; `Listing.estimatedImpact`,
+  `TradeOffer.combinedImpact`, `Loop.totalImpact`, `Category.avgCo2Savings/avgWaterSavings`,
+  `UserProfile.stats.totalCo2Prevented/totalWaterSaved/totalEnergySaved/totalRawMaterialsSaved`,
+  `AdminKPI.totalSvsImpactCo2Kg/totalWaterSavedL/totalEnergyKwh`, `PaperclipStage.estimatedImpact`,
+  `MysterySwapItem.estimatedCo2e`, `CommunityPost.tradeStory.co2Saved`, `Badge.category`'den
+  `'eco'` değeri kaldırıldı.
+- `src/data/mockData.ts`, `src/constants/index.ts`: yukarıdaki alanların tüm mock verisi temizlendi.
+- `src/services/tradeService.ts` / `loopService.ts` / `listingService.ts`: impactService çağrıları
+  kaldırıldı; `advanceTradeStep`'in 6. adımı artık `impact_records` tablosuna YAZMIYOR.
+- `supabase/migrations/20260824000000_drop_co2_impact_tracking.sql`: **hazırlandı ama
+  uygulanmadı** — `impact_records` tablosunu ve `community_posts.trade_co2_saved` kolonunu
+  düşürüyor. Kullanıcı `supabase db push` ile uygulamalı, sonra
+  `supabase gen types typescript` ile `src/types/supabase.ts`'i yeniden üretmeli.
+
+### 12.4 UI: tüm sayfalardan SVS/CO2 kartları ve metinleri kaldırıldı
+
+ProductCard, TradeCard, ProfilePage, PublicProfilePage, ProductDetailPage, CreateListingPage,
+MakeOfferPage, TradeDetailPage, TradeProcessPage, TradeSuccessPage, LoopsPage, PaperclipPage
+(₺ para birimi rakamları dahil — bunlar da tamamen kaldırıldı), MysterySwapPage, CommunityPage,
+AdminDashboardPage, BadgesPage, EventsPage, AboutSwaloopPage, OnboardingPage, SplashPage.
+
+### 12.5 Bu turda düzeltilen GERÇEK ÇALIŞMAYAN buton/sayfa hataları (SVS kapsamı dışında, ayrıca bulundu)
+
+1. **`ProductDetailPage.tsx`** — Ana "Takas Teklifi Yap" butonu `/teklif-olustur/:id` adında
+   var olmayan bir route'a gidiyordu (App.tsx'te sadece `/teklif-ver?targetId=` var) → düzeltildi.
+   Aynı sayfadaki "Mesaj Yaz" butonu sabit `chat-1` id'sine gidiyordu → gerçek
+   `messageService.getOrCreateConversationWithUser` akışına bağlandı.
+2. **`MysterySwapPage.tsx`** — "Takası Kabul Et" butonu var olmayan sabit bir ilan id'sine
+   (`canon-eos-200d`) gidiyordu; ayrıca ödül havuzu 3 sabit mock objeydi → artık gerçek
+   `listingService.getAllListings()` sonucundan rastgele gerçek bir ilan seçiliyor ve
+   gerçek `/ilan/:id`'ye yönlendiriyor.
+3. **`PublicProfilePage.tsx`** — `/profil/:id` her zaman `OTHER_USERS`'taki sabit mock
+   kullanıcıyı (Aslı T.) gösteriyordu; gerçek Supabase kullanıcı id'leri hiç eşleşmiyordu.
+   `authService.getUserProfileById()` eklendi, sayfa artık tıklanan gerçek kullanıcıyı gösteriyor.
+4. **`TradeProcessPage.tsx`** (`/takas-sureci/:id`) ve **`TradeSuccessPage.tsx`**
+   (`/takas-tamamlandi/:id`) — ikisi de `id` parametresini hiç kullanmıyor, tamamen yerel/sahte
+   state ile (adım her zaman 3'ten başlıyor, "Değerlendirme" hiçbir yere kaydedilmiyordu) statik
+   bir mockup gibi çalışıyordu. Artık `tradeService.getTradeById(id)` ile gerçek takas verisini
+   çekiyor, adım butonları gerçek `tradeService.advanceTradeStep`'i çağırıyor ve değerlendirme
+   gerçek `tradeService.submitReview`'a kaydediliyor.
+5. **`EventsPage.tsx`** ve **`BadgesPage.tsx`** — her ikisi de kendi sayfalarına özel,
+   `CommunityPage.tsx`'teki ve `constants.ts`'teki gerçek verilerden TAMAMEN BAĞIMSIZ, birbiriyle
+   tutarsız ikinci bir mock veri kümesi tutuyordu (örn. EventsPage'in etkinlik listesi
+   CommunityPage'in etkinlik listesinden farklıydı). İkisi de artık merkezi
+   `communityService.getEvents()/toggleEventAttendance()` ve `communityService.getBadges()`'i
+   kullanıyor.
+
+### 12.6 Kapsam dışı bırakılanlar / bilinen sınırlar
+
+- `AdminDashboardPage.tsx` sol menüdeki 13 sekmeden yalnızca "Genel Bakış" içeriği var; diğer
+  sekmelere tıklamak aktif sekmeyi değiştiriyor ama farklı bir içerik render etmiyor (buton
+  çalışıyor ama içerik hep aynı). Bu, SVS kapsamının dışında kalan ayrı bir iş — dokunulmadı.
+- Loop oluşturma/katılma (`createLoop`/`joinLoop`) için hâlâ bir UI yok (bkz. §10.4 madde 1).
+- `@google/genai`, `express`, `dotenv` bağımlılıkları hâlâ `package.json`'da ama `src/` içinde
+  hiç kullanılmıyor (AI Studio scaffold kalıntısı) — bu turda dokunulmadı.
+
+**Test durumu:** `npm install` + `npx tsc --noEmit` + `npx vite build` bu ortamda çalıştırıldı,
+üçü de hatasız geçti. **Gerçek Supabase'e karşı uçtan uca (`npm run dev`) test edilmedi.**
+
+**Yeni oturumda / sizin ortamınızda ilk yapılması gereken:**
+
+1. `supabase/migrations/20260824000000_drop_co2_impact_tracking.sql`'i inceleyip
+   `supabase db push` ile uygulayın, ardından `supabase gen types typescript` ile
+   `src/types/supabase.ts`'i yeniden üretin (artık kullanılmayan `impact_records` tablo tipini
+   ve `trade_co2_saved` kolon tipini temizlemek için — şu an tipler hâlâ eski şemayı yansıtıyor
+   ama kod bunları hiç okumuyor/yazmıyor, bu yüzden derleme hatası vermiyor).
+2. `npm run dev` ile: bir ilan detayına girip "Takas Teklifi Yap" butonunun artık gerçekten
+   teklif oluşturma ekranını açtığını, Mystery Swap'ta "Kutuyu Aç"ın gerçek bir ilan
+   gösterdiğini, başka bir kullanıcının profiline tıklayınca doğru kullanıcının açıldığını
+   doğrulayın.

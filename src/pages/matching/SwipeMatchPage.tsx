@@ -14,18 +14,12 @@ import {
   RotateCcw,
   SlidersHorizontal,
   MapPin,
-  ShieldCheck,
-  Leaf,
   MessageSquare,
   Repeat,
   Zap,
-  Info,
-  CheckCircle2,
   ChevronRight,
   Flame,
-  Layers,
   ArrowRight,
-  UserCheck,
 } from 'lucide-react';
 
 export const SwipeMatchPage: React.FC = () => {
@@ -82,7 +76,7 @@ export const SwipeMatchPage: React.FC = () => {
     let score = 75;
     if (target.location.distanceKm <= 5) score += 10;
     if (target.user.isVerified) score += 5;
-    if (target.estimatedImpact && target.estimatedImpact.co2eKg > 5) score += 5;
+    if (target.user.trustScore >= 4.7) score += 5;
     return Math.min(score, 98);
   };
 
@@ -290,25 +284,16 @@ export const SwipeMatchPage: React.FC = () => {
 
             {/* Bottom Info Card */}
             <div className="relative p-3.5 sm:p-4 space-y-2 z-10 pointer-events-auto mt-auto">
-              {/* SVS Eco Pill */}
               <div className="flex items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded-md bg-emerald-900/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold flex items-center gap-1">
-                  <Leaf className="w-2.5 h-2.5 text-emerald-400" />
-                  {currentListing.estimatedImpact?.co2eKg || 8.4} kg CO₂e
-                </span>
                 <span className="px-2 py-0.5 rounded-md bg-stone-800/90 border border-stone-700 text-stone-300 text-[10px] font-semibold">
                   {currentListing.condition}
                 </span>
               </div>
 
-              {/* Title & SVS Points */}
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-base sm:text-lg font-black text-white leading-tight font-display truncate">
                   {currentListing.title}
                 </h2>
-                <span className="text-amber-400 font-bold text-xs shrink-0">
-                  {currentListing.estimatedImpact?.waterLiters || 240} L Su
-                </span>
               </div>
 
               {/* Aradığı Ürün (Looking For) */}
@@ -658,9 +643,6 @@ export const SwipeMatchPage: React.FC = () => {
                         </span>
                         <span className="text-[11px] text-stone-400 block truncate">
                           {item.user.fullName} • {item.location.district}
-                        </span>
-                        <span className="text-[10px] text-emerald-400 font-semibold block">
-                          {item.estimatedImpact?.co2eKg || 8.2} kg CO₂e
                         </span>
                       </div>
                     </div>

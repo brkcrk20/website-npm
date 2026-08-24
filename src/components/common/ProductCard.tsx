@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Listing } from '../../types';
-import { Heart, MapPin, Star, Leaf } from 'lucide-react';
+import { Heart, MapPin, Star } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 
@@ -106,11 +106,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-800 mt-1">
-            <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/60">
-              <Leaf className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              <span>{listing.estimatedImpact.co2eKg} kg CO₂e</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-stone-700 dark:text-stone-300 font-semibold">
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium truncate">
+              {listing.lookingFor}
+            </span>
+            <div className="flex items-center gap-1 text-xs text-stone-700 dark:text-stone-300 font-semibold shrink-0">
               <Star className="w-3.5 h-3.5 text-amber-500 fill-current" />
               <span>{listing.user.trustScore.toFixed(1)}</span>
             </div>
@@ -176,13 +175,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </p>
         </div>
 
-        {/* Environmental impact tag (SVS) */}
-        <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold">
-            <Leaf className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>{listing.estimatedImpact.co2eKg} kg CO₂e</span>
-          </div>
-
+        <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end">
           <span className="text-[11px] text-stone-400 font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
             {t('btn_view')} →
           </span>

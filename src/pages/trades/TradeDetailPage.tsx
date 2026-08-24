@@ -5,15 +5,10 @@ import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
 import { TradeOffer } from '../../types';
 import { Timeline } from '../../components/common/Timeline';
-import { ImpactCard } from '../../components/common/ImpactCard';
-import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
 import {
   ArrowLeft,
   MessageSquare,
   ShieldCheck,
-  Leaf,
-  Droplets,
-  Zap,
   MapPin,
   Calendar,
   Truck,
@@ -36,7 +31,6 @@ export const TradeDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showCounterModal, setShowCounterModal] = useState(false);
-  const [showSvsModal, setShowSvsModal] = useState(false);
   const [counterNote, setCounterNote] = useState('');
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -118,7 +112,7 @@ export const TradeDetailPage: React.FC = () => {
       } else if (step === 5) {
         showToast('Teslimat Onaylandı!', 'Karşı taraf onayladığında takas başarıyla tamamlanacak.', 'success');
       } else if (step === 6) {
-        showToast('Tebrikler! Takas Tamamlandı 🎉', `Toplam +${updated.combinedImpact.co2eKg} kg CO₂e tasarrufu sağlandı!`, 'success');
+        showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
         setShowReviewModal(true);
       }
     }
@@ -250,9 +244,6 @@ export const TradeDetailPage: React.FC = () => {
                   />
                 </div>
                 <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{myItem?.title}</h3>
-                <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
-                  +{myItem?.estimatedImpact.co2eKg} kg CO₂e
-                </span>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
                 Durum: <span className="font-semibold text-stone-700">{myItem?.condition}</span>
@@ -278,9 +269,6 @@ export const TradeDetailPage: React.FC = () => {
                   />
                 </div>
                 <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{otherItem?.title}</h3>
-                <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
-                  +{otherItem?.estimatedImpact.co2eKg} kg CO₂e
-                </span>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
                 Durum: <span className="font-semibold text-stone-700">{otherItem?.condition}</span>
@@ -295,43 +283,6 @@ export const TradeDetailPage: React.FC = () => {
               "{trade.note}"
             </div>
           )}
-        </div>
-
-        {/* Combined SVS Ecological Impact Card */}
-        <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Leaf className="w-4 h-4 text-emerald-300" />
-              <h3 className="text-xs font-bold text-emerald-200 uppercase tracking-wider">
-                Ortak SVS Çevresel Kazanç
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSvsModal(true)}
-              className="text-[10px] text-emerald-200 underline font-semibold cursor-pointer"
-            >
-              Metodoloji?
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-emerald-200/80 block">Karbon</span>
-              <span className="text-base font-extrabold text-white">+{trade.combinedImpact.co2eKg} kg</span>
-              <span className="text-[9px] text-emerald-300 block">CO₂e Önleme</span>
-            </div>
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-cyan-200/80 block">Sanal Su</span>
-              <span className="text-base font-extrabold text-white">+{trade.combinedImpact.waterLiters} L</span>
-              <span className="text-[9px] text-cyan-300 block">Tasarruf</span>
-            </div>
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-amber-200/80 block">Enerji</span>
-              <span className="text-base font-extrabold text-white">+{trade.combinedImpact.energyKwh} kWh</span>
-              <span className="text-[9px] text-amber-300 block">Tasarruf</span>
-            </div>
-          </div>
         </div>
 
         {/* Meeting & Delivery Protocol Details */}
@@ -423,7 +374,7 @@ export const TradeDetailPage: React.FC = () => {
           {trade.status === 'verified' && (
             <div className="space-y-2">
               <p className="text-xs text-stone-600">
-                Teslimat doğrulaması yapıldı. Takas sürecini tamamlayıp SVS puanınızı hesabınıza ekleyin.
+                Teslimat doğrulaması yapıldı. Takas sürecini tamamlayıp profilinize yansıtın.
               </p>
               <button
                 type="button"
@@ -441,7 +392,7 @@ export const TradeDetailPage: React.FC = () => {
             <div className="space-y-2">
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Takas başarıyla tamamlandı! Çevresel kazanç profilinize yansıtıldı.</span>
+                <span>Takas başarıyla tamamlandı! Güven puanınız profilinize yansıtıldı.</span>
               </div>
               {!isReviewedByMe ? (
                 <button
@@ -535,9 +486,6 @@ export const TradeDetailPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* SVS Explanation Modal */}
-      {showSvsModal && <SvsExplanationModal onClose={() => setShowSvsModal(false)} />}
     </div>
   );
 };
