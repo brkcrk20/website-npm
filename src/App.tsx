@@ -17,6 +17,7 @@ const CreateProfilePage = lazy(() => import('./pages/auth/CreateProfilePage').th
 // Discovery Pages
 const DiscoverPage = lazy(() => import('./pages/discovery/DiscoverPage').then((m) => ({ default: m.DiscoverPage })));
 const SearchPage = lazy(() => import('./pages/discovery/SearchPage').then((m) => ({ default: m.SearchPage })));
+const CategoriesPage = lazy(() => import('./pages/discovery/CategoriesPage').then((m) => ({ default: m.CategoriesPage })));
 const NearbyMapPage = lazy(() => import('./pages/discovery/NearbyMapPage').then((m) => ({ default: m.NearbyMapPage })));
 const FavoritesPage = lazy(() => import('./pages/discovery/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
 
@@ -103,6 +104,7 @@ export default function App() {
                 {/* Discovery & Search */}
                 <Route path="/kesfet" element={<DiscoverPage />} />
                 <Route path="/arama" element={<SearchPage />} />
+                <Route path="/kategoriler" element={<CategoriesPage />} />
                 <Route path="/harita" element={<NearbyMapPage />} />
                 <Route path="/favoriler" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
 

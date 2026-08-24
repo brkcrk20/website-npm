@@ -1,49 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search, SlidersHorizontal, Sparkles, ArrowRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { needService } from '../../services/needService';
-import { NeedMatch } from '../../types';
 import { CATEGORIES } from '../../constants';
+import { Listing, NeedMatch } from '../../types';
 import { ProductCard } from '../../components/common/ProductCard';
-import { CircularExchangeIcon } from '../../components/common/SwaloopLogo';
-import {
-  Search,
-  SlidersHorizontal,
-  Sparkles,
-  ArrowRight,
-  Gift,
-  Paperclip,
-  Users,
-  Repeat,
-  Radio,
-} from 'lucide-react';
+
+// 9. ANA SAYFA
+//
+// Ana ekran ilan çöplüğü değil, ihtiyaç eşleştirme ekranıdır (md. 14-15).
+// Sıralama: arama → kategoriler → sana uygun → yeni ilanlar.
+//
+// Önceki sürümde burada Loop, Takas Yolculuğum, Gizemli Kutu, Etkinlikler
+// gibi beş ayrı tanıtım kutusu vardı; ilanlar en aşağıda kalıyordu. Bu
+// bölümler kendi ekranlarında duruyor, ana sayfa sadeleşti (md. 15, 145).
 
 export const DiscoverPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, currentLocation, language, t } = useApp();
+  const { currentUser } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [allListings, setAllListings] = useState<any[]>([]);
-  // "Sana uygun takaslar" artık gerçekten kişiye uygun: kullanıcının açık
-  // ihtiyaçlarıyla eşleşen ilanlar (rapor md. 14-15). Önceden bu bölüm
-  // sadece en yeni 4 ilanı gösteriyordu.
+  const [listings, setListings] = useState<Listing[]>([]);
   const [matches, setMatches] = useState<NeedMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-  const loadListings = async () => {
-    try {
-      const listings = await listingService.getAllListings();
-      setAllListings(listings);
-    } catch (error) {
-      console.error('İlanlar yüklenemedi:', error);
-      setAllListings([]);
-    }
-  };
+    let cancelled = false;
 
-  loadListings();
-}, []);
+    listingService
+      .getAllListings()
+      .then((data) => {
+        if (cancelled) return;
+        setListings(data);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,33 +60,12 @@ export const DiscoverPage: React.FC = () => {
     };
   }, [currentUser.id, currentUser.city]);
 
-  const filteredListings = allListings.filter((item) => {
-    if (
-      selectedCategory !== 'all' &&
-      item.categoryId !== selectedCategory
-    ) {
-      return false;
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-
-      return (
-        (item.title || '').toLowerCase().includes(query) ||
-        (item.lookingFor || '').toLowerCase().includes(query) ||
-        (item.description || '').toLowerCase().includes(query)
-      );
-    }
-
-    return true;
-  });
-
-  const nearbyListings = allListings.filter(
-    (listing) => (listing.location?.distanceKm || 0) <= 2.5
+  const filtered = listings.filter(
+    (item) => selectedCategory === 'all' || item.categoryId === selectedCategory
   );
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
 
     if (searchQuery.trim()) {
       navigate(`/arama?q=${encodeURIComponent(searchQuery)}`);
@@ -93,342 +73,142 @@ export const DiscoverPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-24 text-stone-900 dark:text-stone-100 transition-colors">
-      <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-3 space-y-4">
-
-        {/* Search */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className="relative flex items-center gap-2"
-        >
+    <div className="sw-screen">
+      <div className="sw-container pt-4 space-y-6">
+        {/* Arama */}
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-
+            <Search className="w-4 h-4 text-ink-faint absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('discover_search_placeholder')}
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-xs sm:text-sm font-medium shadow-xs text-stone-900 dark:text-white placeholder-stone-400"
+              placeholder="Bir şeyler ara..."
+              className="sw-input pl-10"
+              aria-label="Ara"
             />
           </div>
-
           <button
             type="button"
-            onClick={() => navigate('/arama')}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0 shadow-xs cursor-pointer"
-            title="Filtreler"
+            onClick={() => navigate('/kategoriler')}
+            aria-label="Kategoriler"
+            className="sw-btn sw-btn-ghost w-12 px-0 shrink-0"
           >
-            <SlidersHorizontal className="w-4 h-4 text-emerald-800 dark:text-emerald-400" />
+            <SlidersHorizontal className="w-4 h-4" />
           </button>
         </form>
 
-        {/* Quick Modes */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Kategori çipleri */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4">
           <button
             type="button"
-            onClick={() => navigate('/eslesme')}
-            className="p-3 bg-gradient-to-r from-stone-900 via-stone-800 to-emerald-950 text-white rounded-2xl border border-emerald-500/30 flex items-center justify-between shadow-xs hover:border-emerald-400 transition-all cursor-pointer text-left group"
+            onClick={() => setSelectedCategory('all')}
+            aria-pressed={selectedCategory === 'all'}
+            className={`sw-chip ${selectedCategory === 'all' ? 'sw-chip-active' : ''}`}
           >
-            <div className="min-w-0 pr-1">
-              <span className="text-xs font-bold text-white block truncate">
-                {t('discover_match_feed')} 🔥
-              </span>
-
-              <span className="text-[10px] text-amber-400 font-semibold block truncate">
-                {t('discover_swipe_match')}
-              </span>
-            </div>
-
-            <div className="w-7 h-7 rounded-xl bg-emerald-800/80 flex items-center justify-center text-white shrink-0">
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
+            Tümü
           </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/takas-istekleri')}
-            className="p-3 bg-white dark:bg-stone-900 text-stone-900 dark:text-white rounded-2xl border border-stone-200/90 dark:border-stone-800 flex items-center justify-between shadow-xs hover:border-emerald-500/60 transition-all cursor-pointer text-left group"
-          >
-            <div className="min-w-0 pr-1">
-              <span className="text-xs font-bold block truncate">
-                {t('discover_trade_requests')} 📥
-              </span>
-
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold block truncate">
-                {t('discover_incoming_offers')}
-              </span>
-            </div>
-
-            <div className="w-7 h-7 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center shrink-0">
-              <Repeat className="w-3.5 h-3.5 text-emerald-800 dark:text-emerald-400" />
-            </div>
-          </button>
+          {CATEGORIES.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => setSelectedCategory(category.id)}
+              aria-pressed={selectedCategory === category.id}
+              className={`sw-chip ${selectedCategory === category.id ? 'sw-chip-active' : ''}`}
+            >
+              {category.name}
+            </button>
+          ))}
         </div>
 
-        {/* Categories */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              {t('discover_categories')}
-            </h3>
-
+        {/* Sana uygun — kullanıcının açık ihtiyaçlarıyla eşleşenler */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base text-ink flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-brand" />
+              Sana Uygun
+            </h2>
             <button
               type="button"
-              onClick={() => setSelectedCategory('all')}
-              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer"
+              onClick={() => navigate('/aradiklarim')}
+              className="text-xs font-semibold text-brand-dark hover:underline cursor-pointer"
             >
-              {t('discover_all')}
-            </button>
-          </div>
-
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${
-                selectedCategory === 'all'
-                  ? 'bg-emerald-800 text-white'
-                  : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800'
-              }`}
-            >
-              🌟 {t('discover_all')}
-            </button>
-
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${
-                  selectedCategory === cat.id
-                    ? 'bg-emerald-800 text-white'
-                    : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Matches */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-
-              <h2 className="text-sm font-bold font-display">
-                {t('discover_matches_for_you')}
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate(matches.length > 0 ? '/aradiklarim' : '/arama')}
-              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer"
-            >
-              {t('discover_see_all')} →
+              Aradıklarım →
             </button>
           </div>
 
           {matches.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {matches.map((match) => (
                 <div key={match.listing.id} className="space-y-1">
-                  <ProductCard listing={match.listing} variant="grid" />
-                  <p className="text-[10px] text-emerald-800 dark:text-emerald-400 font-semibold px-1 truncate">
-                    "{match.need.title}" · %{match.score} uyum
+                  <ProductCard listing={match.listing} />
+                  <p className="text-[10px] text-brand-dark font-semibold px-1 truncate">
+                    “{match.need.title}” · %{match.score} uyum
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <>
-              {/* İhtiyacı olmayan kullanıcıya eşleştirme yapılamaz; ekranı
-                  boş bırakmak yerine ne yapması gerektiğini söylüyoruz
-                  (rapor md. 89-90). */}
+            <button
+              type="button"
+              onClick={() => navigate('/aradiklarim')}
+              className="sw-card w-full p-4 flex items-center gap-3 text-left hover:bg-canvas transition-colors cursor-pointer"
+            >
+              <span className="w-10 h-10 rounded-xl bg-brand-soft text-brand-dark flex items-center justify-center shrink-0">
+                <Search className="w-4 h-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink">Ne arıyorsun?</span>
+                <span className="block text-xs text-ink-soft mt-0.5">
+                  Aradıklarını ekle, sana uyan ilanlar burada görünsün.
+                </span>
+              </span>
+              <ArrowRight className="w-4 h-4 text-ink-faint shrink-0" />
+            </button>
+          )}
+        </section>
+
+        {/* Yeni ilanlar */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base text-ink">Yeni İlanlar</h2>
+            <button
+              type="button"
+              onClick={() => navigate('/arama')}
+              className="text-xs font-semibold text-brand-dark hover:underline cursor-pointer"
+            >
+              Tümünü gör →
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="sw-skeleton aspect-[4/3]" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="sw-card p-8 text-center">
+              <p className="text-sm font-semibold text-ink">Bu kategoride henüz ilan yok</p>
+              <p className="text-xs text-ink-soft mt-1">
+                İlk ilanı sen ekleyebilirsin; birinin aradığı şey olabilir.
+              </p>
               <button
                 type="button"
-                onClick={() => navigate('/aradiklarim')}
-                className="w-full mb-2.5 p-3 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-left flex items-center gap-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors cursor-pointer"
+                onClick={() => navigate('/ilan-ver')}
+                className="sw-btn sw-btn-primary mt-4"
               >
-                <Search className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                <span className="min-w-0">
-                  <span className="block text-xs font-bold">Ne arıyorsun?</span>
-                  <span className="block text-[11px] text-stone-500">
-                    Aradıklarını ekle, sana uyan ilanlar burada listelensin.
-                  </span>
-                </span>
+                İlan Ver
               </button>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                {filteredListings.slice(0, 4).map((listing) => (
-                  <ProductCard
-                    key={listing.id}
-                    listing={listing}
-                    variant="grid"
-                  />
-                ))}
-              </div>
-            </>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {filtered.slice(0, 12).map((listing) => (
+                <ProductCard key={listing.id} listing={listing} />
+              ))}
+            </div>
           )}
-        </div>
-
-        {/* Nearby */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0">
-              <Radio className="w-4 h-4 animate-pulse" />
-            </div>
-
-            <div className="min-w-0">
-              <h4 className="text-xs font-bold truncate">
-                {t('discover_nearby_swaps')}
-              </h4>
-
-              <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 truncate">
-                {currentLocation.district || currentLocation.city} ({nearbyListings.length}{' '}
-                {language === 'en' ? 'nearby listings' : 'aktif ilan'})
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate('/harita')}
-            className="px-3 py-1.5 rounded-xl bg-emerald-700 text-white text-xs font-bold shrink-0"
-          >
-            {t('discover_map_view')}
-          </button>
-        </div>
-
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-
-          {/* Loop */}
-          <div
-            onClick={() => navigate('/loop')}
-            className="group rounded-2xl bg-emerald-900 text-white p-3.5 cursor-pointer border border-emerald-800 shadow-xs"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="px-2 py-0.5 rounded-full bg-emerald-800 text-amber-300 text-[10px] font-bold">
-                {t('discover_loop_badge')}
-              </span>
-
-              <CircularExchangeIcon size={22} />
-            </div>
-
-            <h3 className="text-sm font-bold">
-              {t('discover_loop_title')}
-            </h3>
-
-            <p className="text-[11px] text-emerald-100/90 mt-1">
-              {t('discover_loop_desc')}
-            </p>
-
-            <div className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-amber-300">
-              {t('discover_loop_action')}
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-
-          {/* Paperclip */}
-          <div
-            onClick={() => navigate('/takas-yolculugum')}
-            className="group rounded-2xl bg-amber-500/10 dark:bg-amber-950/30 border border-amber-300/80 p-3.5 cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 text-[10px] font-bold">
-                {t('discover_paperclip_badge')}
-              </span>
-
-              <Paperclip className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-            </div>
-
-            <h3 className="text-sm font-bold">
-              {t('discover_paperclip_title')}
-            </h3>
-
-            <p className="text-[11px] text-stone-600 dark:text-stone-400 mt-1">
-              {t('discover_paperclip_desc')}
-            </p>
-
-            <div className="mt-3 text-xs font-bold text-amber-800 dark:text-amber-400">
-              {t('discover_paperclip_action')} →
-            </div>
-          </div>
-
-          {/* Mystery */}
-          <div
-            onClick={() => navigate('/mystery-swap')}
-            className="group rounded-2xl bg-stone-900 text-white p-3.5 cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="px-2 py-0.5 rounded-full bg-stone-800 text-amber-300 text-[10px] font-bold">
-                {t('discover_mystery_badge')}
-              </span>
-
-              <Gift className="w-4 h-4 text-amber-400" />
-            </div>
-
-            <h3 className="text-sm font-bold">
-              {t('discover_mystery_title')}
-            </h3>
-
-            <p className="text-[11px] text-stone-300 mt-1">
-              {t('discover_mystery_desc')}
-            </p>
-
-            <div className="mt-3 text-xs font-bold text-amber-400">
-              {t('discover_mystery_action')} →
-            </div>
-          </div>
-
-          {/* Community */}
-          <div
-            onClick={() => navigate('/etkinlikler')}
-            className="group rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-3.5 cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
-                {t('discover_community_badge')}
-              </span>
-
-              <Users className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-            </div>
-
-            <h3 className="text-sm font-bold">
-              {t('discover_events_title')}
-            </h3>
-
-            <p className="text-[11px] text-stone-600 dark:text-stone-400 mt-1">
-              {t('discover_events_desc')}
-            </p>
-
-            <div className="mt-3 text-xs font-bold text-emerald-800 dark:text-emerald-400">
-              {t('discover_events_action')} →
-            </div>
-          </div>
-        </div>
-
-        {/* All Listings */}
-        <div className="pt-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-2.5">
-            {t('discover_all_listings')} ({filteredListings.length})
-          </h3>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            {filteredListings.map((listing) => (
-              <ProductCard
-                key={listing.id}
-                listing={listing}
-                variant="grid"
-              />
-            ))}
-          </div>
-        </div>
-
+        </section>
       </div>
     </div>
   );

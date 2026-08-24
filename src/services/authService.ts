@@ -511,6 +511,8 @@ export const authService = {
     city: string;
     district: string;
     avatarUrl?: string;
+    username?: string;
+    bio?: string;
     interests?: CategoryId[];
     wantedCategories?: CategoryId[];
   }): Promise<UserProfile | undefined> {
@@ -556,6 +558,8 @@ export const authService = {
           city: data.city,
           district: data.district,
           avatar_url: data.avatarUrl ?? null,
+          username: data.username?.trim() || null,
+          bio: data.bio?.trim() || null,
           interests: data.interests ?? [],
           wanted_categories: data.wantedCategories ?? [],
           updated_at: new Date().toISOString(),
