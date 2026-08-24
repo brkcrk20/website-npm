@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, Listing, TradeOffer, NotificationItem } from '../types';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Badge, NotificationItem, UserPoints, UserProfile } from '../types';
 import { authService } from '../services/authService';
 import { listingService } from '../services/listingService';
-import { tradeService } from '../services/tradeService';
-import { INITIAL_NOTIFICATIONS } from '../data/mockData';
-import { Language, TranslationKey, getTranslation } from '../utils/translations';
+import { notificationService } from '../services/notificationService';
+import { pointsService, UserActivity, EMPTY_ACTIVITY, calculatePoints } from '../services/pointsService';
+import { GUEST_USER } from '../constants';
+import { supabase } from '../lib/supabase';
 
 interface ToastMessage {
   id: string;
@@ -16,137 +17,262 @@ interface ToastMessage {
 interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile>>;
+  /** Gerçek bir Supabase oturumu var mı? */
+  isAuthenticated: boolean;
+  /** İlk oturum kontrolü sürüyor mu? (korumalı sayfalarda yönlendirmeyi bekletir) */
+  isAuthLoading: boolean;
+  logout: () => Promise<void>;
+
+  /** Puan / rozet / aktivite özeti — profil ve keşfet ekranlarında kullanılır. */
+  activity: UserActivity;
+  points: UserPoints;
+  badges: Badge[];
+  refreshScorecard: () => Promise<void>;
+
   currentLocation: { city: string; district: string };
   setCurrentLocation: (loc: { city: string; district: string }) => void;
+
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
+  refreshNotifications: () => Promise<void>;
+
   favoritesCount: number;
-  refreshUserData: () => void;
+  refreshFavoritesCount: () => Promise<void>;
+
+  refreshUserData: () => Promise<void>;
+
   toasts: ToastMessage[];
   showToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
   removeToast: (id: string) => void;
-  deviceFrameMode: boolean;
-  setDeviceFrameMode: (enabled: boolean) => void;
-  language: Language;
-  setLanguage: (lang: Language) => void;
+
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
-  t: (key: TranslationKey) => string;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const EMPTY_POINTS = calculatePoints(EMPTY_ACTIVITY);
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Önbellekteki kullanıcıyla anında çiz, ardından gerçek oturumla doğrula.
   const [currentUser, setCurrentUser] = useState<UserProfile>(authService.getCurrentUser());
-  const [currentLocation, setCurrentLocation] = useState({ city: 'İstanbul', district: 'Kadıköy' });
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  const [activity, setActivity] = useState<UserActivity>(EMPTY_ACTIVITY);
+  const [points, setPoints] = useState<UserPoints>(EMPTY_POINTS);
+  const [badges, setBadges] = useState<Badge[]>([]);
+
+  const [currentLocation, setCurrentLocation] = useState({ city: '', district: '' });
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [favoritesCount, setFavoritesCount] = useState(0);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [deviceFrameMode, setDeviceFrameMode] = useState<boolean>(false);
-  const [language, setLanguageState] = useState<'tr' | 'en'>(() => {
-    return (localStorage.getItem('swaloop_lang') as 'tr' | 'en') || 'tr';
-  });
-  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('swaloop_theme') as 'light' | 'dark') || 'light';
-  });
+
+  const [theme, setThemeState] = useState<'light' | 'dark'>(
+    () => (localStorage.getItem('swaloop_theme') as 'light' | 'dark') || 'light'
+  );
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  const setLanguage = (lang: 'tr' | 'en') => {
-    setLanguageState(lang);
-    localStorage.setItem('swaloop_lang', lang);
-  };
+  const showToast = useCallback(
+    (title: string, description?: string, type: ToastMessage['type'] = 'success') => {
+      const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      setToasts((prev) => [...prev, { id, title, description, type }]);
+      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+    },
+    []
+  );
 
-  const setTheme = (newTheme: 'light' | 'dark') => {
-    setThemeState(newTheme);
-    localStorage.setItem('swaloop_theme', newTheme);
-  };
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(nextTheme);
-  };
+  const refreshFavoritesCount = useCallback(async () => {
+    const favorites = await listingService.getFavoriteIds();
+    setFavoritesCount(favorites.length);
+  }, []);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!currentUser.id) {
+      setNotifications([]);
+      return;
+    }
+    setNotifications(await notificationService.getNotifications(currentUser.id));
+  }, [currentUser.id]);
+
+  const refreshScorecard = useCallback(async () => {
+    if (!currentUser.id) {
+      setActivity(EMPTY_ACTIVITY);
+      setPoints(EMPTY_POINTS);
+      setBadges([]);
+      return;
+    }
+
+    const card = await pointsService.getUserScorecard(currentUser);
+    setActivity(card.activity);
+    setPoints(card.points);
+    setBadges(card.badges);
+  }, [currentUser]);
+
+  const refreshUserData = useCallback(async () => {
+    const user = await authService.getCurrentUserFromSupabase();
+
+    if (user) {
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+    } else {
+      setCurrentUser(GUEST_USER);
+      setIsAuthenticated(false);
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await authService.logout();
+    setCurrentUser(GUEST_USER);
+    setIsAuthenticated(false);
+    setActivity(EMPTY_ACTIVITY);
+    setPoints(EMPTY_POINTS);
+    setBadges([]);
+    setNotifications([]);
+    setFavoritesCount(0);
+  }, []);
+
+  // Oturumu uygulama açılışında doğrula ve Supabase oturum değişimlerini dinle
+  // (token yenilenmesi, başka sekmede çıkış yapılması vb.).
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      await refreshUserData();
+      if (!cancelled) setIsAuthLoading(false);
+    })();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(GUEST_USER);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        refreshUserData();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [refreshUserData]);
+
+  // Kullanıcı belli olduğunda ona bağlı verileri tek turda çek.
+  useEffect(() => {
+    if (!currentUser.id) return;
+
+    if (!currentLocation.city && currentUser.city) {
+      setCurrentLocation({ city: currentUser.city, district: currentUser.district });
+    }
+
+    refreshFavoritesCount();
+    refreshNotifications();
+    refreshScorecard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser.id]);
+
+  const markNotificationAsRead = useCallback((id: string) => {
+    notificationService.markAsRead(id);
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback(() => {
+    setNotifications((prev) => {
+      notificationService.markAllAsRead(prev);
+      return prev.map((n) => ({ ...n, isRead: true }));
+    });
+  }, []);
+
+  const setTheme = useCallback((next: 'light' | 'dark') => {
+    setThemeState(next);
+    localStorage.setItem('swaloop_theme', next);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  }, [theme, setTheme]);
 
   const unreadNotificationCount = notifications.filter((n) => !n.isRead).length;
 
-  const [favoritesCount, setFavoritesCount] = useState<number>(0);
-
-  const refreshFavoritesCount = () => {
-    listingService.getFavorites().then((favs) => setFavoritesCount(favs.length));
-  };
-
-  useEffect(() => {
-    refreshFavoritesCount();
-  }, []);
-
-  const markNotificationAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
-
-  const showToast = (title: string, description?: string, type: ToastMessage['type'] = 'success') => {
-    const id = `toast-${Date.now()}-${Math.random()}`;
-    const newToast: ToastMessage = { id, title, description, type };
-    setToasts((prev) => [...prev, newToast]);
-    setTimeout(() => {
-      removeToast(id);
-    }, 4000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  const refreshUserData = () => {
-    setCurrentUser(authService.getCurrentUser());
-  };
-
-  const t = (key: TranslationKey): string => {
-    return getTranslation(key, language);
-  };
-
-  return (
-    <AppContext.Provider
-      value={{
-        currentUser,
-        setCurrentUser,
-        currentLocation,
-        setCurrentLocation,
-        notifications,
-        unreadNotificationCount,
-        markNotificationAsRead,
-        favoritesCount,
-        refreshUserData,
-        toasts,
-        showToast,
-        removeToast,
-        deviceFrameMode,
-        setDeviceFrameMode,
-        language,
-        setLanguage,
-        theme,
-        setTheme,
-        toggleTheme,
-        t,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
+  const value = useMemo<AppContextType>(
+    () => ({
+      currentUser,
+      setCurrentUser,
+      isAuthenticated,
+      isAuthLoading,
+      logout,
+      activity,
+      points,
+      badges,
+      refreshScorecard,
+      currentLocation,
+      setCurrentLocation,
+      notifications,
+      unreadNotificationCount,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
+      refreshNotifications,
+      favoritesCount,
+      refreshFavoritesCount,
+      refreshUserData,
+      toasts,
+      showToast,
+      removeToast,
+      theme,
+      setTheme,
+      toggleTheme,
+    }),
+    [
+      currentUser,
+      isAuthenticated,
+      isAuthLoading,
+      logout,
+      activity,
+      points,
+      badges,
+      refreshScorecard,
+      currentLocation,
+      notifications,
+      unreadNotificationCount,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
+      refreshNotifications,
+      favoritesCount,
+      refreshFavoritesCount,
+      refreshUserData,
+      toasts,
+      showToast,
+      removeToast,
+      theme,
+      setTheme,
+      toggleTheme,
+    ]
   );
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 export const useApp = () => {
   const context = useContext(AppContext);
+
   if (!context) {
     throw new Error('useApp must be used within an AppProvider');
   }
+
   return context;
 };

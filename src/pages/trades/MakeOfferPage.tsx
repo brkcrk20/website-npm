@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
+import { authService } from '../../services/authService';
 import { impactService } from '../../services/impactService';
 import { Listing } from '../../types';
 import {
@@ -54,10 +55,8 @@ export const MakeOfferPage: React.FC = () => {
   }, [myListings]);
   const [deliveryMethod, setDeliveryMethod] = useState<'in_person' | 'cargo' | 'safe_point'>('safe_point');
   const [note, setNote] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('2024-05-25');
-  const [meetingLocation, setMeetingLocation] = useState(
-    targetListing?.location?.safeMeetingPoint || 'Kadıköy İskele Meydanı - Güvenli Takas Noktası'
-  );
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [meetingLocation, setMeetingLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (isLoadingTarget) {
@@ -110,55 +109,31 @@ export const MakeOfferPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Karşı tarafın GERÇEK profili çekiliyor. Önceden burada ilan
+      // satırından uydurma bir profil (sabit "4 takas, 4.8 puan"...)
+      // kuruluyordu ve teklif o sahte kimlikle oluşturuluyordu.
+      const receiver = await authService.getProfileById(targetListing.userId);
+
+      if (!receiver) {
+        showToast('Kullanıcı bulunamadı', 'İlan sahibinin profiline ulaşılamadı.', 'error');
+        return;
+      }
+
+      const deliveryNote = [
+        note.trim(),
+        scheduledDate ? `Önerilen tarih: ${scheduledDate}` : '',
+        deliveryMethod === 'safe_point' && meetingLocation ? `Buluşma: ${meetingLocation}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
       const newTrade = await tradeService.createTradeOffer({
         initiator: currentUser,
-        receiver: {
-          id: targetListing.userId,
-          fullName: targetListing.user.fullName,
-          avatarUrl: targetListing.user.avatarUrl,
-          phone: '+90 5XX XXX XX XX',
-          city: targetListing.location.city,
-          district: targetListing.location.district,
-          memberSince: '2024',
-          interests: [],
-          wantedCategories: [],
-          isVerified: targetListing.user.isVerified,
-          trustProfile: {
-            score: targetListing.user.trustScore,
-            level: 'Güvenilir',
-            phoneVerified: true,
-            idVerified: false,
-            successfulTradesCount: 4,
-            cancellationRate: 0,
-            responseRate: 0.98,
-            averageRating: 4.8,
-            reviewCount: 6,
-            reportCount: 0,
-            accountAgeDays: 120,
-            positiveHighlights: ['İyi iletişim', 'Özenli paketleme'],
-          },
-          stats: {
-            totalTrades: 4,
-            activeListings: 2,
-            completedLoops: 1,
-            totalCo2Prevented: 35.2,
-            totalWaterSaved: 850,
-            totalEnergySaved: 320,
-            totalRawMaterialsSaved: 4.1,
-            totalItemsReused: 5,
-            responseRatePercent: 98,
-            avgResponseTimeMinutes: 15,
-            cancellationRatePercent: 0,
-          },
-        },
+        receiver,
         offeredListings: selectedListings,
         requestedListings: [targetListing],
-        note,
+        note: deliveryNote || undefined,
         deliveryMethod,
-        deliveryDetails: {
-          scheduledDate,
-          locationName: meetingLocation,
-        },
       });
 
       if (!newTrade) {
@@ -373,15 +348,33 @@ export const MakeOfferPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Location / Note inputs */}
-          <div className="space-y-2 pt-1">
-            <label className="text-xs font-semibold text-stone-700">Önerilen Buluşma Noktası / Detay</label>
+          {/* Buluşma yeri ve tarihi — teklif notuna eklenir */}
+          {deliveryMethod !== 'cargo' && (
+            <div className="space-y-2 pt-1">
+              <label htmlFor="meeting-location" className="text-xs font-semibold text-stone-700">
+                Önerilen buluşma noktası
+              </label>
+              <input
+                id="meeting-location"
+                type="text"
+                value={meetingLocation}
+                onChange={(e) => setMeetingLocation(e.target.value)}
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden"
+                placeholder="Örn: metro çıkışı, meydan, AVM girişi"
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="scheduled-date" className="text-xs font-semibold text-stone-700">
+              Önerilen tarih (isteğe bağlı)
+            </label>
             <input
-              type="text"
-              value={meetingLocation}
-              onChange={(e) => setMeetingLocation(e.target.value)}
+              id="scheduled-date"
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
               className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden"
-              placeholder="Örn: Kadıköy Boğa Heykeli önü veya metro çıkışı"
             />
           </div>
 
@@ -392,7 +385,7 @@ export const MakeOfferPage: React.FC = () => {
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden resize-none"
-              placeholder="Merhaba, ürününüzle ilgileniyorum. Temiz kullandığım ürünümle takas teklif ediyorum..."
+              placeholder="Merhaba, ürününle ilgileniyorum. Temiz kullandığım ürünümle takas teklif ediyorum..."
             />
           </div>
         </div>

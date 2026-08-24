@@ -1,138 +1,148 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { PageLoader } from './components/layout/PageLoader';
 
-// Auth Pages
-import { SplashPage } from './pages/auth/SplashPage';
-import { OnboardingPage } from './pages/auth/OnboardingPage';
-import { PhoneAuthPage } from './pages/auth/PhoneAuthPage';
-import { OtpVerificationPage } from './pages/auth/OtpVerificationPage';
-import { CreateProfilePage } from './pages/auth/CreateProfilePage';
+/*
+ * Rotalar bilinçli olarak sade tutuldu: uygulama tek bir işe odaklanıyor —
+ * eşyanı yayınla, karşılığında bir şey bul, takası tamamla.
+ *
+ * Her sayfa `lazy` yükleniyor; ilk açılışta sadece açılış + keşfet
+ * paketleri indiriliyor, geri kalanı gerektiğinde geliyor. Uygulamanın
+ * mobilde hızlı açılmasının en büyük nedeni bu.
+ */
 
-// Discovery Pages
-import { DiscoverPage } from './pages/discovery/DiscoverPage';
-import { SearchPage } from './pages/discovery/SearchPage';
-import { NearbyMapPage } from './pages/discovery/NearbyMapPage';
-import { FavoritesPage } from './pages/discovery/FavoritesPage';
+// Giriş & kayıt
+const SplashPage = lazy(() => import('./pages/auth/SplashPage').then((m) => ({ default: m.SplashPage })));
+const OnboardingPage = lazy(() => import('./pages/auth/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
+const PhoneAuthPage = lazy(() => import('./pages/auth/PhoneAuthPage').then((m) => ({ default: m.PhoneAuthPage })));
+const OtpVerificationPage = lazy(() => import('./pages/auth/OtpVerificationPage').then((m) => ({ default: m.OtpVerificationPage })));
+const CreateProfilePage = lazy(() => import('./pages/auth/CreateProfilePage').then((m) => ({ default: m.CreateProfilePage })));
 
-// Listings Pages
-import { ProductDetailPage } from './pages/listings/ProductDetailPage';
-import { CreateListingPage } from './pages/listings/CreateListingPage';
+// Keşfet
+const DiscoverPage = lazy(() => import('./pages/discovery/DiscoverPage').then((m) => ({ default: m.DiscoverPage })));
+const SearchPage = lazy(() => import('./pages/discovery/SearchPage').then((m) => ({ default: m.SearchPage })));
+const NearbyPage = lazy(() => import('./pages/discovery/NearbyPage').then((m) => ({ default: m.NearbyPage })));
+const FavoritesPage = lazy(() => import('./pages/discovery/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
 
-// Trade Pages
-import { TradeOffersPage } from './pages/trades/TradeOffersPage';
-import { TradeRequestsPage } from './pages/trades/TradeRequestsPage';
-import { MakeOfferPage } from './pages/trades/MakeOfferPage';
-import { TradeDetailPage } from './pages/trades/TradeDetailPage';
-import { DisputePage } from './pages/trades/DisputePage';
-import { SwipeMatchPage } from './pages/matching/SwipeMatchPage';
+// İlanlar
+const ProductDetailPage = lazy(() => import('./pages/listings/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CreateListingPage = lazy(() => import('./pages/listings/CreateListingPage').then((m) => ({ default: m.CreateListingPage })));
+const EditListingPage = lazy(() => import('./pages/listings/EditListingPage').then((m) => ({ default: m.EditListingPage })));
 
-// Messages / Chat
-import { MessagesPage } from './pages/chat/MessagesPage';
+// Takas
+const TradeOffersPage = lazy(() => import('./pages/trades/TradeOffersPage').then((m) => ({ default: m.TradeOffersPage })));
+const MakeOfferPage = lazy(() => import('./pages/trades/MakeOfferPage').then((m) => ({ default: m.MakeOfferPage })));
+const TradeDetailPage = lazy(() => import('./pages/trades/TradeDetailPage').then((m) => ({ default: m.TradeDetailPage })));
+const SwipeMatchPage = lazy(() => import('./pages/matching/SwipeMatchPage').then((m) => ({ default: m.SwipeMatchPage })));
 
-// Notifications
-import { NotificationsPage } from './pages/notifications/NotificationsPage';
+// Mesaj & bildirim
+const MessagesPage = lazy(() => import('./pages/chat/MessagesPage').then((m) => ({ default: m.MessagesPage })));
+const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 
-// Profile Pages
-import { ProfilePage } from './pages/profile/ProfilePage';
-import { EditProfilePage } from './pages/profile/EditProfilePage';
-import { PublicProfilePage } from './pages/profile/PublicProfilePage';
-import { ImpactBreakdownPage } from './pages/profile/ImpactBreakdownPage';
-import { BadgesPage } from './pages/profile/BadgesPage';
+// Profil
+const ProfilePage = lazy(() => import('./pages/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const EditProfilePage = lazy(() => import('./pages/profile/EditProfilePage').then((m) => ({ default: m.EditProfilePage })));
+const PublicProfilePage = lazy(() => import('./pages/profile/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
+const PointsPage = lazy(() => import('./pages/profile/PointsPage').then((m) => ({ default: m.PointsPage })));
+const BadgesPage = lazy(() => import('./pages/profile/BadgesPage').then((m) => ({ default: m.BadgesPage })));
+const ImpactBreakdownPage = lazy(() => import('./pages/profile/ImpactBreakdownPage').then((m) => ({ default: m.ImpactBreakdownPage })));
 
-// Loops & Community Pages
-import { LoopsPage } from './pages/loops/LoopsPage';
-import { PaperclipPage } from './pages/loops/PaperclipPage';
-import { MysterySwapPage } from './pages/loops/MysterySwapPage';
-import { CommunityPage } from './pages/community/CommunityPage';
-import { EventsPage } from './pages/community/EventsPage';
+// Döngü & yolculuk
+const LoopsPage = lazy(() => import('./pages/loops/LoopsPage').then((m) => ({ default: m.LoopsPage })));
+const JourneyPage = lazy(() => import('./pages/loops/JourneyPage').then((m) => ({ default: m.JourneyPage })));
 
-// Trade Steps & Admin Pages
-import { TradeProcessPage } from './pages/trades/TradeProcessPage';
-import { TradeSuccessPage } from './pages/trades/TradeSuccessPage';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { AboutSwaloopPage } from './pages/info/AboutSwaloopPage';
+const AboutSwaloopPage = lazy(() => import('./pages/info/AboutSwaloopPage').then((m) => ({ default: m.AboutSwaloopPage })));
+
+/** Eski takas süreci adreslerini teklif detayına yönlendirir. */
+const TradeRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/teklif/${id}` : '/takaslarim'} replace />;
+};
+
+/**
+ * Oturum gerektiren sayfaları korur. Oturum kontrolü sürerken yükleniyor
+ * göstergesi çizilir; oturum yoksa kullanıcı, geldiği adres saklanarak
+ * giriş ekranına gönderilir.
+ */
+const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isAuthLoading } = useApp();
+  const location = useLocation();
+
+  if (isAuthLoading) return <PageLoader />;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/giris" replace state={{ from: location.pathname }} />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppRoutes: React.FC = () => (
+  <Suspense fallback={<PageLoader />}>
+    <Routes>
+      {/* Giriş & kayıt */}
+      <Route path="/" element={<SplashPage />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/giris" element={<PhoneAuthPage isRegister={false} />} />
+      <Route path="/kayit" element={<PhoneAuthPage isRegister />} />
+      <Route path="/dogrulama" element={<OtpVerificationPage />} />
+      <Route path="/profil-olustur" element={<CreateProfilePage />} />
+
+      {/* Keşfet — giriş yapmadan da gezilebilir */}
+      <Route path="/kesfet" element={<DiscoverPage />} />
+      <Route path="/arama" element={<SearchPage />} />
+      <Route path="/yakinimdakiler" element={<NearbyPage />} />
+      <Route path="/harita" element={<Navigate to="/yakinimdakiler" replace />} />
+      <Route path="/ilan/:id" element={<ProductDetailPage />} />
+      <Route path="/profil/:id" element={<PublicProfilePage />} />
+      <Route path="/hakkimizda" element={<AboutSwaloopPage />} />
+
+      {/* Oturum gerektirenler */}
+      <Route path="/favoriler" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
+      <Route path="/ilan-ver" element={<RequireAuth><CreateListingPage /></RequireAuth>} />
+      <Route path="/ilan/:id/duzenle" element={<RequireAuth><EditListingPage /></RequireAuth>} />
+
+      <Route path="/takaslarim" element={<RequireAuth><TradeOffersPage /></RequireAuth>} />
+      <Route path="/eslesme" element={<RequireAuth><SwipeMatchPage /></RequireAuth>} />
+      <Route path="/teklif-ver" element={<RequireAuth><MakeOfferPage /></RequireAuth>} />
+      <Route path="/teklif/:id" element={<RequireAuth><TradeDetailPage /></RequireAuth>} />
+      {/* Takas süreci ve tamamlanma ekranları, teklif detayının kendisidir:
+          6 adımlı akış, teslimat onayı ve değerlendirme orada yürür. */}
+      <Route path="/takas-sureci/:id" element={<TradeRedirect />} />
+      <Route path="/takas-tamamlandi/:id" element={<TradeRedirect />} />
+
+      <Route path="/mesajlar" element={<RequireAuth><MessagesPage /></RequireAuth>} />
+      <Route path="/mesajlar/:id" element={<RequireAuth><MessagesPage /></RequireAuth>} />
+      <Route path="/bildirimler" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
+
+      <Route path="/profil" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+      <Route path="/profil/duzenle" element={<RequireAuth><EditProfilePage /></RequireAuth>} />
+      <Route path="/puanlarim" element={<RequireAuth><PointsPage /></RequireAuth>} />
+      <Route path="/rozetlerim" element={<RequireAuth><BadgesPage /></RequireAuth>} />
+      <Route path="/etkim" element={<RequireAuth><ImpactBreakdownPage /></RequireAuth>} />
+
+      <Route path="/donguler" element={<RequireAuth><LoopsPage /></RequireAuth>} />
+      <Route path="/takas-yolculugum" element={<RequireAuth><JourneyPage /></RequireAuth>} />
+
+      <Route path="*" element={<Navigate to="/kesfet" replace />} />
+    </Routes>
+  </Suspense>
+);
 
 export default function App() {
   return (
     <AppProvider>
       <BrowserRouter>
         <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans antialiased selection:bg-emerald-200 selection:text-emerald-900 transition-colors duration-200">
-          <div className="min-h-screen flex flex-col max-w-5xl mx-auto bg-stone-50 dark:bg-stone-950 shadow-xl relative border-x border-stone-200/60 dark:border-stone-800/80">
+          <div className="min-h-screen flex flex-col max-w-lg mx-auto bg-stone-50 dark:bg-stone-950 shadow-xl relative border-x border-stone-200/60 dark:border-stone-800/80">
             <Header />
 
             <main className="flex-1">
-              <Routes>
-                {/* Auth & Onboarding */}
-                <Route path="/" element={<SplashPage />} />
-                <Route path="/onboarding" element={<OnboardingPage />} />
-                <Route path="/giris" element={<PhoneAuthPage isRegister={false} />} />
-                <Route path="/kayit" element={<PhoneAuthPage isRegister={true} />} />
-                <Route path="/dogrulama" element={<OtpVerificationPage />} />
-                <Route path="/profil-olustur" element={<CreateProfilePage />} />
-
-                {/* Discovery & Search */}
-                <Route path="/kesfet" element={<DiscoverPage />} />
-                <Route path="/arama" element={<SearchPage />} />
-                <Route path="/harita" element={<NearbyMapPage />} />
-                <Route path="/favoriler" element={<FavoritesPage />} />
-
-                {/* Listings */}
-                <Route path="/ilan/:id" element={<ProductDetailPage />} />
-                <Route path="/ilan-ver" element={<CreateListingPage />} />
-
-                {/* Trades */}
-                <Route path="/takaslarim" element={<TradeOffersPage />} />
-                <Route path="/takas-istekleri" element={<TradeRequestsPage />} />
-                <Route path="/istekler" element={<TradeRequestsPage />} />
-                <Route path="/eslesme" element={<SwipeMatchPage />} />
-                <Route path="/takas-eslesme" element={<SwipeMatchPage />} />
-                <Route path="/kaydir" element={<SwipeMatchPage />} />
-                <Route path="/swipe" element={<SwipeMatchPage />} />
-                <Route path="/teklif-ver" element={<MakeOfferPage />} />
-                <Route path="/teklif/:id" element={<TradeDetailPage />} />
-                <Route path="/takas-sureci" element={<TradeProcessPage />} />
-                <Route path="/takas-sureci/:id" element={<TradeProcessPage />} />
-                <Route path="/takas-tamamlandi" element={<TradeSuccessPage />} />
-                <Route path="/takas-tamamlandi/:id" element={<TradeSuccessPage />} />
-                <Route path="/dispute" element={<DisputePage />} />
-
-                {/* Messages */}
-                <Route path="/mesajlar" element={<MessagesPage />} />
-                <Route path="/mesajlar/:id" element={<MessagesPage />} />
-
-                {/* Notifications */}
-                <Route path="/bildirimler" element={<NotificationsPage />} />
-
-                {/* Profile */}
-                <Route path="/profil" element={<ProfilePage />} />
-                <Route path="/profil/duzenle" element={<EditProfilePage />} />
-                <Route path="/profil/:id" element={<PublicProfilePage />} />
-                <Route path="/etkim" element={<ImpactBreakdownPage />} />
-                <Route path="/rozetlerim" element={<BadgesPage />} />
-
-                {/* Loops & Community */}
-                <Route path="/donguler" element={<LoopsPage />} />
-                <Route path="/loop" element={<LoopsPage />} />
-                <Route path="/takas-yolculugum" element={<PaperclipPage />} />
-                <Route path="/yolculuk" element={<PaperclipPage />} />
-                <Route path="/paperclip" element={<PaperclipPage />} />
-                <Route path="/kirmizi-atas" element={<PaperclipPage />} />
-                <Route path="/mystery-swap" element={<MysterySwapPage />} />
-                <Route path="/gizemli-kutu" element={<MysterySwapPage />} />
-                <Route path="/topluluk" element={<CommunityPage />} />
-                <Route path="/etkinlikler" element={<EventsPage />} />
-
-                {/* Admin & About */}
-                <Route path="/admin" element={<AdminDashboardPage />} />
-                <Route path="/hakkimizda" element={<AboutSwaloopPage />} />
-
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/kesfet" replace />} />
-              </Routes>
+              <AppRoutes />
             </main>
 
             <BottomNav />

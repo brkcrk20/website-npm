@@ -1,4 +1,4 @@
-import { Category, CategoryId, Badge, PaperclipStage } from '../types';
+import { Category, UserProfile } from '../types';
 
 // NOT: Bu liste artık canlı Supabase `categories` tablosuyla birebir
 // eşleşiyor (id = DB slug, name = Türkçe görünen isim). Detaylar için
@@ -9,7 +9,6 @@ export const CATEGORIES: Category[] = [
     name: 'Elektronik',
     iconName: 'Laptop',
     color: '#059669', // emerald
-    itemCount: 428,
     avgCo2Savings: 14.5,
     avgWaterSavings: 380,
   },
@@ -18,7 +17,6 @@ export const CATEGORIES: Category[] = [
     name: 'Spor & Outdoor',
     iconName: 'Bike',
     color: '#d97706', // amber
-    itemCount: 312,
     avgCo2Savings: 9.8,
     avgWaterSavings: 240,
   },
@@ -27,7 +25,6 @@ export const CATEGORIES: Category[] = [
     name: 'Ev & Yaşam',
     iconName: 'Home',
     color: '#047857',
-    itemCount: 520,
     avgCo2Savings: 7.2,
     avgWaterSavings: 190,
   },
@@ -36,7 +33,6 @@ export const CATEGORIES: Category[] = [
     name: 'Giyim & Moda',
     iconName: 'Shirt',
     color: '#b45309',
-    itemCount: 684,
     avgCo2Savings: 6.4,
     avgWaterSavings: 850,
   },
@@ -45,7 +41,6 @@ export const CATEGORIES: Category[] = [
     name: 'Hobi & Oyun',
     iconName: 'Gamepad2',
     color: '#10b981',
-    itemCount: 260,
     avgCo2Savings: 4.8,
     avgWaterSavings: 120,
   },
@@ -54,7 +49,6 @@ export const CATEGORIES: Category[] = [
     name: 'Kitap',
     iconName: 'BookOpen',
     color: '#059669',
-    itemCount: 260,
     avgCo2Savings: 3.1,
     avgWaterSavings: 95,
   },
@@ -63,7 +57,6 @@ export const CATEGORIES: Category[] = [
     name: 'Müzik',
     iconName: 'Music',
     color: '#0d9488',
-    itemCount: 135,
     avgCo2Savings: 3.6,
     avgWaterSavings: 80,
   },
@@ -72,7 +65,6 @@ export const CATEGORIES: Category[] = [
     name: 'Fotoğraf',
     iconName: 'Camera',
     color: '#7c3aed',
-    itemCount: 98,
     avgCo2Savings: 12.1,
     avgWaterSavings: 260,
   },
@@ -81,7 +73,6 @@ export const CATEGORIES: Category[] = [
     name: 'Koleksiyon',
     iconName: 'Sparkles',
     color: '#db2777',
-    itemCount: 121,
     avgCo2Savings: 4.2,
     avgWaterSavings: 110,
   },
@@ -90,7 +81,6 @@ export const CATEGORIES: Category[] = [
     name: 'Diğer',
     iconName: 'Package',
     color: '#78716c',
-    itemCount: 96,
     avgCo2Savings: 5.0,
     avgWaterSavings: 150,
   },
@@ -159,169 +149,97 @@ export const SAFE_MEETING_POINTS = [
   },
 ];
 
-export const INITIAL_BADGES: Badge[] = [
-  {
-    id: 'b-1',
-    title: 'İlk Takasım',
-    description: 'İlk başarılı takasını başarıyla tamamladın.',
-    iconName: 'Repeat',
-    category: 'trade',
-    isEarned: true,
-    earnedDate: '12 Nisan 2024',
-    progressPercent: 100,
-    maxProgress: 1,
-    currentProgress: 1,
-  },
-  {
-    id: 'b-2',
-    title: 'Güvenilir Üye',
-    description: "Trust Score'un 4.50 barajını aştı ve 5 onaylı takas yaptın.",
-    iconName: 'ShieldCheck',
-    category: 'trust',
-    isEarned: true,
-    earnedDate: '28 Nisan 2024',
-    progressPercent: 100,
-    maxProgress: 5,
-    currentProgress: 5,
-  },
-  {
-    id: 'b-3',
-    title: 'Çevre Dostu',
-    description: '50 kg CO₂e emisyonunun önlenmesine katkı sağladın.',
-    iconName: 'Leaf',
-    category: 'eco',
-    isEarned: true,
-    earnedDate: '8 Mayıs 2024',
-    progressPercent: 100,
-    maxProgress: 50,
-    currentProgress: 127.4,
-  },
-  {
-    id: 'b-4',
-    title: 'Loop Pioneer',
-    description: 'En az 3 kişilik çoklu bir döngüsel takasa (Loop) katıldın.',
-    iconName: 'Share2',
-    category: 'community',
-    isEarned: true,
-    earnedDate: '14 Mayıs 2024',
-    progressPercent: 100,
-    maxProgress: 1,
-    currentProgress: 1,
-  },
-  {
-    id: 'b-5',
-    title: 'Takas Ustası',
-    description: '10 başarılı takas tamamlayarak toplulukta ustalığa eriştin.',
-    iconName: 'Award',
-    category: 'trade',
-    isEarned: false,
-    progressPercent: 70,
-    maxProgress: 10,
-    currentProgress: 7,
-  },
-  {
-    id: 'b-6',
-    title: 'Hızlı Yanıt',
-    description: 'Gelen tekliflere ortalama 15 dakika altında dönüş sağladın.',
-    iconName: 'Zap',
-    category: 'trust',
-    isEarned: true,
-    earnedDate: '2 Mayıs 2024',
-    progressPercent: 100,
-    maxProgress: 15,
-    currentProgress: 12,
-  },
-  {
-    id: 'b-7',
-    title: 'Topluluk Elçisi',
-    description: 'Topluluk hikayesi paylaştın veya bir etkinliğe katıldın.',
-    iconName: 'Users',
-    category: 'community',
-    isEarned: true,
-    earnedDate: '19 Mayıs 2024',
-    progressPercent: 100,
-    maxProgress: 1,
-    currentProgress: 1,
-  },
-  {
-    id: 'b-8',
-    title: '50 Takas Efsanesi',
-    description: '50 başarılı takasa ulaşarak sürdürülebilirlik kahramanı ol.',
-    iconName: 'Crown',
-    category: 'trade',
-    isEarned: false,
-    progressPercent: 14,
-    maxProgress: 50,
-    currentProgress: 7,
-  },
-];
+const DEFAULT_AVATAR_URL =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="#e7e5e4"/><circle cx="48" cy="38" r="16" fill="#a8a29e"/><path d="M16 88c4-18 17-27 32-27s28 9 32 27z" fill="#a8a29e"/></svg>`
+  );
 
-export const PAPERCLIP_STAGES: PaperclipStage[] = [
-  {
-    stageNumber: 1,
-    itemTitle: 'Kırmızı Ataç',
-    category: 'Kırtasiye',
-    image: 'https://images.unsplash.com/photo-1585336261026-7f12384a28bb?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 0.05,
-    dateCompleted: '10 Mart 2024',
-    isCompleted: true,
-    isCurrent: false,
+/** Ürün görseli yüklenemediğinde kullanılan yerel yer tutucu. */
+export const PLACEHOLDER_IMAGE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f5f5f4"/><path d="M150 190l35-45 28 34 22-26 30 37z" fill="#d6d3d1"/><circle cx="160" cy="120" r="14" fill="#d6d3d1"/></svg>`
+  );
+
+export const DEFAULT_AVATAR = DEFAULT_AVATAR_URL;
+
+/**
+ * Oturum açılmamışken kullanılan boş kullanıcı.
+ *
+ * Önceden bu rolü `mockData.CURRENT_USER` üstleniyordu: giriş yapılmamış
+ * olsa bile uygulama uydurma bir kullanıcıyı (14 takas, 4.9 puan...) gerçek
+ * kullanıcı gibi gösteriyordu. Artık misafir kullanıcı bariz şekilde boş ve
+ * `AppContext.isAuthenticated` false olduğunda korumalı sayfalar giriş
+ * ekranına yönlendiriyor.
+ */
+export const GUEST_USER: UserProfile = {
+  id: '',
+  phone: '',
+  fullName: 'Misafir',
+  avatarUrl: DEFAULT_AVATAR_URL,
+  city: '',
+  district: '',
+  memberSince: '',
+  interests: [],
+  wantedCategories: [],
+  isVerified: false,
+  trustProfile: {
+    score: 0,
+    level: 'Başlangıç',
+    phoneVerified: false,
+    idVerified: false,
+    successfulTradesCount: 0,
+    cancellationRate: 0,
+    responseRate: 0,
+    averageRating: 0,
+    reviewCount: 0,
+    reportCount: 0,
+    accountAgeDays: 0,
+    positiveHighlights: [],
   },
-  {
-    stageNumber: 2,
-    itemTitle: 'Vintage Dolma Kalem',
-    category: 'Kırtasiye',
-    image: 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 0.4,
-    dateCompleted: '22 Mart 2024',
-    isCompleted: true,
-    isCurrent: false,
+  stats: {
+    totalTrades: 0,
+    activeListings: 0,
+    completedLoops: 0,
+    totalCo2Prevented: 0,
+    totalWaterSaved: 0,
+    totalEnergySaved: 0,
+    totalRawMaterialsSaved: 0,
+    totalItemsReused: 0,
+    responseRatePercent: 0,
+    avgResponseTimeMinutes: 0,
+    cancellationRatePercent: 0,
   },
-  {
-    stageNumber: 3,
-    itemTitle: 'Dune Klasik Ciltli Kitap',
-    category: 'Kitap',
-    image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 1.8,
-    dateCompleted: '8 Nisan 2024',
-    isCompleted: true,
-    isCurrent: false,
-  },
-  {
-    stageNumber: 4,
-    itemTitle: 'Kablosuz ANC Kulaklık',
-    category: 'Elektronik',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 5.2,
-    dateCompleted: '25 Nisan 2024',
-    isCompleted: true,
-    isCurrent: false,
-  },
-  {
-    stageNumber: 5,
-    itemTitle: 'Canon DSLR Fotoğraf Makinesi',
-    category: 'Elektronik',
-    image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 8.6,
-    isCompleted: false,
-    isCurrent: true,
-  },
-  {
-    stageNumber: 6,
-    itemTitle: 'Bianchi Şehir Bisikleti',
-    category: 'Spor',
-    image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 14.2,
-    isCompleted: false,
-    isCurrent: false,
-  },
-  {
-    stageNumber: 7,
-    itemTitle: 'MacBook Air Dizüstü Bilgisayar',
-    category: 'Elektronik',
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&auto=format&fit=crop&q=80',
-    estimatedImpact: 22.0,
-    isCompleted: false,
-    isCurrent: false,
-  },
+};
+
+export const CONDITION_LABELS: Record<string, string> = {
+  zero: 'Sıfır',
+  like_new: 'Sıfır Gibi',
+  very_good: 'Çok İyi',
+  good: 'İyi',
+  acceptable: 'Makul',
+};
+
+export const DELIVERY_LABELS: Record<string, string> = {
+  in_person: 'Elden Teslim',
+  safe_point: 'Güvenli Nokta',
+  cargo: 'Kargo',
+};
+
+export const LISTING_STATUS_LABELS: Record<string, string> = {
+  active: 'Yayında',
+  in_trade: 'Takasta',
+  traded: 'Takaslandı',
+  paused: 'Duraklatıldı',
+  removed: 'Kaldırıldı',
+};
+
+/** İl seçimi için en çok kullanılan iller (serbest metin girişi de var). */
+export const TR_CITIES = [
+  'Adana', 'Ankara', 'Antalya', 'Aydın', 'Balıkesir', 'Bursa', 'Denizli',
+  'Diyarbakır', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Hatay', 'İstanbul',
+  'İzmir', 'Kayseri', 'Kocaeli', 'Konya', 'Malatya', 'Manisa', 'Mersin',
+  'Muğla', 'Ordu', 'Sakarya', 'Samsun', 'Şanlıurfa', 'Tekirdağ', 'Trabzon',
+  'Van',
 ];

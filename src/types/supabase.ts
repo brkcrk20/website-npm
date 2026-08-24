@@ -555,7 +555,10 @@ export type Database = {
           district: string | null
           full_name: string | null
           id: string
+          interests: string[]
+          journey_target: string | null
           phone: string
+          wanted_categories: string[]
           updated_at: string
           username: string | null
         }
@@ -567,7 +570,10 @@ export type Database = {
           district?: string | null
           full_name?: string | null
           id: string
+          interests?: string[]
+          journey_target?: string | null
           phone: string
+          wanted_categories?: string[]
           updated_at?: string
           username?: string | null
         }
@@ -579,11 +585,55 @@ export type Database = {
           district?: string | null
           full_name?: string | null
           id?: string
+          interests?: string[]
+          journey_target?: string | null
           phone?: string
+          wanted_categories?: string[]
           updated_at?: string
           username?: string | null
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reviews: {
         Row: {
@@ -740,6 +790,7 @@ export type Database = {
       trade_offers: {
         Row: {
           created_at: string
+          delivery_method: string
           id: string
           message: string | null
           parent_offer_id: string | null
@@ -750,6 +801,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_method?: string
           id?: string
           message?: string | null
           parent_offer_id?: string | null
@@ -760,6 +812,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_method?: string
           id?: string
           message?: string | null
           parent_offer_id?: string | null
@@ -948,7 +1001,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_listing_view: {
+        Args: {
+          p_listing_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

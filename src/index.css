@@ -34,6 +34,38 @@
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
 }
 
+/* Sabitlenen alt çubukların telefon çentiği/ana ekran çubuğuyla çakışmaması
+   için. Önceden bu sınıf kullanılıyordu ama hiç tanımlanmamıştı. */
+.safe-area-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
+}
+
+/* Basit giriş animasyonu. Projede `animate-in fade-in` gibi sınıflar
+   kullanılıyordu fakat bunları sağlayan eklenti kurulu değildi; bu yüzden
+   hiçbir animasyon çalışmıyordu. Aşağıdaki tanım en sık kullanılan
+   birleşimleri karşılıyor. */
+@keyframes swaloop-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4rem) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-in {
+  animation: swaloop-enter 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-loop-slow {
+    animation: none;
+  }
+}
+
 /* Pulse glow for trade/loop */
 @keyframes loop-spin {
   0% { transform: rotate(0deg); }

@@ -10,12 +10,18 @@ export const OtpVerificationPage: React.FC = () => {
   const { setCurrentUser, showToast } = useApp();
 
   const state = (location.state as { phone?: string; isExisting?: boolean }) || {};
-  const phone = state.phone || '+90 532 890 12 34';
+  const phone = state.phone ?? '';
   const isExisting = state.isExisting || false;
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState<number>(56);
+  const [timer, setTimer] = useState<number>(60);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  // Numarasız bu ekrana doğrudan gelinemez (yenilenmiş sekme, paylaşılan link).
+  useEffect(() => {
+    if (!phone) navigate('/giris', { replace: true });
+  }, [phone, navigate]);
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -50,10 +56,22 @@ export const OtpVerificationPage: React.FC = () => {
     }
   };
 
-  const handleAutoFillDemo = () => {
-    const demoCode = '246810';
-    setOtp(demoCode.split(''));
-    verifyCode(demoCode);
+  /** SMS gelmediyse kodu yeniden gönderir. */
+  const handleResend = async () => {
+    if (timer > 0 || isResending) return;
+
+    setIsResending(true);
+    const result = await authService.sendOtp(phone);
+    setIsResending(false);
+
+    if (!result.success) {
+      showToast('Kod gönderilemedi', result.error || 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
+    setOtp(['', '', '', '', '', '']);
+    setTimer(60);
+    showToast('Kod tekrar gönderildi', phone, 'info');
   };
 
   const verifyCode = async (code: string) => {
@@ -70,7 +88,8 @@ export const OtpVerificationPage: React.FC = () => {
         navigate('/kesfet');
       }
     } else {
-      showToast('Hatalı Kod', 'Lütfen SMS ile gelen 6 haneli kodu kontrol ediniz (Demo: 246810).', 'error');
+      setOtp(['', '', '', '', '', '']);
+      showToast('Hatalı kod', res.error || 'SMS ile gelen 6 haneli kodu kontrol et.', 'error');
     }
   };
 
@@ -116,30 +135,21 @@ export const OtpVerificationPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Demo Fast Fill Button & Resend Timer */}
-        <div className="flex items-center justify-between text-xs text-stone-500 mb-6">
-          <button
-            type="button"
-            onClick={handleAutoFillDemo}
-            className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Demo Kodu Doldur (246810)</span>
-          </button>
-
-          <span>
-            {timer > 0 ? (
-              `Kodu yeniden gönder (${timer}sn)`
-            ) : (
-              <button
-                type="button"
-                onClick={() => setTimer(60)}
-                className="text-emerald-700 font-bold hover:underline"
-              >
-                Yeniden Gönder
-              </button>
-            )}
-          </span>
+        {/* Kodu yeniden gönder */}
+        <div className="flex items-center justify-center text-xs text-stone-500 mb-6">
+          {timer > 0 ? (
+            <span>Kodu yeniden gönderebilmek için {timer} sn</span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isResending}
+              className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline cursor-pointer disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
+              {isResending ? 'Gönderiliyor...' : 'Kodu yeniden gönder'}
+            </button>
+          )}
         </div>
       </div>
 

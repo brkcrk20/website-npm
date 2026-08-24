@@ -14,7 +14,6 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
   const { showToast } = useApp();
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingUserModal, setExistingUserModal] = useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = authService.formatPhoneNumber(e.target.value);
@@ -30,18 +29,21 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
 
     setIsSubmitting(true);
     const check = await authService.checkPhoneRegistered(phone);
-
-    // If existing, we can let user proceed to login OTP or show existing account notice
-    await authService.sendOtp(phone);
+    const result = await authService.sendOtp(phone);
     setIsSubmitting(false);
 
-    // Navigate to OTP verification passing phone & state
-    navigate('/dogrulama', {
-      state: {
-        phone,
-        isExisting: check.exists,
-      },
-    });
+    // SMS gönderilemediyse doğrulama ekranına GEÇME — eskiden hata
+    // yutuluyordu ve kullanıcı hiç gelmeyecek bir kodu bekliyordu.
+    if (!result.success) {
+      showToast(
+        'Kod gönderilemedi',
+        result.error || 'Numaranı kontrol edip tekrar dene.',
+        'error'
+      );
+      return;
+    }
+
+    navigate('/dogrulama', { state: { phone, isExisting: check.exists } });
   };
 
   return (

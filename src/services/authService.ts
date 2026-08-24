@@ -1,5 +1,5 @@
 import { UserProfile, CategoryId, TrustProfile } from '../types';
-import { CURRENT_USER } from '../data/mockData';
+import { DEFAULT_AVATAR, GUEST_USER } from '../constants';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
 
@@ -68,28 +68,75 @@ function trustLevelFromScore(
   return 'Başlangıç';
 }
 
-export function mapProfile(row: any, trust?: any | null): UserProfile {
+/** Bir kullanıcının aldığı değerlendirmelerin ortalaması ve sayısı. */
+export interface ReviewAggregate {
+  averageRating: number;
+  reviewCount: number;
+}
+
+export async function getReviewAggregate(userId: string): Promise<ReviewAggregate> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('rating')
+    .eq('reviewed_user_id', userId);
+
+  if (error || !data?.length) {
+    if (error) console.error('Değerlendirme ortalaması alınamadı:', error);
+    return { averageRating: 0, reviewCount: 0 };
+  }
+
+  const ratings = data.map((r) => Number(r.rating ?? 0)).filter((r) => r > 0);
+
+  if (!ratings.length) return { averageRating: 0, reviewCount: 0 };
+
+  return {
+    averageRating: Number((ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(2)),
+    reviewCount: ratings.length,
+  };
+}
+
+function buildHighlights(
+  trust: any | null | undefined,
+  reviews: ReviewAggregate
+): string[] {
+  const highlights = ['Telefon doğrulandı'];
+
+  if (trust?.verification_level === 'id_verified') highlights.push('Kimlik doğrulandı');
+  if ((trust?.completed_trades ?? 0) >= 5) highlights.push('Deneyimli takasçı');
+  if (reviews.reviewCount >= 3 && reviews.averageRating >= 4.5) highlights.push('Yüksek memnuniyet');
+  if ((trust?.response_rate ?? 0) >= 0.9) highlights.push('Hızlı yanıt veriyor');
+
+  return highlights;
+}
+
+export function mapProfile(
+  row: any,
+  trust?: any | null,
+  reviews: ReviewAggregate = { averageRating: 0, reviewCount: 0 }
+): UserProfile {
   const completedTrades = trust?.completed_trades ?? 0;
   const cancelledTrades = trust?.cancelled_trades ?? 0;
   const totalTrades = completedTrades + cancelledTrades;
-  const score = trust?.trust_score ?? 5;
+  const score = Number(trust?.trust_score ?? 5);
 
   return {
     id: row.id,
     phone: formatPhone(row.phone ?? ''),
-    fullName: row.full_name ?? '',
-    avatarUrl:
-      row.avatar_url ||
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    fullName: row.full_name ?? 'Swaloop Kullanıcısı',
+    avatarUrl: row.avatar_url || DEFAULT_AVATAR,
     city: row.city ?? '',
     district: row.district ?? '',
     bio: row.bio ?? undefined,
+    journeyTarget: row.journey_target ?? undefined,
     memberSince: row.created_at
-      ? new Date(row.created_at).toLocaleDateString('tr-TR')
+      ? new Date(row.created_at).toLocaleDateString('tr-TR', {
+          month: 'long',
+          year: 'numeric',
+        })
       : 'Bugün',
 
-    interests: [],
-    wantedCategories: [],
+    interests: (row.interests ?? []) as CategoryId[],
+    wantedCategories: (row.wanted_categories ?? []) as CategoryId[],
 
     isVerified: true,
 
@@ -99,26 +146,25 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       phoneVerified: true,
       idVerified: trust?.verification_level === 'id_verified',
       successfulTradesCount: completedTrades,
-      cancellationRate:
-        totalTrades > 0 ? cancelledTrades / totalTrades : 0,
-      responseRate: trust?.response_rate ?? 1,
-      // DB'de reviews tablosu var ama ortalama puan/adet henüz burada
-      // agregе edilmiyor; bu iki alan hâlâ placeholder.
-      averageRating: 5,
-      reviewCount: 0,
+      cancellationRate: totalTrades > 0 ? cancelledTrades / totalTrades : 0,
+      responseRate: Number(trust?.response_rate ?? 1),
+      averageRating: reviews.averageRating,
+      reviewCount: reviews.reviewCount,
       reportCount: 0,
       accountAgeDays: row.created_at
         ? Math.max(
             1,
-            Math.floor(
-              (Date.now() - new Date(row.created_at).getTime()) /
-                86400000
-            )
+            Math.floor((Date.now() - new Date(row.created_at).getTime()) / 86400000)
           )
         : 1,
-      positiveHighlights: ['Telefon doğrulandı'],
+      positiveHighlights: buildHighlights(trust, reviews),
     },
 
+    // NOT: `stats` alanındaki takas/etki sayaçları, kullanıcının gerçek
+    // aktivitesinden `pointsService.getUserActivity()` ile hesaplanır ve
+    // ilgili ekranlarda oradan okunur. Burada yalnızca profil satırından
+    // doğrudan bilinen değerler doldurulur; geri kalanı 0'dır (uydurma
+    // sayı gösterilmez).
     stats: {
       totalTrades: completedTrades,
       activeListings: 0,
@@ -128,14 +174,22 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       totalEnergySaved: 0,
       totalRawMaterialsSaved: 0,
       totalItemsReused: 0,
-      responseRatePercent: Math.round((trust?.response_rate ?? 1) * 100),
+      responseRatePercent: Math.round(Number(trust?.response_rate ?? 1) * 100),
       avgResponseTimeMinutes: 0,
       cancellationRatePercent:
-        totalTrades > 0
-          ? Math.round((cancelledTrades / totalTrades) * 100)
-          : 0,
+        totalTrades > 0 ? Math.round((cancelledTrades / totalTrades) * 100) : 0,
     },
   };
+}
+
+/** Profil + güven profili + değerlendirme ortalamasını tek seferde toplar. */
+async function hydrateProfile(row: any): Promise<UserProfile> {
+  const [trust, reviews] = await Promise.all([
+    getTrustProfileRow(row.id),
+    getReviewAggregate(row.id),
+  ]);
+
+  return mapProfile(row, trust, reviews);
 }
 
 export const authService = {
@@ -285,13 +339,9 @@ export const authService = {
       };
     }
 
-    const trust = await getTrustProfileRow(profile.id);
-    const user = mapProfile(profile, trust);
+    const user = await hydrateProfile(profile);
 
-    localStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify(user)
-    );
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
     return {
       success: true,
@@ -333,6 +383,8 @@ export const authService = {
           city: data.city,
           district: data.district,
           avatar_url: data.avatarUrl ?? null,
+          interests: data.interests ?? [],
+          wanted_categories: data.wantedCategories ?? [],
           updated_at: new Date().toISOString(),
         },
         {
@@ -348,16 +400,9 @@ export const authService = {
       return undefined;
     }
 
-    const trust = await getTrustProfileRow(profile.id);
-    const newUser = mapProfile(profile, trust);
+    const newUser = await hydrateProfile(profile);
 
-    newUser.interests = data.interests ?? [];
-    newUser.wantedCategories = data.wantedCategories ?? [];
-
-    localStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify(newUser)
-    );
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
 
     return newUser;
   },
@@ -382,17 +427,37 @@ export const authService = {
       return null;
     }
 
-    const trust = await getTrustProfileRow(profile.id);
-    const user = mapProfile(profile, trust);
+    const user = await hydrateProfile(profile);
 
-    localStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify(user)
-    );
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
     return user;
   },
 
+  /** Herhangi bir kullanıcının herkese açık profilini getirir. */
+  async getProfileById(userId: string): Promise<UserProfile | null> {
+    if (!userId) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !data) {
+      if (error) console.error('Profil alınamadı:', error);
+      return null;
+    }
+
+    return hydrateProfile(data);
+  },
+
+  /**
+   * Uygulama açılırken anında gösterilecek, önbellekteki kullanıcı.
+   * Oturum yoksa GUEST_USER döner — eskiden burada uydurma bir demo
+   * kullanıcı (`mockData.CURRENT_USER`) dönüyordu ve giriş yapılmamışken
+   * bile dolu bir profil görünüyordu.
+   */
   getCurrentUser(): UserProfile {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
 
@@ -404,7 +469,7 @@ export const authService = {
       }
     }
 
-    return CURRENT_USER;
+    return GUEST_USER;
   },
 
   isOnboardingDone(): boolean {
@@ -461,6 +526,18 @@ export const authService = {
       dbUpdates.bio = updates.bio;
     }
 
+    if (updates.interests !== undefined) {
+      dbUpdates.interests = updates.interests;
+    }
+
+    if (updates.wantedCategories !== undefined) {
+      dbUpdates.wanted_categories = updates.wantedCategories;
+    }
+
+    if (updates.journeyTarget !== undefined) {
+      dbUpdates.journey_target = updates.journeyTarget;
+    }
+
     dbUpdates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -475,13 +552,9 @@ export const authService = {
       return undefined;
     }
 
-    const trust = await getTrustProfileRow(data.id);
-    const user = mapProfile(data, trust);
+    const user = await hydrateProfile(data);
 
-    localStorage.setItem(
-      AUTH_STORAGE_KEY,
-      JSON.stringify(user)
-    );
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
     return user;
   },

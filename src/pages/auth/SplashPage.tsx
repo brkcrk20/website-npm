@@ -1,10 +1,19 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 import { SwaloopLogo, CircularExchangeIcon } from '../../components/common/SwaloopLogo';
 import { Sparkles, ShieldCheck, Leaf, ArrowRight, RefreshCw, Zap } from 'lucide-react';
 
 export const SplashPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, isAuthLoading } = useApp();
+
+  // Oturumu açık kullanıcı açılış ekranında bekletilmez, doğrudan keşfete girer.
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated) navigate('/kesfet', { replace: true });
+  }, [isAuthLoading, isAuthenticated, navigate]);
+
+  if (!isAuthLoading && isAuthenticated) return <Navigate to="/kesfet" replace />;
 
   const features = [
     {

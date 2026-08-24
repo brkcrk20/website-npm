@@ -8,7 +8,7 @@ export const ToastContainer: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 pointer-events-none">
+    <div className="fixed top-3 inset-x-0 z-50 flex flex-col items-center gap-2 px-4 pointer-events-none">
       {toasts.map((toast) => {
         const icons = {
           success: <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />,
@@ -18,22 +18,24 @@ export const ToastContainer: React.FC = () => {
         };
 
         const borders = {
-          success: 'border-emerald-200 bg-white',
-          error: 'border-rose-200 bg-white',
-          warning: 'border-amber-200 bg-white',
-          info: 'border-sky-200 bg-white',
+          success: 'border-emerald-200 dark:border-emerald-900',
+          error: 'border-rose-200 dark:border-rose-900',
+          warning: 'border-amber-200 dark:border-amber-900',
+          info: 'border-sky-200 dark:border-sky-900',
         };
 
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto rounded-2xl border p-3.5 shadow-xl flex items-start gap-3 transition-all animate-in slide-in-from-top-3 duration-200 ${borders[toast.type]}`}
+            className={`pointer-events-auto w-full max-w-md rounded-2xl border bg-white dark:bg-stone-900 p-3.5 shadow-xl flex items-start gap-3 animate-in ${borders[toast.type]}`}
           >
             {icons[toast.type]}
             <div className="flex-1 min-w-0">
-              <h5 className="text-xs font-bold text-stone-900">{toast.title}</h5>
+              <h5 className="text-xs font-bold text-stone-900 dark:text-stone-100">{toast.title}</h5>
               {toast.description && (
-                <p className="text-[11px] text-stone-500 mt-0.5">{toast.description}</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-2">
+                  {toast.description}
+                </p>
               )}
             </div>
             <button

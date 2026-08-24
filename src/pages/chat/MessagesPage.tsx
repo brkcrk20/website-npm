@@ -196,11 +196,13 @@ export const MessagesPage: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-xs font-bold text-stone-900">{activeConv.participant.fullName}</h3>
                       <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
-                        ★ {activeConv.participant.trustProfile?.score.toFixed(1) || '4.8'}
+                        ★ {activeConv.participant.trustProfile.score.toFixed(1)}
                       </span>
                     </div>
                     <span className="text-[10px] text-stone-400">
-                      {activeConv.participant.district}, {activeConv.participant.city} • Çevrimiçi
+                      {[activeConv.participant.district, activeConv.participant.city]
+                        .filter(Boolean)
+                        .join(', ')}
                     </span>
                   </div>
                 </div>
@@ -208,7 +210,7 @@ export const MessagesPage: React.FC = () => {
                 {/* Safe Point indicator */}
                 <button
                   type="button"
-                  onClick={() => navigate('/harita')}
+                  onClick={() => navigate('/yakinimdakiler')}
                   className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-900 text-[11px] font-bold border border-emerald-200"
                 >
                   <MapPin className="w-3.5 h-3.5 text-emerald-700" />

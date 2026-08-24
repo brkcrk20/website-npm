@@ -7,6 +7,8 @@ import { TradeOffer } from '../../types';
 import { Timeline } from '../../components/common/Timeline';
 import { ImpactCard } from '../../components/common/ImpactCard';
 import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
+import { ReportModal } from '../../components/common/ReportModal';
+import { CONDITION_LABELS } from '../../constants';
 import {
   ArrowLeft,
   MessageSquare,
@@ -30,13 +32,14 @@ import {
 export const TradeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentUser, showToast } = useApp();
+  const { currentUser, showToast, refreshScorecard } = useApp();
 
   const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showCounterModal, setShowCounterModal] = useState(false);
   const [showSvsModal, setShowSvsModal] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [counterNote, setCounterNote] = useState('');
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -118,7 +121,12 @@ export const TradeDetailPage: React.FC = () => {
       } else if (step === 5) {
         showToast('Teslimat Onaylandı!', 'Karşı taraf onayladığında takas başarıyla tamamlanacak.', 'success');
       } else if (step === 6) {
-        showToast('Tebrikler! Takas Tamamlandı 🎉', `Toplam +${updated.combinedImpact.co2eKg} kg CO₂e tasarrufu sağlandı!`, 'success');
+        showToast(
+          'Tebrikler! Takas tamamlandı 🎉',
+          `+${updated.combinedImpact.co2eKg} kg CO₂e tasarruf ve takas puanı hesabına işlendi.`,
+          'success'
+        );
+        refreshScorecard();
         setShowReviewModal(true);
       }
     }
@@ -142,12 +150,13 @@ export const TradeDetailPage: React.FC = () => {
       authorAvatar: currentUser.avatarUrl,
       targetUserId: otherUser.id,
       overallRating: rating,
-      categories: reviewCategories,
-      comment: reviewComment || 'Harika ve güvenilir bir takas deneyimi oldu!',
+      categories: { ...reviewCategories, trustworthiness: rating },
+      comment: reviewComment.trim(),
     });
 
-    showToast('Değerlendirmeniz Kaydedildi!', 'Topluluk güven skoruna katkınız için teşekkürler.', 'success');
+    showToast('Değerlendirmen kaydedildi', 'Karşı tarafın güven puanı güncellendi.', 'success');
     setShowReviewModal(false);
+    refreshScorecard();
     loadTrade();
   };
 
@@ -182,7 +191,7 @@ export const TradeDetailPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => navigate(`/dispute?tradeId=${trade.id}`)}
+            onClick={() => setShowReport(true)}
             className="text-stone-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-colors"
             title="Sorun Bildir"
           >
@@ -203,7 +212,7 @@ export const TradeDetailPage: React.FC = () => {
                 <span className="text-xs font-bold text-stone-900">{otherUser.fullName}</span>
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  {otherUser.trustProfile?.score ? otherUser.trustProfile.score.toFixed(1) : '4.8'}
+                  {otherUser.trustProfile.score.toFixed(1)}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
@@ -255,7 +264,10 @@ export const TradeDetailPage: React.FC = () => {
                 </span>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
-                Durum: <span className="font-semibold text-stone-700">{myItem?.condition}</span>
+                Durum:{' '}
+                <span className="font-semibold text-stone-700">
+                  {myItem ? (CONDITION_LABELS[myItem.condition] ?? myItem.condition) : '—'}
+                </span>
               </div>
             </div>
 
@@ -283,7 +295,10 @@ export const TradeDetailPage: React.FC = () => {
                 </span>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
-                Durum: <span className="font-semibold text-stone-700">{otherItem?.condition}</span>
+                Durum:{' '}
+                <span className="font-semibold text-stone-700">
+                  {otherItem ? (CONDITION_LABELS[otherItem.condition] ?? otherItem.condition) : '—'}
+                </span>
               </div>
             </div>
           </div>
@@ -341,14 +356,19 @@ export const TradeDetailPage: React.FC = () => {
             <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Buluşma / Teslim Yeri:</span>
-              <span>{trade.deliveryDetails?.locationName || 'Kadıköy Güvenli Takas Noktası (Metro Çıkışı)'}</span>
+              <span>
+                {trade.deliveryDetails?.locationName ||
+                  'Henüz belirlenmedi — sohbetten kararlaştırabilirsiniz.'}
+              </span>
             </div>
           </div>
           <div className="flex items-start gap-2.5 text-xs text-stone-700">
             <Calendar className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Planlanan Tarih:</span>
-              <span>{trade.deliveryDetails?.scheduledDate || 'Belirlenmedi (Sohbet üzerinden kararlaştırılabilir)'}</span>
+              <span>
+                {trade.deliveryDetails?.scheduledDate || 'Henüz belirlenmedi'}
+              </span>
             </div>
           </div>
         </div>
@@ -492,20 +512,40 @@ export const TradeDetailPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Sub-ratings */}
+            {/* Alt puanlar — önceden sabit "5/5" yazıyordu, artık gerçekten seçiliyor */}
             <div className="space-y-2 text-xs bg-stone-50 p-3 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Ürün Açıklamaya Uygunluk:</span>
-                <span className="font-bold text-amber-600">5/5</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">İletişim & Nezaket:</span>
-                <span className="font-bold text-amber-600">5/5</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-stone-600">Zamanında Teslimat:</span>
-                <span className="font-bold text-amber-600">5/5</span>
-              </div>
+              {(
+                [
+                  { key: 'itemAccuracy', label: 'Ürün açıklamaya uygunluk' },
+                  { key: 'communication', label: 'İletişim' },
+                  { key: 'delivery', label: 'Zamanında teslimat' },
+                ] as const
+              ).map((row) => (
+                <div key={row.key} className="flex justify-between items-center gap-2">
+                  <span className="text-stone-600">{row.label}</span>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() =>
+                          setReviewCategories((prev) => ({ ...prev, [row.key]: value }))
+                        }
+                        className="cursor-pointer"
+                        aria-label={`${row.label}: ${value}`}
+                      >
+                        <Star
+                          className={`w-3.5 h-3.5 ${
+                            value <= reviewCategories[row.key]
+                              ? 'fill-amber-400 text-amber-400'
+                              : 'text-stone-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <textarea
@@ -538,6 +578,15 @@ export const TradeDetailPage: React.FC = () => {
 
       {/* SVS Explanation Modal */}
       {showSvsModal && <SvsExplanationModal onClose={() => setShowSvsModal(false)} />}
+
+      {showReport && (
+        <ReportModal
+          targetType="trade"
+          targetId={trade.id}
+          title={`${otherUser.fullName} ile olan takas · #${trade.id.slice(-6)}`}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 };

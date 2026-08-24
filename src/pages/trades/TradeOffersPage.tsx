@@ -1,271 +1,200 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { tradeService } from '../../services/tradeService';
 import { TradeCard } from '../../components/common/TradeCard';
 import { TradeOffer } from '../../types';
-import { ArrowLeftRight, Inbox, Send, CheckCircle2, Clock, Filter, Plus, Sparkles, ShieldCheck } from 'lucide-react';
+import { Inbox, Loader2, Plus, Repeat, Send, Sparkles } from 'lucide-react';
 
+type TradeTab = 'incoming' | 'outgoing' | 'active' | 'done';
+
+const PENDING_STATUSES = ['offer_sent', 'offer_received', 'counter_offered'];
+const CLOSED_STATUSES = ['completed', 'rejected', 'cancelled', 'expired'];
+
+/**
+ * Takaslarım.
+ *
+ * Önceden bu iş iki neredeyse aynı sayfaya bölünmüştü (TradeOffersPage ve
+ * TradeRequestsPage) ve ikisi de `getAllTrades()` ile SİSTEMDEKİ TÜM
+ * teklifleri istemciye çekip orada filtreliyordu. Artık tek sayfa var ve
+ * yalnızca kullanıcının kendi teklifleri sorgulanıyor.
+ */
 export const TradeOffersPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, showToast } = useApp();
-  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'completed'>('incoming');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const { currentUser, showToast, refreshScorecard } = useApp();
 
+  const [activeTab, setActiveTab] = useState<TradeTab>('incoming');
+  const [incoming, setIncoming] = useState<TradeOffer[]>([]);
+  const [outgoing, setOutgoing] = useState<TradeOffer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [incomingTrades, setIncomingTrades] = useState<TradeOffer[]>([]);
-  const [outgoingTrades, setOutgoingTrades] = useState<TradeOffer[]>([]);
-  const [completedTrades, setCompletedTrades] = useState<TradeOffer[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const loadTrades = useCallback(async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
-    const [allTrades, incoming, outgoing] = await Promise.all([
-      tradeService.getAllTrades(),
-      tradeService.getUserIncomingTrades(currentUser.id),
-      tradeService.getUserOutgoingTrades(currentUser.id),
-    ]);
-
-    setIncomingTrades(incoming);
-    setOutgoingTrades(outgoing);
-    setCompletedTrades(
-      allTrades.filter(
-        (t) =>
-          (t.initiatorId === currentUser.id || t.receiverId === currentUser.id) &&
-          (t.status === 'completed' || t.status === 'rejected' || t.status === 'cancelled')
-      )
-    );
+    const trades = await tradeService.getUserTrades(currentUser.id);
+    setIncoming(trades.incoming);
+    setOutgoing(trades.outgoing);
     setIsLoading(false);
   }, [currentUser.id]);
 
   useEffect(() => {
-    loadTrades();
-  }, [loadTrades]);
+    load();
+  }, [load]);
 
-  const activeIncoming = incomingTrades.filter(
-    (t) => t.status !== 'completed' && t.status !== 'rejected' && t.status !== 'cancelled'
-  );
-  const activeOutgoing = outgoingTrades.filter(
-    (t) => t.status !== 'completed' && t.status !== 'rejected' && t.status !== 'cancelled'
-  );
+  const all = [...incoming, ...outgoing];
 
-  const getFilteredList = () => {
-    let list: TradeOffer[] = [];
-    if (activeTab === 'incoming') list = activeIncoming;
-    else if (activeTab === 'outgoing') list = activeOutgoing;
-    else list = completedTrades;
-
-    if (filterStatus !== 'all') {
-      list = list.filter((t) => t.status === filterStatus);
-    }
-    return list;
+  const lists: Record<TradeTab, TradeOffer[]> = {
+    incoming: incoming.filter((offer) => PENDING_STATUSES.includes(offer.status)),
+    outgoing: outgoing.filter((offer) => PENDING_STATUSES.includes(offer.status)),
+    active: all.filter(
+      (offer) => !PENDING_STATUSES.includes(offer.status) && !CLOSED_STATUSES.includes(offer.status)
+    ),
+    done: all.filter((offer) => CLOSED_STATUSES.includes(offer.status)),
   };
 
-  const handleAccept = async (tradeId: string) => {
-    const updated = await tradeService.acceptOffer(tradeId);
-    if (updated) {
-      showToast('Teklif Kabul Edildi!', 'Ürünler takas için kilitlendi. Teslimat planına geçebilirsiniz.', 'success');
-      navigate(`/teklif/${tradeId}`);
+  const handleAccept = async (offer: TradeOffer) => {
+    setBusyId(offer.id);
+    const updated = await tradeService.acceptOffer(offer.id);
+    setBusyId(null);
+
+    if (!updated) {
+      showToast('Kabul edilemedi', 'Teklif kabul edilirken bir sorun oluştu.', 'error');
+      return;
     }
+
+    showToast('Teklif kabul edildi 🎉', 'Teslimat adımına geçebilirsiniz.', 'success');
+    refreshScorecard();
+    await load();
+    navigate(`/takas-sureci/${offer.id}`);
   };
 
-  const handleReject = async (tradeId: string) => {
-    const updated = await tradeService.rejectOffer(tradeId);
-    if (updated) {
-      showToast('Teklif Reddedildi', 'Takas teklifi geri çevrildi.', 'info');
-      loadTrades();
+  const handleReject = async (offer: TradeOffer) => {
+    setBusyId(offer.id);
+    const updated = await tradeService.rejectOffer(offer.id);
+    setBusyId(null);
+
+    if (!updated) {
+      showToast('Reddedilemedi', 'Lütfen tekrar deneyin.', 'error');
+      return;
     }
+
+    showToast('Teklif reddedildi', 'Karşı taraf bilgilendirildi.', 'info');
+    await load();
   };
 
-  const currentList = getFilteredList();
+  const tabs: { id: TradeTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'incoming', label: 'Gelen', icon: Inbox },
+    { id: 'outgoing', label: 'Giden', icon: Send },
+    { id: 'active', label: 'Süreçte', icon: Repeat },
+    { id: 'done', label: 'Geçmiş', icon: Sparkles },
+  ];
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-stone-50 pb-24 text-stone-900 flex items-center justify-center">
-        <p className="text-sm text-stone-500">Takaslar yükleniyor...</p>
-      </div>
-    );
-  }
+  const visible = lists[activeTab];
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
-      <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
+      <div className="px-4 pt-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold text-stone-900 tracking-tight font-display">Takaslarım</h1>
-            <p className="text-xs text-stone-500">Devam eden ve tamamlanan takas süreçleriniz</p>
+            <h1 className="text-lg font-extrabold">Takaslarım</h1>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Teklifler, süren takaslar ve geçmişin
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+
+          <button
+            type="button"
+            onClick={() => navigate('/eslesme')}
+            className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Eşleştir
+          </button>
+        </div>
+
+        <div className="grid grid-cols-4 gap-1 p-1 bg-stone-200/60 dark:bg-stone-800 rounded-2xl">
+          {tabs.map((tab) => (
             <button
+              key={tab.id}
               type="button"
-              onClick={() => navigate('/eslesme')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 rounded-xl text-[11px] font-bold transition-colors cursor-pointer flex flex-col items-center gap-0.5 ${
+                activeTab === tab.id
+                  ? 'bg-white dark:bg-stone-700 text-emerald-900 dark:text-emerald-300 shadow-xs'
+                  : 'text-stone-600 dark:text-stone-400'
+              }`}
             >
-              <span>🔥 Kaydır & Eşleş</span>
+              <tab.icon className="w-3.5 h-3.5" />
+              {tab.label} ({lists[tab.id].length})
             </button>
+          ))}
+        </div>
+
+        {isLoading && (
+          <div className="py-12 flex justify-center">
+            <Loader2 className="w-6 h-6 text-stone-300 animate-spin" />
+          </div>
+        )}
+
+        {!isLoading && visible.length === 0 && (
+          <div className="text-center py-12 space-y-3">
+            <p className="text-xs text-stone-500 dark:text-stone-400 px-6">
+              {activeTab === 'incoming'
+                ? 'Henüz sana gelen teklif yok. İlanların yayında olsun ki teklifler gelsin.'
+                : activeTab === 'outgoing'
+                  ? 'Henüz teklif göndermedin. Keşfet’ten beğendiğin bir ürüne teklif ver.'
+                  : activeTab === 'active'
+                    ? 'Şu anda süren bir takasın yok.'
+                    : 'Geçmiş takasın burada listelenecek.'}
+            </p>
+
             <button
               type="button"
-              onClick={() => navigate('/kesfet')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              onClick={() => navigate(activeTab === 'incoming' ? '/ilan-ver' : '/kesfet')}
+              className="px-4 py-2.5 rounded-2xl bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Yeni İlan</span>
+              {activeTab === 'incoming' ? 'İlan ver' : 'Keşfet’e git'}
             </button>
           </div>
-        </div>
+        )}
 
-        {/* Status Highlights Banner */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div
-            onClick={() => setActiveTab('incoming')}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-              activeTab === 'incoming'
-                ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                : 'bg-white text-stone-700 border-stone-200/80 hover:bg-stone-50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'incoming' ? 'text-emerald-200' : 'text-stone-400'}`}>
-                GELEN
-              </span>
-              <Inbox className={`w-4 h-4 ${activeTab === 'incoming' ? 'text-emerald-300' : 'text-emerald-700'}`} />
-            </div>
-            <div className="text-xl font-extrabold">{activeIncoming.length}</div>
-            <div className={`text-[10px] ${activeTab === 'incoming' ? 'text-emerald-100' : 'text-stone-500'}`}>
-              Onay bekleyen
-            </div>
-          </div>
-
-          <div
-            onClick={() => setActiveTab('outgoing')}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-              activeTab === 'outgoing'
-                ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                : 'bg-white text-stone-700 border-stone-200/80 hover:bg-stone-50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'outgoing' ? 'text-emerald-200' : 'text-stone-400'}`}>
-                GİDEN
-              </span>
-              <Send className={`w-4 h-4 ${activeTab === 'outgoing' ? 'text-emerald-300' : 'text-teal-700'}`} />
-            </div>
-            <div className="text-xl font-extrabold">{activeOutgoing.length}</div>
-            <div className={`text-[10px] ${activeTab === 'outgoing' ? 'text-emerald-100' : 'text-stone-500'}`}>
-              Yanıt bekleyen
-            </div>
-          </div>
-
-          <div
-            onClick={() => setActiveTab('completed')}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-              activeTab === 'completed'
-                ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                : 'bg-white text-stone-700 border-stone-200/80 hover:bg-stone-50'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'completed' ? 'text-emerald-200' : 'text-stone-400'}`}>
-                GEÇMİŞ
-              </span>
-              <CheckCircle2 className={`w-4 h-4 ${activeTab === 'completed' ? 'text-emerald-300' : 'text-emerald-600'}`} />
-            </div>
-            <div className="text-xl font-extrabold">{completedTrades.length}</div>
-            <div className={`text-[10px] ${activeTab === 'completed' ? 'text-emerald-100' : 'text-stone-500'}`}>
-              Sonuçlanan
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Navigation Pill Bar */}
-        <div className="flex items-center gap-1.5 p-1 bg-stone-200/60 rounded-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('incoming');
-              setFilterStatus('all');
-            }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'incoming' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            Gelen Teklifler ({activeIncoming.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('outgoing');
-              setFilterStatus('all');
-            }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'outgoing' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            Giden Teklifler ({activeOutgoing.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('completed');
-              setFilterStatus('all');
-            }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'completed' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            Geçmiş Takaslar ({completedTrades.length})
-          </button>
-        </div>
-
-        {/* List of Trades */}
         <div className="space-y-3">
-          {currentList.length > 0 ? (
-            currentList.map((trade) => (
-              <TradeCard
-                key={trade.id}
-                trade={trade}
-                isIncoming={trade.receiverId === currentUser.id}
-                onAccept={handleAccept}
-                onReject={handleReject}
-              />
-            ))
-          ) : (
-            <div className="text-center py-12 px-4 bg-white rounded-2xl border border-stone-200/80">
-              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
-                <ArrowLeftRight className="w-6 h-6 text-stone-400" />
-              </div>
-              <h3 className="text-sm font-bold text-stone-800 mb-1">
-                {activeTab === 'incoming'
-                  ? 'Henüz gelen bir takas teklifi yok'
-                  : activeTab === 'outgoing'
-                  ? 'Henüz bir takas teklifi göndermediniz'
-                  : 'Henüz tamamlanmış bir takasınız bulunmuyor'}
-              </h3>
-              <p className="text-xs text-stone-500 max-w-xs mx-auto mb-4">
-                {activeTab === 'incoming'
-                  ? 'İlanlarınızı öne çıkararak diğer kullanıcıların teklif vermesini sağlayabilirsiniz.'
-                  : 'Keşfet sayfasındaki binlerce sürdürülebilir ilandan birine teklif gönderin.'}
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/kesfet')}
-                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                İlanları Keşfet
-              </button>
-            </div>
-          )}
-        </div>
+          {visible.map((offer) => {
+            const isIncoming = offer.receiverId === currentUser.id;
+            const canRespond = isIncoming && PENDING_STATUSES.includes(offer.status);
 
-        {/* 6-Step Safety Protocol Info Box */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-900 text-white">
-          <div className="flex items-center gap-2 mb-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-300" />
-            <h4 className="text-xs font-bold">Swaloop 6 Adımlı Güvenli Takas</h4>
-          </div>
-          <p className="text-[11px] text-emerald-100/90 leading-relaxed">
-            Teklif kabul edildiğinde ürünler diğer kullanıcılara otomatik kilitlenir. Teslimat tamamlanıp her iki taraf onaylayana kadar takas güvence altındadır.
-          </p>
+            return (
+              <div key={offer.id} className="space-y-2">
+                <TradeCard
+                  trade={offer}
+                  currentUserId={currentUser.id}
+                  onClick={() => navigate(`/teklif/${offer.id}`)}
+                />
+
+                {canRespond && (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === offer.id}
+                      onClick={() => handleAccept(offer)}
+                      className="flex-1 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      Kabul et
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === offer.id}
+                      onClick={() => handleReject(offer)}
+                      className="px-4 py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-bold transition-colors cursor-pointer disabled:opacity-60"
+                    >
+                      Reddet
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

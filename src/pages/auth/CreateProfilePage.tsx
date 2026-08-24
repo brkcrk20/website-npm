@@ -1,27 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { CATEGORIES } from '../../constants';
+import { storageService } from '../../services/storageService';
+import { CATEGORIES, DEFAULT_AVATAR, TR_CITIES } from '../../constants';
 import { CategoryId } from '../../types';
-import { ArrowLeft, Camera, Check, User, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const CreateProfilePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setCurrentUser, showToast } = useApp();
+  const { setCurrentUser, showToast, refreshUserData } = useApp();
 
   const state = (location.state as { phone?: string }) || {};
-  const phone = state.phone || '+90 532 890 12 34';
+  const phone = state.phone ?? '';
 
   const [fullName, setFullName] = useState('');
-  const [city, setCity] = useState('İstanbul');
-  const [district, setDistrict] = useState('Kadıköy');
-  const [avatarUrl, setAvatarUrl] = useState(
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
-  );
-  const [selectedInterests, setSelectedInterests] = useState<CategoryId[]>(['electronics', 'sports']);
-  const [selectedWanted, setSelectedWanted] = useState<CategoryId[]>(['electronics', 'books']);
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
+  const [selectedInterests, setSelectedInterests] = useState<CategoryId[]>([]);
+  const [selectedWanted, setSelectedWanted] = useState<CategoryId[]>([]);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Telefon doğrulaması yapılmadan bu adıma gelinemez.
+  useEffect(() => {
+    if (!phone) navigate('/giris', { replace: true });
+  }, [phone, navigate]);
 
   const toggleInterest = (id: CategoryId) => {
     setSelectedInterests((prev) =>
@@ -35,48 +42,59 @@ export const CreateProfilePage: React.FC = () => {
     );
   };
 
-  const handleAvatarSelect = () => {
-    // In demo, rotate sample profile avatars
-    const samples = [
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=300&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80',
-    ];
-    const nextAvatar = samples[(samples.indexOf(avatarUrl) + 1) % samples.length];
-    setAvatarUrl(nextAvatar);
-    showToast('Profil Fotoğrafı Seçildi', 'Görsel güncellendi.', 'info');
+  /**
+   * Gerçek profil fotoğrafı yüklemesi. Önceden bu düğme hazır stok
+   * görseller arasında dönüyordu; artık kullanıcının seçtiği fotoğraf
+   * WebP'e çevrilip Storage'a yükleniyor.
+   */
+  const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file || !file.type.startsWith('image/')) return;
+
+    setIsUploadingAvatar(true);
+    const uploaded = await storageService.uploadAvatar(file);
+    setIsUploadingAvatar(false);
+
+    if (!uploaded) {
+      showToast('Fotoğraf yüklenemedi', 'Fotoğrafsız da devam edebilirsin.', 'warning');
+      return;
+    }
+
+    setAvatarUrl(uploaded.url);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!fullName.trim()) {
-      showToast('Eksik Bilgi', 'Lütfen adınızı ve soyadınızı giriniz.', 'warning');
+      showToast('Eksik bilgi', 'Lütfen adını ve soyadını gir.', 'warning');
       return;
     }
 
+    setIsSaving(true);
     const newUser = await authService.createProfile({
       phone,
-      fullName,
-      city,
-      district,
-      avatarUrl,
+      fullName: fullName.trim(),
+      city: city.trim(),
+      district: district.trim(),
+      // Yer tutucu avatar DB'ye yazılmaz; kullanıcı sonradan ekleyebilir.
+      avatarUrl: avatarUrl === DEFAULT_AVATAR ? undefined : avatarUrl,
       interests: selectedInterests,
       wantedCategories: selectedWanted,
     });
-    
+    setIsSaving(false);
+
     if (!newUser) {
-  showToast(
-    'Hata',
-    'Profil oluşturulamadı. Lütfen tekrar deneyin.',
-    'error'
-  );
-  return;
-}
+      showToast('Hata', 'Profil oluşturulamadı. Lütfen tekrar deneyin.', 'error');
+      return;
+    }
 
     setCurrentUser(newUser);
-    showToast('Profil Oluşturuldu! 🎉', 'Swaloop dünyasına hoş geldin.', 'success');
-    navigate('/kesfet');
+    await refreshUserData();
+    showToast('Profilin hazır 🎉', 'Swaloop’a hoş geldin.', 'success');
+    navigate('/kesfet', { replace: true });
   };
 
   return (
@@ -105,23 +123,37 @@ export const CreateProfilePage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Avatar Upload Bubble */}
+          {/* Profil fotoğrafı */}
           <div className="flex flex-col items-center justify-center my-2">
-            <div className="relative group cursor-pointer" onClick={handleAvatarSelect}>
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-emerald-100">
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center border-2 border-white shadow-md group-hover:scale-110 transition-transform">
-                <Camera className="w-4 h-4" />
-              </div>
-            </div>
             <button
               type="button"
-              onClick={handleAvatarSelect}
-              className="text-xs font-semibold text-emerald-700 hover:underline mt-2 cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              className="relative group cursor-pointer disabled:opacity-60"
             >
-              Fotoğraf Değiştir
+              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-stone-100">
+                <img src={avatarUrl} alt="Profil fotoğrafı" className="w-full h-full object-cover" />
+              </div>
+              <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center border-2 border-white shadow-md">
+                {isUploadingAvatar ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
+              </span>
             </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarSelect}
+              className="hidden"
+            />
+
+            <span className="text-[11px] text-stone-400 mt-2">
+              İsteğe bağlı — sonradan da ekleyebilirsin
+            </span>
           </div>
 
           {/* Ad Soyad */}
@@ -148,17 +180,18 @@ export const CreateProfilePage: React.FC = () => {
               <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
                 Şehir
               </label>
-              <select
+              <input
+                list="create-profile-cities"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+                placeholder="İlini yaz"
                 className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              >
-                <option value="İstanbul">İstanbul</option>
-                <option value="Ankara">Ankara</option>
-                <option value="İzmir">İzmir</option>
-                <option value="Bursa">Bursa</option>
-                <option value="Antalya">Antalya</option>
-              </select>
+              />
+              <datalist id="create-profile-cities">
+                {TR_CITIES.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
             </div>
 
             <div>
@@ -204,10 +237,10 @@ export const CreateProfilePage: React.FC = () => {
 
           <button
             type="submit"
-            disabled={!fullName.trim()}
+            disabled={!fullName.trim() || isSaving || isUploadingAvatar}
             className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer mt-4"
           >
-            Kaydı Tamamla ve Keşfet
+            {isSaving ? 'Oluşturuluyor...' : 'Kaydı tamamla ve keşfet'}
           </button>
         </form>
       </div>

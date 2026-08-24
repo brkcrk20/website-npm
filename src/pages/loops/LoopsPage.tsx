@@ -1,399 +1,464 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { loopService } from '../../services/loopService';
-import { MYSTERY_SWAP_ITEMS, PAPERCLIP_STAGES } from '../../data/mockData';
-import { Loop } from '../../types';
+import { listingService } from '../../services/listingService';
+import { CATEGORIES } from '../../constants';
+import { CategoryId, Listing, Loop } from '../../types';
 import {
-  Repeat,
-  Sparkles,
+  ArrowLeft,
   ArrowRight,
-  Gift,
-  Paperclip,
-  TrendingUp,
   CheckCircle2,
-  Users,
-  ShieldCheck,
-  Leaf,
-  Droplets,
-  Zap,
   Info,
+  Leaf,
+  Loader2,
+  Plus,
+  Repeat,
+  Users,
+  X,
 } from 'lucide-react';
 
+/**
+ * Takas Döngüleri (çoklu dairesel takas).
+ *
+ * A→B→C→A: kimse tam karşılığını bulamadığında üç kişi zincir kurar.
+ * Bu ekran artık sadece göstermiyor; döngü açabiliyor, var olana
+ * katılabiliyor ve kendi adımını onaylayabiliyorsun.
+ */
 export const LoopsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, showToast } = useApp();
-  const [activeTab, setActiveTab] = useState<'loops' | 'mystery' | 'paperclip'>('loops');
+  const { currentUser, showToast, refreshScorecard } = useApp();
+
   const [loops, setLoops] = useState<Loop[]>([]);
-  const [selectedLoop, setSelectedLoop] = useState<Loop | undefined>(undefined);
-  const [isLoadingLoops, setIsLoadingLoops] = useState(true);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [myListings, setMyListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [busyLoopId, setBusyLoopId] = useState<string | null>(null);
+
+  // Katılma / oluşturma akışı
+  const [joinTarget, setJoinTarget] = useState<Loop | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newLoopTitle, setNewLoopTitle] = useState('');
+  const [newLoopCategory, setNewLoopCategory] = useState<CategoryId>('electronics');
+  const [newLoopSize, setNewLoopSize] = useState(3);
+  const [selectedListingId, setSelectedListingId] = useState('');
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    const [allLoops, listings] = await Promise.all([
+      loopService.getLoops(),
+      listingService.getTradableUserListings(currentUser.id),
+    ]);
+    setLoops(allLoops);
+    setMyListings(listings);
+    setSelectedListingId((prev) => prev || listings[0]?.id || '');
+    setIsLoading(false);
+  }, [currentUser.id]);
 
   useEffect(() => {
-    let cancelled = false;
+    load();
+  }, [load]);
 
-    (async () => {
-      setIsLoadingLoops(true);
-      const data = await loopService.getLoops();
-      if (cancelled) return;
-      setLoops(data);
-      setSelectedLoop((prev) => data.find((l) => l.id === prev?.id) ?? data[0]);
-      setIsLoadingLoops(false);
-    })();
+  const myLoops = loops.filter((loop) =>
+    loop.participants.some((participant) => participant.userId === currentUser.id)
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const openLoops = loops.filter(
+    (loop) =>
+      loop.status === 'matching' &&
+      !loop.participants.some((participant) => participant.userId === currentUser.id) &&
+      loop.participants.length < loop.totalParticipants
+  );
 
-  const handleConfirmStep = async (loopId: string) => {
-    setIsConfirming(true);
-    const updated = await loopService.confirmParticipantStep(loopId, currentUser.id);
-    setIsConfirming(false);
-    if (updated) {
-      const refreshed = await loopService.getLoops();
-      setLoops(refreshed);
-      setSelectedLoop(updated);
-      showToast('Döngü Adımınız Onaylandı!', 'Tüm katılımcılar onayladığında teslimat başlayacaktır.', 'success');
-    } else {
-      showToast('Bir Şeyler Ters Gitti', 'Döngü adımınız onaylanamadı, lütfen tekrar deneyin.', 'error');
+  const handleCreateLoop = async () => {
+    if (!newLoopTitle.trim() || !selectedListingId) {
+      showToast('Eksik bilgi', 'Döngü başlığı ve döngüye koyacağın ilan gerekli.', 'warning');
+      return;
     }
+
+    setBusyLoopId('new');
+    const created = await loopService.createLoop(
+      currentUser.id,
+      selectedListingId,
+      newLoopTitle.trim(),
+      newLoopCategory,
+      newLoopSize
+    );
+    setBusyLoopId(null);
+
+    if (!created) {
+      showToast('Döngü açılamadı', 'Lütfen tekrar deneyin.', 'error');
+      return;
+    }
+
+    setIsCreating(false);
+    setNewLoopTitle('');
+    showToast('Döngü açıldı 🔁', `${newLoopSize} kişilik döngün katılımcı bekliyor.`, 'success');
+    await load();
+  };
+
+  const handleJoinLoop = async () => {
+    if (!joinTarget || !selectedListingId) return;
+
+    setBusyLoopId(joinTarget.id);
+    const updated = await loopService.joinLoop(joinTarget.id, currentUser.id, selectedListingId);
+    setBusyLoopId(null);
+
+    if (!updated) {
+      showToast('Katılınamadı', 'Döngüye katılırken bir sorun oluştu.', 'error');
+      return;
+    }
+
+    setJoinTarget(null);
+    showToast('Döngüye katıldın', 'Döngü dolduğunda teslimat adımı başlayacak.', 'success');
+    await load();
+  };
+
+  const handleConfirmStep = async (loop: Loop) => {
+    setBusyLoopId(loop.id);
+    const updated = await loopService.confirmParticipantStep(loop.id, currentUser.id);
+    setBusyLoopId(null);
+
+    if (!updated) {
+      showToast('Onaylanamadı', 'Döngü adımın onaylanamadı, tekrar dene.', 'error');
+      return;
+    }
+
+    showToast(
+      'Adımın onaylandı',
+      'Tüm katılımcılar onayladığında teslimat başlayacak.',
+      'success'
+    );
+    refreshScorecard();
+    await load();
+  };
+
+  const renderLoopCard = (loop: Loop, isMine: boolean) => {
+    const me = loop.participants.find((participant) => participant.userId === currentUser.id);
+
+    return (
+      <article
+        key={loop.id}
+        className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200/90 dark:border-stone-800 p-4 space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md">
+              {loop.status === 'matching'
+                ? 'Katılımcı aranıyor'
+                : loop.status === 'locked'
+                  ? 'Döngü kilitlendi'
+                  : loop.status === 'in_delivery'
+                    ? 'Teslimat aşaması'
+                    : loop.status === 'completed'
+                      ? 'Tamamlandı'
+                      : 'İptal edildi'}
+            </span>
+            <h3 className="text-sm font-bold mt-1 truncate">{loop.title}</h3>
+          </div>
+
+          <span className="text-[11px] font-bold text-stone-500 flex items-center gap-1 shrink-0">
+            <Users className="w-3.5 h-3.5" />
+            {loop.participants.length}/{loop.totalParticipants}
+          </span>
+        </div>
+
+        {loop.participants.length > 0 && (
+          <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/50 space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+              Kim kime ne veriyor?
+            </span>
+
+            {loop.participants.map((participant) => {
+              const receiver = loop.participants.find(
+                (item) => item.userId === participant.givesToUserId
+              );
+              const isMe = participant.userId === currentUser.id;
+
+              return (
+                <div
+                  key={participant.userId}
+                  className={`p-2.5 rounded-xl border flex items-center gap-2 ${
+                    isMe
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800'
+                      : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800'
+                  }`}
+                >
+                  <img
+                    src={participant.user.avatarUrl}
+                    alt={participant.user.fullName}
+                    className="w-7 h-7 rounded-full object-cover shrink-0 bg-stone-100"
+                    loading="lazy"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[11px] font-bold block truncate">
+                      {participant.user.fullName}
+                      {isMe && ' (Sen)'}
+                    </span>
+                    <span className="text-[10px] text-stone-500 dark:text-stone-400 block truncate">
+                      {participant.offeringListing.title}
+                    </span>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span className="text-[11px] font-semibold truncate max-w-[70px] text-right">
+                    {receiver?.user.fullName ?? '—'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-900 text-white flex items-center gap-2">
+          <Leaf className="w-4 h-4 text-emerald-300 shrink-0" />
+          <div className="min-w-0">
+            <span className="text-[10px] text-emerald-200 block">Döngünün toplam tasarrufu</span>
+            <span className="text-xs font-extrabold">
+              +{loop.totalImpact.co2eKg} kg CO₂e · +{loop.totalImpact.waterLiters} L su
+            </span>
+          </div>
+        </div>
+
+        {isMine ? (
+          <button
+            type="button"
+            disabled={busyLoopId === loop.id || me?.hasConfirmed || loop.status === 'completed'}
+            onClick={() => handleConfirmStep(loop)}
+            className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            {busyLoopId === loop.id ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            {me?.hasConfirmed ? 'Adımını onayladın' : 'Katılımımı ve eşyamı onayla'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setJoinTarget(loop)}
+            disabled={!myListings.length}
+            className="w-full py-3 bg-stone-900 dark:bg-stone-100 dark:text-stone-900 text-white rounded-2xl font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {myListings.length ? 'Bu döngüye katıl' : 'Katılmak için önce ilan ver'}
+          </button>
+        )}
+      </article>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
-      <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-4 space-y-4">
-        {/* Header */}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 rounded-xl bg-emerald-800 text-white">
-              <Repeat className="w-4 h-4" />
-            </span>
-            <h1 className="text-xl font-bold text-stone-900 tracking-tight">Swaloop Döngüleri</h1>
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
+      <div className="px-4 pt-3 space-y-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+            aria-label="Geri"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-base font-bold">Takas Döngüleri</h1>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Karşılıklı takas tutmadığında zincir kur
+            </p>
           </div>
-          <p className="text-xs text-stone-500">
-            Çoklu dairesel takaslar, gizemli kutular ve ataş meydan okuması
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 flex items-start gap-2.5">
+          <Info className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
+            <strong className="font-bold">Döngü nasıl çalışır?</strong> Sen A'ya, A B'ye, B sana
+            verir. Kimse tam eşleşme bulamasa bile herkes istediği eşyayı alır. Herkes onayladığında
+            teslimat adımı açılır.
           </p>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex items-center gap-1 p-1 bg-stone-200/60 rounded-2xl">
-          <button
-            type="button"
-            onClick={() => setActiveTab('loops')}
-            className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
-              activeTab === 'loops' ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Repeat className="w-3.5 h-3.5 shrink-0" />
-            <span>Döngüler</span>
-            <span className="hidden md:inline text-[10px] opacity-75">(3'lü Takas)</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsCreating((prev) => !prev)}
+          className="w-full py-3 rounded-2xl border-2 border-dashed border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+        >
+          {isCreating ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {isCreating ? 'Vazgeç' : 'Yeni döngü başlat'}
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('mystery')}
-            className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
-              activeTab === 'mystery' ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Gift className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            <span>Gizemli Kutu</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('paperclip')}
-            className={`flex-1 py-2 px-1 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
-              activeTab === 'paperclip' ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-            <span>Takas Yolculuğu</span>
-          </button>
-        </div>
-
-        {/* 1. Multi-Party Loops Tab */}
-        {activeTab === 'loops' && isLoadingLoops && (
-          <div className="py-16 text-center text-xs text-stone-500">Döngüler yükleniyor...</div>
-        )}
-
-        {activeTab === 'loops' && !isLoadingLoops && !selectedLoop && (
-          <div className="py-16 text-center text-xs text-stone-500">
-            Şu anda aktif bir döngü yok.
-          </div>
-        )}
-
-        {activeTab === 'loops' && !isLoadingLoops && selectedLoop && (
-          <div className="space-y-4">
-            {/* Active Loop Visualizer Card */}
-            <div className="bg-white rounded-3xl border border-stone-200/90 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-md">
-                    Aktif 3'lü Eşleşme
-                  </span>
-                  <h2 className="text-base font-bold text-stone-900 mt-1">{selectedLoop.title}</h2>
-                </div>
-                <span className="text-xs font-bold text-stone-500">
-                  {selectedLoop.participants.length} Katılımcı
-                </span>
-              </div>
-
-              {/* Circular Exchange Flow Diagram */}
-              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-stone-700 pb-2 border-b border-stone-200">
-                  <span>Dairesel Eşya Akışı</span>
-                  <span className="text-emerald-700">Kim Kime Ne Veriyor?</span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {selectedLoop.participants.map((p, idx) => {
-                    const isMe = p.userId === currentUser.id;
-                    const nextUser = selectedLoop.participants.find((u) => u.userId === p.givesToUserId);
-
-                    return (
-                      <div
-                        key={p.userId}
-                        className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
-                          isMe ? 'bg-emerald-50/70 border-emerald-300' : 'bg-white border-stone-200'
-                        }`}
-                      >
-                        {/* Giver */}
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <img
-                            src={p.user.avatarUrl}
-                            alt={p.user.fullName}
-                            className="w-8 h-8 rounded-full object-cover border border-stone-200 shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-stone-900 block truncate">
-                              {p.user.fullName} {isMe && '(Sen)'}
-                            </span>
-                            <span className="text-[10px] text-stone-500 truncate block">
-                              Verdiği: <strong className="text-stone-700">{p.offeringListing.title}</strong>
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-center px-1">
-                          <ArrowRight className="w-4 h-4 text-emerald-800" />
-                          <span className="text-[8px] font-bold text-emerald-800 uppercase">Devrediyor</span>
-                        </div>
-
-                        {/* Receiver */}
-                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end text-right">
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-stone-900 block truncate">
-                              {nextUser?.user.fullName}
-                            </span>
-                            <span className="text-[10px] text-stone-500 truncate block">
-                              Alacağı: <strong className="text-stone-700">{p.offeringListing.title}</strong>
-                            </span>
-                          </div>
-                          <img
-                            src={nextUser?.user.avatarUrl}
-                            alt={nextUser?.user.fullName}
-                            className="w-8 h-8 rounded-full object-cover border border-stone-200 shrink-0"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Loop Total Impact */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-900 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Leaf className="w-5 h-5 text-emerald-300" />
-                  <div>
-                    <span className="text-xs font-bold text-emerald-200 block">Döngünün Toplam SVS Tasarrufu</span>
-                    <span className="text-sm font-extrabold text-white">
-                      +{selectedLoop.totalImpact.co2eKg} kg CO₂e • +{selectedLoop.totalImpact.waterLiters} L Su
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Loop Action */}
-              <button
-                type="button"
-                disabled={isConfirming}
-                onClick={() => handleConfirmStep(selectedLoop.id)}
-                className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{isConfirming ? 'Onaylanıyor...' : 'Döngü Katılımımı ve Eşyamı Onayla'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 2. Mystery Swap Tab */}
-        {activeTab === 'mystery' && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-3xl bg-amber-50 border border-amber-200/80 text-amber-950 flex items-start gap-3">
-              <Gift className="w-6 h-6 text-amber-700 shrink-0 mt-0.5" />
-              <div className="text-xs">
-                <h3 className="font-bold mb-1 text-sm">Gizemli Kutu Takası Nasıl Çalışır?</h3>
-                <p className="leading-relaxed text-amber-900/90">
-                  Ürünün tam modeli gizlidir; yalnızca kategorisi, durum ipucu ve SVS çevresel değeri belirtilir. Sürpriz ve maceracı takasçılar için heyecan verici bir sıfır atık deneyimi!
-                </p>
-              </div>
+        {isCreating && (
+          <section className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200/90 dark:border-stone-800 p-4 space-y-3">
+            <div>
+              <label htmlFor="loop-title" className="block text-xs font-bold mb-1.5">
+                Döngü başlığı
+              </label>
+              <input
+                id="loop-title"
+                value={newLoopTitle}
+                maxLength={60}
+                onChange={(e) => setNewLoopTitle(e.target.value)}
+                placeholder="Örn: Elektronik 3'lü döngü"
+                className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm"
+              />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {MYSTERY_SWAP_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-3xl border border-stone-200/90 p-4 shadow-xs space-y-3"
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="loop-category" className="block text-xs font-bold mb-1.5">
+                  Kategori
+                </label>
+                <select
+                  id="loop-category"
+                  value={newLoopCategory}
+                  onChange={(e) => setNewLoopCategory(e.target.value as CategoryId)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 outline-hidden text-sm"
                 >
-                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-stone-900">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover blur-md scale-105 opacity-80"
-                    />
-                    <div className="absolute inset-0 bg-stone-950/40 flex flex-col items-center justify-center text-white">
-                      <Gift className="w-8 h-8 text-amber-400 mb-1 animate-bounce" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-amber-200">
-                        Gizemli Kutu
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-bold text-stone-900">{item.title}</h4>
-                    <p className="text-xs text-stone-600 italic mt-1 bg-stone-50 p-2 rounded-xl">
-                      "{item.hint}"
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
-                    <span className="text-emerald-700 font-bold">+{item.estimatedCo2e} kg CO₂e</span>
-                    <span>{item.location}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      showToast('Gizemli Takas Teklifi İletildi!', 'Kutunun sahibiyle eşleşme sağlandı.', 'success');
-                    }}
-                    className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-xs transition-colors cursor-pointer"
-                  >
-                    Kutuyu Takas Et
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 3. Takas Yolculuğum Tab */}
-        {activeTab === 'paperclip' && (
-          <div className="space-y-4">
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-950 via-stone-900 to-stone-950 text-white flex items-start justify-between gap-3 shadow-xs">
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold uppercase tracking-wider text-[10px]">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Kendi Eşyalarınla Değer Büyütme</span>
-                </div>
-                <h3 className="font-black text-sm text-white">Takas Yolculuğum (Basamak Yükseltme)</h3>
-                <p className="leading-relaxed text-stone-300 text-[11px]">
-                  Küçük bir eşya ile başlayıp takas adımlarıyla kademe kademe değer ve faydayı büyüt.
-                  Tüm aşamaları kendi ilanların ve hedeflerin üzerinden canlı yönetebilirsin.
-                </p>
+                  {CATEGORIES.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <button
-                type="button"
-                onClick={() => navigate('/takas-yolculugum')}
-                className="px-3.5 py-2 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shrink-0 flex items-center gap-1 transition-all shadow-xs cursor-pointer"
-              >
-                <span>Yolculuğa Git</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div>
+                <label htmlFor="loop-size" className="block text-xs font-bold mb-1.5">
+                  Kişi sayısı
+                </label>
+                <select
+                  id="loop-size"
+                  value={newLoopSize}
+                  onChange={(e) => setNewLoopSize(Number(e.target.value))}
+                  className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 outline-hidden text-sm"
+                >
+                  {[3, 4, 5].map((size) => (
+                    <option key={size} value={size}>
+                      {size} kişi
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="bg-white rounded-3xl border border-stone-200/90 p-5 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                  Örnek Takas Basamakları
-                </h3>
+            <div>
+              <label htmlFor="loop-listing" className="block text-xs font-bold mb-1.5">
+                Döngüye koyacağın ilan
+              </label>
+              {myListings.length ? (
+                <select
+                  id="loop-listing"
+                  value={selectedListingId}
+                  onChange={(e) => setSelectedListingId(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 outline-hidden text-sm"
+                >
+                  {myListings.map((listing) => (
+                    <option key={listing.id} value={listing.id}>
+                      {listing.title}
+                    </option>
+                  ))}
+                </select>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => navigate('/takas-yolculugum')}
-                  className="text-xs font-bold text-emerald-800 hover:text-emerald-900"
+                  onClick={() => navigate('/ilan-ver')}
+                  className="w-full py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-bold cursor-pointer"
                 >
-                  Kendi Eşyanı Ekle →
+                  Önce bir ilan ver
                 </button>
-              </div>
-
-              <div className="space-y-3">
-                {PAPERCLIP_STAGES.map((stage) => (
-                  <div
-                    key={stage.stageNumber}
-                    className={`p-3.5 rounded-2xl border flex items-center gap-3.5 ${
-                      stage.isCompleted
-                        ? 'bg-emerald-50/60 border-emerald-300'
-                        : stage.isCurrent
-                        ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/30'
-                        : 'bg-stone-50 border-stone-200 opacity-60'
-                    }`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                        stage.isCompleted
-                          ? 'bg-emerald-700 text-white'
-                          : stage.isCurrent
-                          ? 'bg-amber-500 text-white animate-pulse'
-                          : 'bg-stone-200 text-stone-500'
-                      }`}
-                    >
-                      {stage.stageNumber}
-                    </div>
-
-                    <img
-                      src={stage.image}
-                      alt={stage.itemTitle}
-                      className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0"
-                    />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold text-stone-900 truncate">{stage.itemTitle}</h4>
-                        {stage.isCurrent && (
-                          <span className="text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.2 rounded-full">
-                            Aktif Basamak
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-emerald-700 font-semibold block">
-                        +{stage.estimatedImpact} kg CO₂e Tasarrufu
-                      </span>
-                    </div>
-
-                    {stage.isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-                    ) : stage.isCurrent ? (
-                      <button
-                        type="button"
-                        onClick={() => navigate('/takas-yolculugum')}
-                        className="px-3 py-1.5 bg-emerald-800 text-white text-xs font-bold rounded-xl shrink-0 hover:bg-emerald-900 transition-colors"
-                      >
-                        Yükselt
-                      </button>
-                    ) : (
-                      <span className="text-[10px] text-stone-400 font-bold">Kilitli</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+              )}
             </div>
-          </div>
+
+            <button
+              type="button"
+              onClick={handleCreateLoop}
+              disabled={busyLoopId === 'new' || !myListings.length}
+              className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold text-xs transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {busyLoopId === 'new' ? 'Açılıyor...' : 'Döngüyü başlat'}
+            </button>
+          </section>
+        )}
+
+        {isLoading && <p className="text-center text-xs text-stone-400 py-8">Yükleniyor...</p>}
+
+        {!isLoading && (
+          <>
+            <section className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                Döngülerim ({myLoops.length})
+              </h2>
+
+              {myLoops.length === 0 ? (
+                <p className="text-xs text-stone-500 dark:text-stone-400 text-center py-6">
+                  Henüz bir döngüde değilsin.
+                </p>
+              ) : (
+                myLoops.map((loop) => renderLoopCard(loop, true))
+              )}
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                Katılabileceğin döngüler ({openLoops.length})
+              </h2>
+
+              {openLoops.length === 0 ? (
+                <p className="text-xs text-stone-500 dark:text-stone-400 text-center py-6">
+                  Şu anda açık döngü yok. İlk döngüyü sen başlatabilirsin.
+                </p>
+              ) : (
+                openLoops.map((loop) => renderLoopCard(loop, false))
+              )}
+            </section>
+          </>
         )}
       </div>
+
+      {/* Katılma onayı */}
+      {joinTarget && (
+        <div className="fixed inset-0 z-50 bg-stone-950/60 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl w-full max-w-md p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Repeat className="w-4 h-4 text-emerald-700" />
+                Döngüye katıl
+              </h3>
+              <button
+                type="button"
+                onClick={() => setJoinTarget(null)}
+                className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
+                aria-label="Kapat"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              <strong className="text-stone-900 dark:text-stone-100">{joinTarget.title}</strong>{' '}
+              döngüsüne hangi ilanınla katılıyorsun?
+            </p>
+
+            <select
+              value={selectedListingId}
+              onChange={(e) => setSelectedListingId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 outline-hidden text-sm"
+            >
+              {myListings.map((listing) => (
+                <option key={listing.id} value={listing.id}>
+                  {listing.title}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={handleJoinLoop}
+              disabled={busyLoopId === joinTarget.id}
+              className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold text-xs transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {busyLoopId === joinTarget.id ? 'Katılıyor...' : 'Döngüye katıl'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

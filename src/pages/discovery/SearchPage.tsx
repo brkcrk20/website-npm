@@ -24,21 +24,25 @@ export const SearchPage: React.FC = () => {
   const [results, setResults] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Arama her tuş vuruşunda sorgu atmasın diye kısa bir gecikmeyle
+  // çalışır; hızlı yazarken gereksiz onlarca istek gitmiyor.
   useEffect(() => {
     let isCancelled = false;
     setIsLoading(true);
 
-    listingService
-      .searchListings(query, selectedCategory, selectedCondition, maxDistance)
-      .then((data) => {
-        if (!isCancelled) {
+    const timer = setTimeout(() => {
+      listingService
+        .searchListings(query, selectedCategory, selectedCondition, maxDistance)
+        .then((data) => {
+          if (isCancelled) return;
           setResults(data);
           setIsLoading(false);
-        }
-      });
+        });
+    }, 250);
 
     return () => {
       isCancelled = true;
+      clearTimeout(timer);
     };
   }, [query, selectedCategory, selectedCondition, maxDistance]);
 
@@ -160,6 +164,7 @@ export const SearchPage: React.FC = () => {
                   { id: 'like_new', label: 'Sıfır Gibi' },
                   { id: 'very_good', label: 'Çok İyi' },
                   { id: 'good', label: 'İyi' },
+                  { id: 'acceptable', label: 'Makul' },
                 ].map((c) => (
                   <button
                     key={c.id}
@@ -180,9 +185,12 @@ export const SearchPage: React.FC = () => {
             {/* Distance Slider */}
             <div>
               <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-1">
-                <span>Maksimum Mesafe</span>
+                <span>Maksimum mesafe</span>
                 <span className="text-emerald-800">{maxDistance} km</span>
               </div>
+              <p className="text-[10px] text-stone-400 mb-1">
+                Mesafe yalnızca konumu bilinen ilanlar için uygulanır.
+              </p>
               <input
                 type="range"
                 min="1"

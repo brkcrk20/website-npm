@@ -27,7 +27,6 @@ export interface Category {
   name: string;
   iconName: string;
   color: string;
-  itemCount: number;
   avgCo2Savings: number; // in kg
   avgWaterSavings: number; // in Liters
 }
@@ -41,6 +40,8 @@ export interface UserProfile {
   district: string;
   memberSince: string;
   bio?: string;
+  /** "Takas Yolculuğum" ekranındaki nihai hedef. */
+  journeyTarget?: string;
   interests: CategoryId[];
   wantedCategories: CategoryId[];
   isVerified: boolean;
@@ -105,7 +106,8 @@ export interface Listing {
   location: {
     city: string;
     district: string;
-    distanceKm: number;
+    /** Kullanıcı konumu ve ilan konumu biliniyorsa hesaplanan mesafe (km). */
+    distanceKm?: number;
     safeMeetingPoint?: string;
     lat?: number;
     lng?: number;
@@ -243,12 +245,52 @@ export interface Loop {
   completedAt?: string;
 }
 
+/** Takas puanının nereden geldiğini gösteren tek bir kalem. */
+export interface PointsBreakdownItem {
+  key: string;
+  label: string;
+  description: string;
+  count: number;
+  points: number;
+}
+
+export interface UserLevel {
+  index: number;
+  title: string;
+  minPoints: number;
+  /** Bir sonraki seviyenin eşiği; en üst seviyede null. */
+  nextPoints: number | null;
+  perk: string;
+}
+
+export interface UserPoints {
+  total: number;
+  level: UserLevel;
+  /** Bir sonraki seviyeye ilerleme yüzdesi (0-100). */
+  progressPercent: number;
+  pointsToNextLevel: number;
+  breakdown: PointsBreakdownItem[];
+}
+
+/** Takas Yolculuğu'ndaki tek bir basamak. */
+export interface JourneyStep {
+  index: number;
+  title: string;
+  imageUrl?: string;
+  co2eKg: number;
+  /** Tamamlanmış bir takastan mı geldi, elindeki ürün mü, yoksa hedef mi? */
+  kind: 'completed' | 'current' | 'target';
+  partnerName?: string;
+  completedAt?: string;
+  listingId?: string;
+}
+
 export interface Badge {
   id: string;
   title: string;
   description: string;
   iconName: string;
-  category: 'trade' | 'eco' | 'community' | 'trust';
+  category: 'trade' | 'eco' | 'journey' | 'trust';
   isEarned: boolean;
   earnedDate?: string;
   progressPercent: number;
@@ -256,63 +298,9 @@ export interface Badge {
   currentProgress: number;
 }
 
-export interface PaperclipStage {
-  stageNumber: number;
-  itemTitle: string;
-  category: string;
-  image: string;
-  estimatedImpact: number; // kg co2e
-  dateCompleted?: string;
-  isCompleted: boolean;
-  isCurrent: boolean;
-}
 
-export interface MysterySwapItem {
-  id: string;
-  title: string;
-  category: CategoryId;
-  hint: string;
-  image: string;
-  estimatedCo2e: number;
-  ownerName: string;
-  ownerTrustScore: number;
-  location: string;
-}
 
-export interface CommunityPost {
-  id: string;
-  author: UserProfile;
-  title: string;
-  content: string;
-  images?: string[];
-  tradeStory?: {
-    itemGiven: string;
-    itemReceived: string;
-    co2Saved: number;
-  };
-  likesCount: number;
-  commentsCount: number;
-  isLiked?: boolean;
-  createdAt: string;
-  tags: string[];
-}
 
-export interface CommunityEvent {
-  id: string;
-  title: string;
-  description: string;
-  city: string;
-  district: string;
-  locationName: string;
-  addressDetails: string;
-  date: string;
-  time: string;
-  attendeesCount: number;
-  isAttending?: boolean;
-  organizer: string;
-  imageUrl: string;
-  category: 'swap_party' | 'eco_workshop' | 'repair_cafe' | 'meetup';
-}
 
 export interface NotificationItem {
   id: string;
@@ -324,59 +312,4 @@ export interface NotificationItem {
   isRead: boolean;
   createdAt: string;
   thumbnail?: string;
-}
-
-export interface Report {
-  id: string;
-  reporterId: string;
-  reporterName: string;
-  targetType: 'user' | 'listing' | 'trade' | 'message';
-  targetId: string;
-  targetTitle: string;
-  reason: 'fraud' | 'inappropriate' | 'no_response' | 'broken_item' | 'fake_account' | 'other';
-  description: string;
-  priority: 'low' | 'normal' | 'high' | 'critical';
-  status: 'pending' | 'investigating' | 'resolved' | 'dismissed';
-  evidenceImages?: string[];
-  createdAt: string;
-  resolutionNote?: string;
-}
-
-export interface Dispute {
-  id: string;
-  tradeId: string;
-  initiator: UserProfile;
-  respondent: UserProfile;
-  initiatorItem: Listing;
-  respondentItem: Listing;
-  reason: string;
-  status: 'open' | 'under_review' | 'resolved_return' | 'resolved_cancel' | 'dismissed';
-  evidencePhotos: string[];
-  adminDecision?: string;
-  createdAt: string;
-}
-
-export interface AdminKPI {
-  totalUsers: number;
-  activeUsers: number;
-  totalListings: number;
-  activeTrades: number;
-  completedTrades: number;
-  activeLoops: number;
-  totalSvsImpactCo2Kg: number;
-  totalWaterSavedL: number;
-  totalEnergyKwh: number;
-  pendingReports: number;
-  userGrowthPercent: number;
-  tradeGrowthPercent: number;
-}
-
-export interface AdminAuditLog {
-  id: string;
-  adminName: string;
-  action: string;
-  target: string;
-  timestamp: string;
-  ipAddress: string;
-  details: string;
 }
