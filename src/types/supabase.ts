@@ -305,6 +305,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           looking_for: string
+          looking_for_categories: string[]
           model: string | null
           owner_id: string
           slug: string
@@ -328,6 +329,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           looking_for?: string
+          looking_for_categories?: string[]
           model?: string | null
           owner_id: string
           slug?: string
@@ -351,6 +353,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           looking_for?: string
+          looking_for_categories?: string[]
           model?: string | null
           owner_id?: string
           slug?: string
@@ -513,6 +516,57 @@ export type Database = {
           },
         ]
       }
+      needs: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          fulfilled_at: string | null
+          id: string
+          note: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          note?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          note?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "needs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "needs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -560,12 +614,14 @@ export type Database = {
           first_name: string | null
           full_name: string | null
           id: string
+          interests: string[]
           is_admin: boolean
           last_name: string | null
           phone: string
           sms_verification_enabled: boolean
           updated_at: string
           username: string | null
+          wanted_categories: string[]
         }
         Insert: {
           avatar_url?: string | null
@@ -577,12 +633,14 @@ export type Database = {
           first_name?: string | null
           full_name?: string | null
           id: string
+          interests?: string[]
           is_admin?: boolean
           last_name?: string | null
           phone: string
           sms_verification_enabled?: boolean
           updated_at?: string
           username?: string | null
+          wanted_categories?: string[]
         }
         Update: {
           avatar_url?: string | null
@@ -594,12 +652,14 @@ export type Database = {
           first_name?: string | null
           full_name?: string | null
           id?: string
+          interests?: string[]
           is_admin?: boolean
           last_name?: string | null
           phone?: string
           sms_verification_enabled?: boolean
           updated_at?: string
           username?: string | null
+          wanted_categories?: string[]
         }
         Relationships: []
       }
@@ -930,6 +990,7 @@ export type Database = {
           delivery_method: string | null
           delivery_notes: string | null
           delivery_scheduled_at: string | null
+          expires_at: string
           id: string
           message: string | null
           parent_offer_id: string | null
@@ -944,6 +1005,7 @@ export type Database = {
           delivery_method?: string | null
           delivery_notes?: string | null
           delivery_scheduled_at?: string | null
+          expires_at?: string
           id?: string
           message?: string | null
           parent_offer_id?: string | null
@@ -958,6 +1020,7 @@ export type Database = {
           delivery_method?: string | null
           delivery_notes?: string | null
           delivery_scheduled_at?: string | null
+          expires_at?: string
           id?: string
           message?: string | null
           parent_offer_id?: string | null

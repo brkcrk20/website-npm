@@ -27,6 +27,11 @@ import type { TablesInsert, TablesUpdate } from '../types/supabase';
 //      yerde yanlış yazılması (typo) derleme zamanında yakalanır.
 // ─────────────────────────────────────────────────────────────────────────
 
+// Bir teklifin yanıtsız kalabileceği süre. DB tarafındaki karşılığı
+// `trade_offers.expires_at` kolonunun varsayılanıdır (48 saat) — ikisi
+// birlikte değişmeli (bkz. migration 20260820000000, rapor md. 32).
+export const OFFER_LIFETIME_HOURS = 48;
+
 // Tek doğruluk kaynağı: DB CHECK constraint'i ile birebir eşleşmeli.
 export const TRADE_ITEM_ROLE = {
   OFFERED: 'offered',
@@ -46,6 +51,7 @@ type TradeOfferRow = {
   delivery_scheduled_at: string | null;
   delivery_location_name: string | null;
   delivery_notes: string | null;
+  expires_at?: string | null;
   created_at: string;
   updated_at: string;
   sender?: any;
@@ -268,12 +274,16 @@ async function hydrateOffer(
     deliveryDetails: buildDeliveryDetails(tradeRow, offerRow),
     status,
     createdAt: offerRow.created_at,
-    // DB'de `trade_offers` için bir expires_at kolonu yok; UI'da gösterim
-    // amaçlı, oluşturulma + 2 gün olarak hesaplanıyor (gerçek bir DB alanı
-    // değil, gelecekte migration ile eklenebilir).
-    expiresAt: new Date(
-      new Date(offerRow.created_at).getTime() + 2 * 24 * 60 * 60 * 1000
-    ).toISOString(),
+    // Teklif ömrü artık gerçek bir DB alanı (rapor md. 32):
+    // `trade_offers.expires_at`, varsayılan oluşturulma + 48 saat. Süresi
+    // geçen bekleyen teklifleri `expire_stale_trade_offers()` kapatır
+    // (bkz. migration 20260820000000). Kolon migration uygulanmadan önce
+    // oluşmuş satırlarda boş olabilir, o yüzden eski hesap yedek kalıyor.
+    expiresAt:
+      offerRow.expires_at ??
+      new Date(
+        new Date(offerRow.created_at).getTime() + OFFER_LIFETIME_HOURS * 60 * 60 * 1000
+      ).toISOString(),
     updatedAt: offerRow.updated_at,
     counterOfferFromId: offerRow.parent_offer_id ?? undefined,
     timeline,

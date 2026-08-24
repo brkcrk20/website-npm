@@ -18,6 +18,9 @@ import { SearchPage } from './pages/discovery/SearchPage';
 import { NearbyMapPage } from './pages/discovery/NearbyMapPage';
 import { FavoritesPage } from './pages/discovery/FavoritesPage';
 
+// Needs Pages (İhtiyaç sistemi — bkz. swaloop-urun-sistem-tasarimi.md)
+import { NeedsPage } from './pages/needs/NeedsPage';
+
 // Listings Pages
 import { ProductDetailPage } from './pages/listings/ProductDetailPage';
 import { CreateListingPage } from './pages/listings/CreateListingPage';
@@ -79,6 +82,10 @@ export default function App() {
                 <Route path="/arama" element={<SearchPage />} />
                 <Route path="/harita" element={<NearbyMapPage />} />
                 <Route path="/favoriler" element={<FavoritesPage />} />
+
+                {/* Needs — "Aradıklarım" */}
+                <Route path="/aradiklarim" element={<NeedsPage />} />
+                <Route path="/ihtiyaclarim" element={<NeedsPage />} />
 
                 {/* Listings */}
                 <Route path="/ilan/:id" element={<ProductDetailPage />} />

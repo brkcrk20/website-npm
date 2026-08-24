@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { listingService } from '../../services/listingService';
+import { needService } from '../../services/needService';
 import { messageService } from '../../services/messageService';
 import { ImpactCard } from '../../components/common/ImpactCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { Listing } from '../../types';
+import { CATEGORIES } from '../../constants';
 import {
   ArrowLeft,
   Heart,
@@ -19,6 +21,7 @@ import {
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
+  Search,
   X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -34,6 +37,9 @@ export const ProductDetailPage: React.FC = () => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  // "Bu ürünü arayanlar" (rapor md. 77): bu ilanın karşılayabileceği açık
+  // ihtiyaç sayısı. Parasal hiçbir bilgi içermez, sadece talebi gösterir.
+  const [seekerCount, setSeekerCount] = useState(0);
 
   // Kaydırma (swipe) jesti için dokunuş koordinatlarını tutar
   const touchStartX = useRef<number | null>(null);
@@ -45,6 +51,14 @@ export const ProductDetailPage: React.FC = () => {
     listingService.getListingById(id || '').then((data) => {
       setListing(data);
       setIsLoading(false);
+
+      if (data) {
+        needService
+          .getSeekersForListing(data)
+          .then((seekers) => setSeekerCount(seekers.length));
+      } else {
+        setSeekerCount(0);
+      }
     });
   }, [id]);
 
@@ -281,8 +295,34 @@ export const ProductDetailPage: React.FC = () => {
                 Takasta Aranan Ürün / Kategori
               </span>
               <p className="text-xs font-semibold mt-0.5">{listing.lookingFor}</p>
+              {listing.lookingForCategories.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {listing.lookingForCategories.map((catId) => (
+                    <span
+                      key={catId}
+                      className="px-2 py-0.5 rounded-full bg-white/70 border border-emerald-200 text-[10px] font-bold text-emerald-800"
+                    >
+                      {CATEGORIES.find((c) => c.id === catId)?.name ?? catId}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Bu ürünü arayanlar — rapor md. 77 */}
+          {seekerCount > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate('/aradiklarim')}
+              className="w-full p-3 rounded-2xl bg-white border border-stone-200 text-left flex items-center gap-2.5 hover:bg-stone-50 transition-colors cursor-pointer"
+            >
+              <Search className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span className="text-xs font-semibold text-stone-800">
+                Bu ürünü arayan {seekerCount} kişi var.
+              </span>
+            </button>
+          )}
 
           {/* Description */}
           <div>

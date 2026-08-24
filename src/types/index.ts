@@ -121,7 +121,10 @@ export interface Listing {
     lat?: number;
     lng?: number;
   };
-  lookingFor: string; // What the user wants in exchange
+  lookingFor: string; // Serbest metin: "karşılığında ne arıyorum" (insan okuması için)
+  // Yapılandırılmış karşılığı: eşleştirme motorunun okuduğu kategori listesi.
+  // lookingFor'un YERİNE geçmez, onu tamamlar (bkz. rapor md. 20).
+  lookingForCategories: CategoryId[];
   deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
   estimatedImpact: EnvironmentalImpact;
   status: 'active' | 'in_trade' | 'traded' | 'paused' | 'removed';
@@ -132,6 +135,36 @@ export interface Listing {
   interestedUsersCount?: number;
   isFavorite?: boolean;
   tags: string[];
+}
+
+// ─── İHTİYAÇ ("Need") ────────────────────────────────────────────────────
+// Swaloop'un temel birimi sadece "elimde ne var" (Listing) değil, "neye
+// ihtiyacım var" (Need) da olmalı — ilanı olmayan bir kullanıcı da bir şey
+// arayabilmeli (bkz. rapor md. 78-82). Bu yüzden Need, Listing'ten AYRI bir
+// nesnedir; DB karşılığı `public.needs` tablosudur.
+export type NeedStatus = 'active' | 'paused' | 'fulfilled';
+
+export interface Need {
+  id: string;
+  userId: string;
+  title: string;
+  categoryId?: CategoryId;
+  note?: string;
+  status: NeedStatus;
+  createdAt: string;
+  updatedAt: string;
+  fulfilledAt?: string;
+}
+
+// Bir ihtiyacın, açık bir ilanla ne kadar örtüştüğü. DİKKAT: bu bir DEĞER
+// karşılaştırması değildir (rapor md. 47) — "bu ürün şu kadar eder" demez,
+// sadece "bu iki tarafın aradığı şeyler birbirini karşılıyor mu" der.
+export interface NeedMatch {
+  need: Need;
+  listing: Listing;
+  // 0-100 arası uyum yüzdesi ve nedenleri (kullanıcıya açıklanabilir olmalı).
+  score: number;
+  reasons: string[];
 }
 
 export type TradeStatus =

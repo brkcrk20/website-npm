@@ -208,6 +208,12 @@ function mapListing(row: any): Listing {
 
     lookingFor: row.looking_for ?? '',
 
+    // Yapılandırılmış "arıyorum": eşleştirme motorunun okuduğu kategori
+    // listesi (bkz. migration 20260820000000, rapor md. 20).
+    lookingForCategories: Array.isArray(row.looking_for_categories)
+      ? (row.looking_for_categories as CategoryId[])
+      : [],
+
     deliveryOptions:
       Array.isArray(row.delivery_options)
         ? row.delivery_options
@@ -369,6 +375,7 @@ export const listingService = {
     images: string[];
     location: Listing['location'];
     lookingFor: string;
+    lookingForCategories?: CategoryId[];
     deliveryOptions: (
       | 'in_person'
       | 'cargo'
@@ -402,6 +409,7 @@ export const listingService = {
         latitude: data.location.lat ?? null,
         longitude: data.location.lng ?? null,
         looking_for: data.lookingFor,
+        looking_for_categories: data.lookingForCategories ?? [],
         delivery_options: data.deliveryOptions,
         tags: data.tags ?? [],
         status: 'active',
@@ -459,6 +467,7 @@ export const listingService = {
       location: data.location,
 
       lookingFor: data.lookingFor,
+      lookingForCategories: data.lookingForCategories ?? [],
 
       deliveryOptions: data.deliveryOptions,
 
@@ -526,6 +535,10 @@ export const listingService = {
 
     if (updates.lookingFor !== undefined) {
       updateData.looking_for = updates.lookingFor;
+    }
+
+    if (updates.lookingForCategories !== undefined) {
+      updateData.looking_for_categories = updates.lookingForCategories;
     }
 
     if (updates.deliveryOptions !== undefined) {

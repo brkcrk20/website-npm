@@ -3,7 +3,56 @@
 Bu dosya proje.zip'in içinde tutulur; yeni bir oturumda bu dosya + güncel
 proje.zip ile devam edilir.
 
-## Bu turda yapılanlar
+## Bu turda yapılanlar (ürün/sistem tasarım raporu turu)
+
+152 maddelik ürün/sistem tasarım raporu koda uygulanmaya başlandı. Raporun
+madde madde kod karşılığı, faz planı ve açık maddeler artık ayrı bir dosyada:
+**`swaloop-urun-sistem-tasarimi.md`** — yeni bir oturumda önce o dosyayı
+okuyun.
+
+Özet:
+
+1. **İHTİYAÇ sistemi eklendi (raporun ana teşhisi, md. 78-82/151).** Yeni
+   `public.needs` tablosu + RLS + spam kısıtları, `src/services/needService.ts`,
+   `/aradiklarim` ekranı, profilde "Aradıklarım (n)" girişi, arama ekranında
+   "Verenler / Arayanlar" sekmeleri (md. 76), ilan detayında "Bu ürünü arayan
+   N kişi var" (md. 77). İlanlara `looking_for_categories`, profillere
+   `interests` / `wanted_categories` kolonları geldi — bu son ikisi frontend
+   tipinde vardı ama hiçbir yere yazılmıyordu, kayıt formundaki seçimler
+   sessizce kayboluyordu.
+
+2. **Güvenlik düzeltmesi: ilan kilitleme kapsamı (md. 30).**
+   `lock_listings_on_trade_start()` takas başlayınca kullanıcının TÜM aktif
+   ilanlarını kilitliyordu; artık sadece o teklifin ilanlarını kilitliyor.
+   Ayrıca kilidi çözen trigger hiç yoktu (iptal edilen takasın ilanları
+   sonsuza kadar `in_trade` kalıyordu) — `release_listings_on_trade_end()`
+   eklendi. Regresyon testi:
+   `src/services/__tests__/tradeLocking.contract.test.ts`.
+
+3. **Teklif ömrü gerçek alana bağlandı (md. 32).** `trade_offers.expires_at`
+   (varsayılan +48 saat) + `expire_stale_trade_offers()`. Önceden frontend'de
+   "created_at + 2 gün" olarak uyduruluyordu.
+
+4. **Parasal dil temizliği (md. 3/125).** `PaperclipPage`'teki "₺350 Değer"
+   gibi etiketler ve ilan formundaki "benzer değerde" ipucu kaldırıldı.
+
+5. **Test suite'i onarıldı.** `vite.config.ts` → `test.env` yer tutucuları ve
+   `proje/**` hariç tutması. Önce 4 dosya çöküyordu; şimdi 26 test geçiyor.
+
+Migration bu ortamda kurulan geçici bir PostgreSQL 16 üzerinde gerçekten
+çalıştırılıp davranışı denendi (ayrıntı: tasarım dokümanı §4.2). Doğrulama
+sırasında ayrıca şu çıktı: `20260818120000_add_listing_fields.sql`,
+`20260818135000_add_listing_fields.sql` ile birebir aynı ve `listings`
+tablosu oluşmadan önce çalıştığı için **sıfırdan kurulumda (`supabase db
+reset`) hata veriyor** — canlıda sorun çıkarmıyor, ama yeni ortam
+kurulamıyor. Bu dosyanın silinmesi/guard'lanması ayrı bir iş.
+
+**Migration'ı kendi ortamınızda `supabase db push` ile uygulayın**
+(`20260820000000_needs_system_and_trade_locking.sql`). Dosyanın sonunda,
+eski hatalı kilitleme yüzünden `in_trade` kalmış ilanları bulan bir backfill
+sorgusu var — otomatik çalışmaz, önce sonucunu inceleyin.
+
+## Önceki turda yapılanlar
 
 1. **Header'daki demo konum isimleri kaldırıldı.** `LocationPicker.tsx`'teki
    sabit "Kadıköy/Beşiktaş/Çankaya/Konak" hızlı-seçim listesi kaldırıldı,
@@ -50,7 +99,7 @@ proje.zip ile devam edilir.
    - `PublicProfilePage.tsx`: kullanıcı kartına küçük rozet önizlemesi
      eklendi (kazanılan rozetler, emoji + tooltip).
 
-## Bu turda ek olarak yapılan
+## Önceki turda ek olarak yapılan
 
 - **`PublicProfilePage.tsx` artık gerçek Supabase profiline bağlı.**
   `authService.ts`'e yeni `getPublicProfile(userId)` fonksiyonu eklendi
@@ -68,6 +117,11 @@ proje.zip ile devam edilir.
 
 ## Açık / bilinen sorunlar (bir sonraki adaylar)
 
+- Ürün tarafındaki öncelik sırası artık `swaloop-urun-sistem-tasarimi.md`
+  §6'da: (1) karşı teklif UI'ı, (2) gerçek bildirim sistemi + "Aradığın
+  bulundu", (3) takas iptal nedeni, (4) mesajlaşmada takas bağlam kartı,
+  (5) ana ekranda "sana uygun" sıralaması.
+
 - **Eko rozetler (Çevre Dostu / Su Koruyucusu / Sıfır Atık Şampiyonu) her
   zaman kilitli kalacak** çünkü `stats.totalCo2Prevented` /
   `totalWaterSaved` / `totalRawMaterialsSaved` hâlâ `authService.ts`'de sabit
@@ -81,8 +135,9 @@ proje.zip ile devam edilir.
 
 ## Ortam notları (değişmedi)
 - React + Vite + TypeScript frontend, Supabase (Postgres/Auth/Storage) backend.
-- Bu ortamdan gerçek Supabase'e/npm registry'ye ağ erişimi yok — kullanıcı
-  kendi ortamında test ediyor (`npm install`, `tsc`, `vite build`,
-  `supabase db push`) ve Supabase Studio'dan istenen verileri paylaşabiliyor.
+- Bu ortamda `npm install`, `tsc --noEmit`, `vite build` ve `vitest`
+  çalıştırılabiliyor (bu turda hepsi çalıştırıldı ve temiz). Gerçek
+  Supabase'e erişim YOK — migration'lar ve RLS davranışı hâlâ kullanıcının
+  kendi ortamında (`supabase db push` + Supabase Studio) doğrulanmalı.
 - Günlük mesaj limitine takılmamak için turlar makul kapsamlı, tamamlanabilir
   parçalar halinde yürütülüyor.

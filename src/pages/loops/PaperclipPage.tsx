@@ -56,7 +56,7 @@ export const PaperclipPage: React.FC = () => {
       image:
         'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=400&q=80',
       svsValue: '0.8 kg CO₂e',
-      approxValue: '₺350 Değer',
+      stageLabel: 'Başlangıç eşyası',
       completed: true,
       tradeDate: '12 Nisan 2024',
       partner: 'Selin Y.',
@@ -69,11 +69,11 @@ export const PaperclipPage: React.FC = () => {
       image:
         'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80',
       svsValue: '2.4 kg CO₂e',
-      approxValue: '₺850 Değer',
+      stageLabel: 'İlk yükseltme',
       completed: true,
       tradeDate: '28 Nisan 2024',
       partner: 'Emre K.',
-      notes: 'Değer ve kullanım alanı 2.4 katına çıkarıldı.',
+      notes: 'Kullanım alanı genişledi, tahmini çevresel etki 2.4 katına çıktı.',
     },
     {
       level: 3,
@@ -83,7 +83,7 @@ export const PaperclipPage: React.FC = () => {
         userListings[0]?.images[0] ||
         'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=400&q=80',
       svsValue: `${userListings[0]?.estimatedImpact?.co2eKg || 5.8} kg CO₂e`,
-      approxValue: '₺1.850 Değer',
+      stageLabel: 'Şu anki eşyan',
       completed: false,
       isCurrent: true,
       partner: 'Şu Anki Eşyan',
@@ -96,7 +96,7 @@ export const PaperclipPage: React.FC = () => {
       image:
         'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
       svsValue: '7.5 kg CO₂e',
-      approxValue: '₺3.400 Değer',
+      stageLabel: 'Sonraki hedef',
       completed: false,
       isCurrent: false,
       notes: 'Bir sonraki hedeflenen yükseltme takası.',
@@ -108,7 +108,7 @@ export const PaperclipPage: React.FC = () => {
       image:
         'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=400&q=80',
       svsValue: '18.4 kg CO₂e',
-      approxValue: '₺7.500+ Değer',
+      stageLabel: 'Nihai hedef',
       completed: false,
       isCurrent: false,
       notes: 'Ulaşmak istediğin nihai takas hedefi.',
@@ -262,7 +262,7 @@ export const PaperclipPage: React.FC = () => {
                       Sev. {stage.level}
                     </span>
                     <span className="text-[9px] text-stone-500 truncate max-w-[70px]">
-                      {stage.approxValue.split(' ')[0]}
+                      {stage.stageLabel}
                     </span>
                   </div>
 
@@ -315,11 +315,11 @@ export const PaperclipPage: React.FC = () => {
                 <span className="font-bold text-stone-900">{currentHeldStage.category}</span>
               </div>
               <div className="flex items-center justify-between text-stone-600">
-                <span>Yaklaşık Değer:</span>
-                <span className="font-extrabold text-emerald-800">{currentHeldStage.approxValue}</span>
+                <span>Basamak:</span>
+                <span className="font-extrabold text-emerald-800">{currentHeldStage.stageLabel}</span>
               </div>
               <div className="flex items-center justify-between text-stone-600">
-                <span>SVS Çevresel Değer:</span>
+                <span>Tahmini çevresel etki:</span>
                 <span className="font-bold text-teal-700">{currentHeldStage.svsValue}</span>
               </div>
               {currentHeldStage.partner && (

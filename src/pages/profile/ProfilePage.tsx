@@ -9,6 +9,7 @@ import { ImpactCard } from '../../components/common/ImpactCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
 import { getUserBadges } from '../../constants/badges';
+import { needService } from '../../services/needService';
 import {
   ShieldCheck,
   Award,
@@ -31,6 +32,7 @@ import {
   Globe,
   Check,
   LogOut,
+  Search,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
@@ -51,12 +53,17 @@ export const ProfilePage: React.FC = () => {
 
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myReviews, setMyReviews] = useState<Review[]>([]);
+  // Rapor md. 82: "Aradıklarım" profilin görünür bir parçası olmalı.
+  const [activeNeedCount, setActiveNeedCount] = useState(0);
 
   const BADGES_LIST = React.useMemo(() => getUserBadges(currentUser), [currentUser]);
 
   useEffect(() => {
     listingService.getUserListings(currentUser.id).then(setMyListings);
     tradeService.getReviewsForUser(currentUser.id).then(setMyReviews);
+    needService
+      .getUserNeeds(currentUser.id)
+      .then((needs) => setActiveNeedCount(needs.filter((n) => n.status === 'active').length));
   }, [currentUser.id]);
 
   const handleShareProfile = () => {
@@ -484,6 +491,20 @@ export const ProfilePage: React.FC = () => {
 
         {/* Bottom utility links */}
         <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden shadow-xs">
+          <button
+            type="button"
+            onClick={() => navigate('/aradiklarim')}
+            className="w-full p-3.5 flex items-center justify-between hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors text-xs font-semibold text-stone-800 dark:text-stone-200 cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <Search className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+              <span>
+                {language === 'en' ? 'What I’m Looking For' : 'Aradıklarım'} ({activeNeedCount})
+              </span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-stone-400" />
+          </button>
+
           <button
             type="button"
             onClick={() => navigate('/rozetlerim')}

@@ -217,6 +217,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       lng: 29.0254,
     },
     lookingFor: 'Şehir bisikleti (Bianchi/Carraro vb.), Apple Watch veya kaliteli yürüyüş/kamp ekipmanı ile takas düşünüyorum.',
+    lookingForCategories: ['sports', 'electronics'],
     deliveryOptions: ['in_person', 'safe_point', 'cargo'],
     estimatedImpact: {
       co2eKg: 8.6,
@@ -266,6 +267,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       lng: 29.028,
     },
     lookingFor: 'DSLR veya aynasız fotoğraf makinesi gövdesi veya tablet arıyorum.',
+    lookingForCategories: ['photography', 'electronics'],
     deliveryOptions: ['in_person', 'safe_point'],
     estimatedImpact: {
       co2eKg: 14.2,
@@ -315,6 +317,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       lng: 29.023,
     },
     lookingFor: 'iPad Pro 11 inç (M1/M2) ve Magic Keyboard ile birebir takas.',
+    lookingForCategories: ['electronics'],
     deliveryOptions: ['in_person', 'safe_point', 'cargo'],
     estimatedImpact: {
       co2eKg: 24.5,
@@ -362,6 +365,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       safeMeetingPoint: 'Kadıköy İskelesi Güvenli Takas Alanı',
     },
     lookingFor: 'MacBook Air veya hafif ultrabook ile takas.',
+    lookingForCategories: ['electronics'],
     deliveryOptions: ['in_person', 'safe_point'],
     estimatedImpact: {
       co2eKg: 16.8,
@@ -408,6 +412,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       safeMeetingPoint: 'Beşiktaş Meydan Takas Noktası',
     },
     lookingFor: 'Pikap / Plak çalar veya elektro akustik gitar takası arıyorum.',
+    lookingForCategories: ['music'],
     deliveryOptions: ['in_person', 'cargo', 'safe_point'],
     estimatedImpact: {
       co2eKg: 6.2,
@@ -453,6 +458,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       distanceKm: 1.8,
     },
     lookingFor: 'Trekking sırt çantası (60L+) veya mat/uyku tulumu seti ile takas.',
+    lookingForCategories: ['sports'],
     deliveryOptions: ['in_person', 'cargo'],
     estimatedImpact: {
       co2eKg: 9.4,
@@ -498,6 +504,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       distanceKm: 3.4,
     },
     lookingFor: 'Retro oyun konsolu (Nintendo Switch / Game Boy vb.) veya masa oyunu koleksiyonu takası.',
+    lookingForCategories: ['hobby', 'collectibles'],
     deliveryOptions: ['in_person', 'safe_point', 'cargo'],
     estimatedImpact: {
       co2eKg: 7.8,
