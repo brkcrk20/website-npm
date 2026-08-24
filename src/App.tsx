@@ -49,6 +49,9 @@ const EditProfilePage = lazy(() => import('./pages/profile/EditProfilePage').the
 const PublicProfilePage = lazy(() => import('./pages/profile/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
 const ImpactBreakdownPage = lazy(() => import('./pages/profile/ImpactBreakdownPage').then((m) => ({ default: m.ImpactBreakdownPage })));
 const BadgesPage = lazy(() => import('./pages/profile/BadgesPage').then((m) => ({ default: m.BadgesPage })));
+const TrustScorePage = lazy(() => import('./pages/profile/TrustScorePage').then((m) => ({ default: m.TrustScorePage })));
+const SettingsPage = lazy(() => import('./pages/profile/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const MyListingsPage = lazy(() => import('./pages/listings/MyListingsPage').then((m) => ({ default: m.MyListingsPage })));
 
 // Loops & Community Pages
 const LoopsPage = lazy(() => import('./pages/loops/LoopsPage').then((m) => ({ default: m.LoopsPage })));
@@ -146,6 +149,9 @@ export default function App() {
                 <Route path="/profil/:id" element={<PublicProfilePage />} />
                 <Route path="/etkim" element={<RequireAuth><ImpactBreakdownPage /></RequireAuth>} />
                 <Route path="/rozetlerim" element={<RequireAuth><BadgesPage /></RequireAuth>} />
+                <Route path="/guven-puani" element={<RequireAuth><TrustScorePage /></RequireAuth>} />
+                <Route path="/ayarlar" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+                <Route path="/ilanlarim" element={<RequireAuth><MyListingsPage /></RequireAuth>} />
 
                 {/* Loops & Community */}
                 <Route path="/donguler" element={<LoopsPage />} />
