@@ -29,6 +29,7 @@ import { CreateListingPage } from './pages/listings/CreateListingPage';
 import { TradeOffersPage } from './pages/trades/TradeOffersPage';
 import { TradeRequestsPage } from './pages/trades/TradeRequestsPage';
 import { MakeOfferPage } from './pages/trades/MakeOfferPage';
+import { CounterOfferPage } from './pages/trades/CounterOfferPage';
 import { TradeDetailPage } from './pages/trades/TradeDetailPage';
 import { DisputePage } from './pages/trades/DisputePage';
 import { SwipeMatchPage } from './pages/matching/SwipeMatchPage';
@@ -101,6 +102,7 @@ export default function App() {
                 <Route path="/swipe" element={<SwipeMatchPage />} />
                 <Route path="/teklif-ver" element={<MakeOfferPage />} />
                 <Route path="/teklif/:id" element={<TradeDetailPage />} />
+                <Route path="/karsi-teklif/:id" element={<CounterOfferPage />} />
                 <Route path="/takas-sureci" element={<TradeProcessPage />} />
                 <Route path="/takas-sureci/:id" element={<TradeProcessPage />} />
                 <Route path="/takas-tamamlandi" element={<TradeSuccessPage />} />

@@ -1,11 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { ArrowLeft, Bell, Repeat, Sparkles, ShieldCheck, Check } from 'lucide-react';
+import { ArrowLeft, Bell, Repeat, Sparkles, ShieldCheck, Check, Search, MessageSquare, Star, ArrowLeftRight } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { notifications, markNotificationAsRead } = useApp();
+  const { notifications, markNotificationAsRead, markAllNotificationsAsRead, unreadNotificationCount } =
+    useApp();
 
   const handleNotificationClick = (n: (typeof notifications)[0]) => {
     markNotificationAsRead(n.id);
@@ -14,13 +15,23 @@ export const NotificationsPage: React.FC = () => {
     }
   };
 
+  // İkonlar DB'deki `notifications.type` değerleriyle eşleşir
+  // (bkz. migration 20260820100000).
   const getIcon = (type: string) => {
     switch (type) {
       case 'trade_offer':
         return <Repeat className="w-4 h-4 text-emerald-700" />;
-      case 'trade_update':
+      case 'counter_offer':
+        return <ArrowLeftRight className="w-4 h-4 text-emerald-700" />;
+      case 'trade_status':
         return <Sparkles className="w-4 h-4 text-amber-600" />;
-      case 'badge_earned':
+      case 'need_matched':
+        return <Search className="w-4 h-4 text-emerald-700" />;
+      case 'message':
+        return <MessageSquare className="w-4 h-4 text-sky-600" />;
+      case 'review_request':
+        return <Star className="w-4 h-4 text-amber-500" />;
+      case 'badge':
         return <ShieldCheck className="w-4 h-4 text-purple-600" />;
       default:
         return <Bell className="w-4 h-4 text-sky-600" />;
@@ -41,10 +52,48 @@ export const NotificationsPage: React.FC = () => {
             </button>
             <div>
               <h1 className="text-lg font-bold text-stone-900 font-display">Bildirimler</h1>
-              <p className="text-xs text-stone-500">Takas teklifleri ve güncellemeler</p>
+              <p className="text-xs text-stone-500">
+                {unreadNotificationCount > 0
+                  ? `${unreadNotificationCount} okunmamış bildirim`
+                  : 'Takas teklifleri ve güncellemeler'}
+              </p>
             </div>
           </div>
+
+          {unreadNotificationCount > 0 && (
+            <button
+              type="button"
+              onClick={() => markAllNotificationsAsRead()}
+              className="px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-700 text-xs font-bold hover:bg-stone-100 transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Check className="w-3.5 h-3.5" />
+              Tümünü okundu işaretle
+            </button>
+          )}
         </div>
+
+        {/* Boş durum kullanıcıya yol göstermeli (rapor md. 89-90) */}
+        {notifications.length === 0 && (
+          <div className="bg-white rounded-3xl p-10 border border-stone-200 text-center space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto">
+              <Bell className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-stone-900">Henüz bildirimin yok</h3>
+              <p className="text-xs text-stone-500 max-w-xs mx-auto mt-1">
+                Aradığın şeyleri listene eklersen, uyan bir ilan yayınlandığında ilk sen
+                haberdar olursun.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/aradiklarim')}
+              className="px-5 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+            >
+              Aradıklarımı Ekle
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2">
           {notifications.map((n) => (

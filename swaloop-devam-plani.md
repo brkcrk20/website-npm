@@ -36,19 +36,48 @@ okuyun.
 4. **Parasal dil temizliği (md. 3/125).** `PaperclipPage`'teki "₺350 Değer"
    gibi etiketler ve ilan formundaki "benzer değerde" ipucu kaldırıldı.
 
-5. **Test suite'i onarıldı.** `vite.config.ts` → `test.env` yer tutucuları ve
-   `proje/**` hariç tutması. Önce 4 dosya çöküyordu; şimdi 26 test geçiyor.
+5. **Karşı teklif ekranı geldi (md. 26).** `createCounterOffer` servisi
+   vardı ama hiçbir ekran çağırmıyordu. Yeni `/karsi-teklif/:id`
+   (`CounterOfferPage.tsx`): "vereceklerin" = kendi ilanların,
+   "istediklerin" = karşı tarafın ilanları, varsayılan olarak ilk teklifin
+   iki tarafı seçili. Yan bulgu: `TradeCard`'daki hızlı Kabul/Reddet
+   butonları yanlış statü koşuluna bağlıydı ve pratikte hiç görünmüyordu —
+   düzeltildi.
 
-Migration bu ortamda kurulan geçici bir PostgreSQL 16 üzerinde gerçekten
-çalıştırılıp davranışı denendi (ayrıntı: tasarım dokümanı §4.2). Doğrulama
-sırasında ayrıca şu çıktı: `20260818120000_add_listing_fields.sql`,
-`20260818135000_add_listing_fields.sql` ile birebir aynı ve `listings`
-tablosu oluşmadan önce çalıştığı için **sıfırdan kurulumda (`supabase db
-reset`) hata veriyor** — canlıda sorun çıkarmıyor, ama yeni ortam
-kurulamıyor. Bu dosyanın silinmesi/guard'lanması ayrı bir iş.
+6. **Bildirimler gerçek oldu (md. 44-45).** `notifications` tablosu + DB
+   trigger'ları: yeni teklif, karşı teklif, kabul/ret/süre doldu, teslimat,
+   takas tamamlandı (değerlendirme daveti), yeni mesaj ve en önemlisi
+   **"Aradığın bir ürün eklendi"** (md. 45). Bildirim üretimi bilinçli
+   olarak DB'de: tabloda kullanıcıya INSERT politikası yok, kimse sahte
+   bildirim yazamıyor. `INITIAL_NOTIFICATIONS` mock'u kaldırıldı.
 
-**Migration'ı kendi ortamınızda `supabase db push` ile uygulayın**
-(`20260820000000_needs_system_and_trade_locking.sql`). Dosyanın sonunda,
+7. **Takas iptali + neden (md. 31).** Devam eden takası iptal edecek hiçbir
+   akış yoktu — dolayısıyla "iptal edilince kilidi çöz" trigger'ı da hiç
+   tetiklenmiyordu. `cancelTrade()` + neden seçim modalı eklendi. Ayrıca
+   `rejectOffer()` ret nedenini `message` kolonuna yazıp teklif notunun
+   üzerine geçiyordu; neden artık kendi kolonunda.
+
+8. **`supabase db reset` artık çalışıyor.**
+   `20260818120000_add_listing_fields.sql`, `20260818135000_...` ile birebir
+   aynıydı ve `listings` tablosu oluşmadan önce çalıştığı için sıfırdan
+   kurulumu kırıyordu. Dosya silinmedi (canlının migration geçmişinde
+   kayıtlı), içeriği no-op yapıldı. Tüm zincir boş bir DB'ye baştan sona
+   hatasız uygulanıyor.
+
+9. **Test suite'i onarıldı ve büyüdü.** `vite.config.ts` → `test.env` yer
+   tutucuları ve `proje/**` hariç tutması. Önce 4 dosya çöküyordu; şimdi
+   **31 test geçiyor** (yeni: ihtiyaç eşleştirme, kilitleme kapsamı,
+   bildirim tipi ve iptal nedeni sözleşmeleri).
+
+Her iki migration da bu ortamda kurulan geçici bir PostgreSQL 16 üzerinde
+gerçekten çalıştırıldı ve davranışları uçtan uca denendi (ayrıntı: tasarım
+dokümanı §4.2 ve §4.5) — kilitleme kapsamı, kilit çözme, teklif ömrü,
+ihtiyaç kısıtları, bildirim trigger'ları ve tekrar engelleme dahil.
+RLS'in gerçek `auth.uid()` oturumundaki davranışı hâlâ canlıda denenmeli.
+
+**İki yeni migration'ı kendi ortamınızda `supabase db push` ile uygulayın:**
+`20260820000000_needs_system_and_trade_locking.sql` ve
+`20260820100000_notifications_and_trade_cancellation.sql`. İlkinin sonunda,
 eski hatalı kilitleme yüzünden `in_trade` kalmış ilanları bulan bir backfill
 sorgusu var — otomatik çalışmaz, önce sonucunu inceleyin.
 
@@ -118,9 +147,9 @@ sorgusu var — otomatik çalışmaz, önce sonucunu inceleyin.
 ## Açık / bilinen sorunlar (bir sonraki adaylar)
 
 - Ürün tarafındaki öncelik sırası artık `swaloop-urun-sistem-tasarimi.md`
-  §6'da: (1) karşı teklif UI'ı, (2) gerçek bildirim sistemi + "Aradığın
-  bulundu", (3) takas iptal nedeni, (4) mesajlaşmada takas bağlam kartı,
-  (5) ana ekranda "sana uygun" sıralaması.
+  §6'da: (1) mesajlaşmada takas bağlam kartı, (2) ana ekranda "sana uygun"
+  sıralaması, (3) engelleme, (4) ilan süresi, (5) teklif kapatmanın
+  zamanlanması (pg_cron).
 
 - **Eko rozetler (Çevre Dostu / Su Koruyucusu / Sıfır Atık Şampiyonu) her
   zaman kilitli kalacak** çünkü `stats.totalCo2Prevented` /

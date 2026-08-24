@@ -1,4 +1,12 @@
-import { TradeOffer, TradeStatus, UserProfile, Listing, Review, TradeEvent } from '../types';
+import {
+  TradeOffer,
+  TradeStatus,
+  UserProfile,
+  Listing,
+  Review,
+  TradeEvent,
+  TradeCancellationReason,
+} from '../types';
 import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
@@ -546,10 +554,22 @@ export const tradeService = {
     return this.getTradeById(tradeId);
   },
 
-  async rejectOffer(tradeId: string, reason?: string): Promise<TradeOffer | undefined> {
+  async rejectOffer(
+    tradeId: string,
+    reason?: TradeCancellationReason,
+    note?: string
+  ): Promise<TradeOffer | undefined> {
+    // DÜZELTİLDİ: burada eskiden `message: reason` yazılıyordu — yani ret
+    // nedeni, teklifi gönderenin yazdığı NOTUN ÜZERİNE geçiyordu ve not
+    // kalıcı olarak kayboluyordu. Neden artık kendi kolonunda tutuluyor
+    // (rapor md. 31); ileride güven sisteminin girdisi olacak.
     const { error } = await supabase
       .from('trade_offers')
-      .update({ status: 'rejected', message: reason })
+      .update({
+        status: 'rejected',
+        cancellation_reason: reason ?? null,
+        cancellation_note: note ?? null,
+      })
       .eq('id', tradeId);
 
     if (error) {
@@ -558,6 +578,65 @@ export const tradeService = {
     }
 
     return this.getTradeById(tradeId);
+  },
+
+  /**
+   * Takastan vazgeçme (rapor md. 31).
+   *
+   * İki durumu birden karşılar:
+   *   * Teklif henüz kabul edilmediyse (`trades` satırı yok) → teklif geri
+   *     çekilir.
+   *   * Takas başlamışsa → `trades.status = 'cancelled'`. Bu, önceki
+   *     migration'daki `release_listings_on_trade_end()` trigger'ını
+   *     tetikleyip kilitli ilanları tekrar `active` yapar; aksi hâlde
+   *     ilanlar sonsuza kadar kilitli kalırdı.
+   */
+  async cancelTrade(
+    offerId: string,
+    reason: TradeCancellationReason,
+    note?: string
+  ): Promise<TradeOffer | undefined> {
+    const tradeRow = await fetchTradeRowByOfferId(offerId);
+
+    if (!tradeRow) {
+      const { error } = await supabase
+        .from('trade_offers')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: reason,
+          cancellation_note: note ?? null,
+        })
+        .eq('id', offerId);
+
+      if (error) {
+        console.error('Teklif geri çekilemedi:', error);
+        return undefined;
+      }
+
+      return this.getTradeById(offerId);
+    }
+
+    const { error } = await supabase
+      .from('trades')
+      .update({
+        status: 'cancelled',
+        cancellation_reason: reason,
+        cancellation_note: note ?? null,
+      })
+      .eq('id', tradeRow.id);
+
+    if (error) {
+      console.error('Takas iptal edilemedi:', error);
+      return undefined;
+    }
+
+    await supabase.from('trade_events').insert({
+      trade_id: tradeRow.id,
+      event_type: 'cancelled',
+      note: note ?? null,
+    } as TablesInsert<'trade_events'>);
+
+    return this.getTradeById(offerId);
   },
 
   async createCounterOffer(
@@ -581,6 +660,9 @@ export const tradeService = {
       offeredListings: newOfferedListings,
       requestedListings: newRequestedListings,
       deliveryMethod: newDeliveryMethod,
+      // Orijinal teklifte kararlaştırılan tarih/buluşma yeri karşı teklifte
+      // kaybolmasın; karşı teklif veren yalnızca yöntemi değiştirebiliyor.
+      deliveryDetails: orig.deliveryDetails,
       note: note || `Karşı teklif: ${orig.offeredListings[0]?.title ?? ''} yerine alternatif öneri.`,
     });
 

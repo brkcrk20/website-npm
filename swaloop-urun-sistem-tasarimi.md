@@ -77,13 +77,13 @@ Bugünkü durum:
 | İlan | ✅ | `listingService.ts`, `CreateListingPage.tsx` |
 | Eşleşme | 🟡 kural tabanlı ilk sürüm | `needService.getMatchesForUser()` |
 | Takas teklifi | ✅ | `tradeService.createTradeOffer()`, `MakeOfferPage.tsx` |
-| Karşı teklif | 🟠 servis var, **UI yok** | `tradeService.createCounterOffer()` çağıran ekran yok |
+| Karşı teklif | ✅ | `/karsi-teklif/:id` (`CounterOfferPage.tsx`) |
 | Kabul | ✅ | `acceptOffer()` |
 | Kilitleme | ✅ bu turda düzeltildi | `lock_listings_on_trade_start()` |
 | Teslimat / onay | ✅ | `advanceTradeStep()`, `TradeProcessPage.tsx` |
 | Değerlendirme | ✅ | `submitReview()` |
 | Güven profili | ✅ | `trust_profiles` + `20260819120000` migration |
-| Yeni ihtiyaç | 🟡 döngü kapanıyor ama bildirimle desteklenmiyor | aşağıya bakın |
+| Yeni ihtiyaç | ✅ | "Aradığın bulundu" bildirimi döngüyü kapatıyor |
 
 ---
 
@@ -163,6 +163,12 @@ taklit edilerek) ve davranış uçtan uca denendi:
   süresi geçmiş **bekleyen** teklifleri kapattı (kabul edilmişe dokunmadı).
 - İhtiyaç kısıtları: aynı başlık ikinci kez eklenemedi, 21. açık ihtiyaç
   anlaşılır bir hata ile reddedildi, `fulfilled_at` durumla senkron kaldı.
+- Bildirim trigger'ları (§4.5): kamera ilanı eklenince "Aynasız kamera"
+  arayan kullanıcıya `need_matched` bildirimi düştü (doğru başlık, doğru
+  `/ilan/<slug>` bağlantısı); teklif → kabul → iptal zinciri iki tarafa
+  doğru bildirimleri üretti; aynı ilan+ihtiyaç için ikinci bildirim
+  yazılamadı; yeni mesaj ve karşı teklif bildirimleri de doğru kişiye
+  gitti.
 
 Bu, RLS politikalarının gerçek `auth.uid()` oturumuyla davranışını
 kapsamaz — o hâlâ canlı ortamda denenmeli.
@@ -180,14 +186,84 @@ geçen bekleyen teklifleri kapatan `expire_stale_trade_offers()` fonksiyonu
 var. Zamanlanmış çalıştırma (pg_cron) kurulmadı; şimdilik elle ya da
 pg_cron etkinleştirilerek çağrılır — ayrıntı migration yorumlarında.
 
-### 4.4 Test altyapısı
+### 4.4 Karşı teklif (md. 26)
+
+`tradeService.createCounterOffer()` baştan beri vardı ama **hiçbir ekran
+çağırmıyordu**; kullanıcının elinde yalnızca "Kabul et" ve "Reddet" vardı.
+Yeni `/karsi-teklif/:id` ekranı (`CounterOfferPage.tsx`) üçüncü yolu açıyor:
+
+- Karşı teklifi veren, orijinal teklifin **alıcısıdır**; ekran bu rolü
+  doğru kuruyor: "Vereceklerin" = benim ilanlarım, "İstediklerin" = karşı
+  tarafın ilanları. Varsayılan seçim ilk teklifin iki tarafı, yani kullanıcı
+  yalnızca değiştirmek istediği tarafa dokunuyor (md. 144).
+- MVP sınırı: her taraftan en fazla 2 ilan (md. 25).
+- Orijinal teklifteki tarih/buluşma yeri karşı teklife taşınıyor
+  (`createCounterOffer` artık `deliveryDetails`'i koruyor).
+- Giriş noktaları: teklif detayındaki "Karşı Teklif Ver" butonu ve takas
+  listelerindeki kartlar.
+
+Yan bulgu: `TradeCard`'daki hızlı Kabul/Reddet butonları `status ===
+'offer_received'` koşuluna bağlıydı; oysa DB'den gelen bekleyen teklifler
+`hydrateOffer()` içinde `'offer_sent'`e eşleniyor — yani bu butonlar
+**pratikte hiç görünmüyordu**. Koşul düzeltildi.
+
+### 4.5 Bildirimler + "Aradığın bulundu" (md. 44-45)
+
+Bildirimler sabit bir mock listeydi (`INITIAL_NOTIFICATIONS`) ve hiçbir
+olaydan tetiklenmiyordu. Artık `public.notifications` tablosu var ve
+satırları **DB trigger'ları** üretiyor:
+
+| Olay | Kime | Tip |
+| --- | --- | --- |
+| Yeni teklif | alıcı | `trade_offer` |
+| Karşı teklif | alıcı | `counter_offer` |
+| Kabul / ret / süre doldu / geri çekildi | gönderen | `trade_status` |
+| Teslimat planlandı / takas iptal | iki taraf | `trade_status` |
+| Takas tamamlandı | iki taraf | `review_request` |
+| Yeni mesaj | karşı taraf | `message` |
+| **İhtiyacına uyan yeni ilan** | ihtiyaç sahibi | `need_matched` |
+
+Bildirim üretiminin istemcide değil DB'de olması bilinçli: teklif hangi
+ekrandan gönderilirse gönderilsin bildirim garanti oluşur ve
+`notifications` tablosunda kullanıcıya **INSERT politikası yok** — yani
+kimse başkasına sahte bildirim yazamaz. "Aradığın bulundu" için
+(kullanıcı, ilan, ihtiyaç) üçlüsünde tekrar engelleyen bir unique index var.
+
+`INITIAL_NOTIFICATIONS` mock'u kaldırıldı.
+
+### 4.6 Takas iptali + neden (md. 31)
+
+- Devam eden bir takası iptal edecek **hiçbir akış yoktu**; dolayısıyla
+  §4.2'de eklenen "iptal edilince kilidi çöz" trigger'ını tetikleyen de
+  yoktu. `tradeService.cancelTrade()` bu boşluğu dolduruyor: teklif henüz
+  kabul edilmediyse teklifi geri çeker, takas başladıysa `trades.status`'ü
+  `cancelled` yapar (ve ilanlar otomatik olarak yeniden `active` olur).
+- Neden seçimi zorunlu ve sabit kümeden: *ürün artık uygun değil / karşı
+  tarafla anlaşamadım / teslimat sorunu / karşı taraf yanıt vermedi / başka
+  bir sorun*. DB'de `trade_cancellation_reason` enum'ı, kodda aynı isimli
+  union; contract testi ikisini bağlıyor. Bu veri ileride güven sisteminin
+  girdisi olacak.
+- **Düzeltilen bug:** `rejectOffer()` ret nedenini `message` kolonuna
+  yazıyordu — yani teklifi gönderenin yazdığı notun üzerine geçiyor ve not
+  kalıcı olarak kayboluyordu. Neden artık kendi kolonunda.
+
+### 4.7 `supabase db reset` artık çalışıyor
+
+`20260818120000_add_listing_fields.sql`, `20260818135000_...` ile birebir
+aynıydı ve `listings` tablosunu oluşturan migration'dan ÖNCE çalıştığı için
+sıfırdan kurulumu ilk adımda kırıyordu. Dosya **silinmedi** (canlının
+migration geçmişinde kayıtlı; silmek `supabase db push`'u kırar), içeriği
+no-op'a çevrildi. Tüm migration zinciri artık boş bir veritabanına baştan
+sona hatasız uygulanıyor — geçici bir PostgreSQL 16 üzerinde doğrulandı.
+
+### 4.8 Test altyapısı
 
 `vitest` çalıştırıldığında 4 test dosyası çöküyordu: `src/lib/supabase.ts`
 ortam değişkeni yoksa import anında hata fırlatıyor, ve `proje/` klasörü
 (kullanıcıya gönderilen zip'in açılmış kopyası) aynı testleri ikinci kez
 çalıştırıyordu. `vite.config.ts` içindeki `test` bloğuna yer tutucu ortam
 değişkenleri ve `proje/**` hariç tutması eklendi. Suite artık temiz:
-**26 test, hepsi geçiyor.**
+**31 test, hepsi geçiyor.**
 
 ---
 
@@ -208,18 +284,18 @@ Rapordaki 130-136. maddelerin kod tabanına uyarlanmış hâli. ✅ = bugün var
 | Favoriler | ✅ | `FavoritesPage` |
 | Yakınımdakiler | ✅ | `NearbyMapPage`, Nominatim |
 | Takas teklifi | ✅ | `MakeOfferPage` |
-| **Karşı teklif** | 🟠 | servis hazır, **UI yok** — sıradaki en değerli iş |
-| Mesajlaşma | ✅ | `MessagesPage`; takas bağlamı kartı 🔴 (md. 33) |
-| Bildirim | 🔴 | tamamen mock; gerçek olaylardan tetiklenmiyor |
+| **Karşı teklif** | ✅ | `/karsi-teklif/:id` |
+| Mesajlaşma | 🟡 | `MessagesPage` çalışıyor; takas bağlam kartı 🔴 (md. 33) |
+| Bildirim | ✅ | `notifications` tablosu + DB trigger'ları |
 | Güven skoru | ✅ | gerçek formül, `20260819120000` |
 | Değerlendirme | ✅ | 4 boyutlu (md. 41) |
 | Takas süreci + kilitleme | ✅ | bu tur düzeltildi |
-| Takas iptali + neden seçimi | 🟡 | iptal var, **neden listesi yok** (md. 31) |
+| Takas iptali + neden seçimi | ✅ | `cancelTrade()` + neden modalı |
 | Şikayet / engelleme | 🟡 | `reports` tablosu var, engelleme yok (md. 106) |
 
 ### FAZ 2 — Akıllı Swaloop
 İhtiyaç listeleri ✅ · akıllı eşleştirme 🟡 (kural tabanlı ilk sürüm var) ·
-**"Aradığın bulundu" bildirimi** 🔴 · kullanıcı takip 🔴 · gelişmiş arama 🟡 ·
+**"Aradığın bulundu" bildirimi** ✅ · kullanıcı takip 🔴 · gelişmiş arama 🟡 ·
 kategoriye özel alanlar 🔴 · swipe keşif ✅ (`SwipeMatchPage`, ana ürün değil —
 md. 51-52) · takas uyum skoru ✅ (yüzde olarak gösteriliyor).
 
@@ -240,27 +316,24 @@ bir ürün yaratmak olur.
 
 ## 6. Sıradaki adımlar (öncelik sırasıyla)
 
-1. **Karşı teklif UI'ı** (md. 26). `createCounterOffer` servisi hazır ama
-   hiçbir ekran çağırmıyor — gerçek takas deneyiminin eksik parçası.
-2. **Gerçek bildirim sistemi** (md. 44-45). `notifications` tablosu + takas
-   olaylarından tetikleme. Ardından **"Aradığın şey bulundu"**: yeni ilan
-   `needs` ile eşleştiğinde bildirim. Uygulamayı tekrar açtıran en güçlü
-   mekanizma bu; altyapısı (`needService.getSeekersForListing`) artık hazır.
-3. **Takas iptal nedeni** (md. 31) — güven sisteminin girdisi olur.
-4. **Mesajlaşmada takas bağlam kartı** (md. 33).
-5. **Ana ekran sıralaması** (md. 14-15, 120): "en yeni" yerine "sana uygun".
-   İhtiyaç verisi artık mevcut, sıralama bunu kullanabilir.
-6. **`supabase/migrations/20260818120000_add_listing_fields.sql` silinmeli
-   ya da guard'lanmalı.** Doğrulama sırasında çıktı: bu dosya
-   `20260818135000_add_listing_fields.sql` ile **birebir aynı** ve
-   `listings` tablosunu oluşturan `20260818130000`'dan ÖNCE çalıştığı için
-   sıfırdan bir kurulumda (`supabase db reset`) "relation public.listings
-   does not exist" hatası veriyor. Canlı DB'de sorun çıkarmıyor (tablolar
-   zaten vardı), ama yeni bir ortam kurulamaz durumda.
-7. `rapor.txt`'ten devam eden teknik borç: route guard, error boundary,
-   code splitting (bundle hâlâ ~924 KB tek parça), pinch-to-zoom.
-
----
+1. **Mesajlaşmada takas bağlam kartı** (md. 33). Sohbet ekranında "📦 PS5 ↔
+   📷 Kamera / Teklifi görüntüle" kartı. `messages.type` zaten
+   `trade_card` / `counter_card` / `delivery_card` değerlerini destekliyor
+   ama hiç kullanılmıyor.
+2. **Ana ekran sıralaması** (md. 14-15, 120): "en yeni" yerine "sana uygun".
+   İhtiyaç verisi ve `needService.getMatchesForUser()` hazır; `DiscoverPage`
+   bunu kullanmıyor.
+3. **Engelleme** (md. 106). `reports` tablosu var, kullanıcı engelleme yok.
+4. **İlan süresi / "hâlâ takasa açık mı?"** (md. 119) — `expires_at`
+   deseninin ilanlara uygulanması.
+5. **Teklif süresini otomatik kapatma.** `expire_stale_trade_offers()`
+   hazır ama zamanlanmış çalıştırma yok (pg_cron kapalı); şu an elle
+   çağrılıyor.
+6. `rapor.txt`'ten devam eden teknik borç: route guard, error boundary,
+   code splitting (bundle hâlâ ~930 KB tek parça), pinch-to-zoom.
+7. **Push notification** (md. 95). Bildirimler artık gerçek veri olduğuna
+   göre, Capacitor'a geçildiğinde `need_matched` bildirimini push'a bağlamak
+   doğrudan mümkün.
 
 ## 7. Tasarım dili (md. 62-72, 98-103)
 

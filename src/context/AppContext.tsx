@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile, Listing, TradeOffer, NotificationItem } from '../types';
 import { authService } from '../services/authService';
 import { listingService } from '../services/listingService';
 import { tradeService } from '../services/tradeService';
-import { INITIAL_NOTIFICATIONS } from '../data/mockData';
+import { notificationService } from '../services/notificationService';
 import { Language, TranslationKey, getTranslation } from '../utils/translations';
 
 interface ToastMessage {
@@ -21,6 +21,8 @@ interface AppContextType {
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
   favoritesCount: number;
   refreshUserData: () => Promise<void>;
   logoutUser: () => Promise<void>;
@@ -42,7 +44,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile>(authService.getCurrentUser());
   const [currentLocation, setCurrentLocation] = useState({ city: 'İstanbul', district: '' });
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  // Bildirimler artık gerçek: `notifications` tablosundan geliyor, satırları
+  // DB trigger'ları üretiyor (rapor md. 44-45). Önceden sabit bir mock
+  // listeydi ve hiçbir olaydan tetiklenmiyordu.
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [deviceFrameMode, setDeviceFrameMode] = useState<boolean>(false);
   const [language, setLanguageState] = useState<'tr' | 'en'>(() => {
@@ -98,10 +103,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshFavoritesCount();
   }, []);
 
+  const refreshNotifications = useCallback(async () => {
+    const items = await notificationService.getUserNotifications(currentUser.id);
+    setNotifications(items);
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    refreshNotifications();
+  }, [refreshNotifications]);
+
   const markNotificationAsRead = (id: string) => {
+    // Önce arayüzü güncelle (bildirime tıklayan kullanıcı beklemesin),
+    // sonra DB'ye yaz.
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+    notificationService.markAsRead(id);
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    await notificationService.markAllAsRead(currentUser.id);
   };
 
   const showToast = (title: string, description?: string, type: ToastMessage['type'] = 'success') => {
@@ -146,6 +168,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         unreadNotificationCount,
         markNotificationAsRead,
+        markAllNotificationsAsRead,
+        refreshNotifications,
         favoritesCount,
         refreshUserData,
         logoutUser,

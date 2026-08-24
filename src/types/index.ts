@@ -361,10 +361,24 @@ export interface CommunityEvent {
   category: 'swap_party' | 'eco_workshop' | 'repair_cafe' | 'meetup';
 }
 
+// DB karşılığı: `public.notifications.type` CHECK constraint'i
+// (bkz. migration 20260820100000). İkisi birebir aynı kalmalı —
+// notificationService testinde doğrulanıyor.
+export type NotificationType =
+  | 'trade_offer'
+  | 'counter_offer'
+  | 'trade_status'
+  | 'need_matched'
+  | 'message'
+  | 'review_request'
+  | 'loop'
+  | 'badge'
+  | 'system';
+
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'trade_offer' | 'trade_status' | 'message' | 'loop' | 'badge' | 'system';
+  type: NotificationType;
   title: string;
   message: string;
   linkUrl: string;
@@ -372,6 +386,27 @@ export interface NotificationItem {
   createdAt: string;
   thumbnail?: string;
 }
+
+// Takas iptal/ret nedenleri (rapor md. 31). Serbest metin değil sabit küme:
+// bu veri ileride güven sisteminin girdisi olacak. DB karşılığı
+// `public.trade_cancellation_reason` enum'ı.
+export type TradeCancellationReason =
+  | 'item_unavailable'
+  | 'no_agreement'
+  | 'delivery_problem'
+  | 'no_response'
+  | 'other';
+
+export const TRADE_CANCELLATION_REASONS: Array<{
+  id: TradeCancellationReason;
+  label: string;
+}> = [
+  { id: 'item_unavailable', label: 'Ürün artık uygun değil' },
+  { id: 'no_agreement', label: 'Karşı tarafla anlaşamadım' },
+  { id: 'delivery_problem', label: 'Teslimat konusunda sorun oldu' },
+  { id: 'no_response', label: 'Karşı taraf yanıt vermedi' },
+  { id: 'other', label: 'Başka bir sorun' },
+];
 
 export interface Report {
   id: string;

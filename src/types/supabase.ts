@@ -567,6 +567,59 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link_url: string | null
+          listing_id: string | null
+          message: string
+          need_id: string | null
+          offer_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          listing_id?: string | null
+          message: string
+          need_id?: string | null
+          offer_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          listing_id?: string | null
+          message?: string
+          need_id?: string | null
+          offer_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -985,6 +1038,8 @@ export type Database = {
       }
       trade_offers: {
         Row: {
+          cancellation_note: string | null
+          cancellation_reason: string | null
           created_at: string
           delivery_location_name: string | null
           delivery_method: string | null
@@ -1000,6 +1055,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancellation_note?: string | null
+          cancellation_reason?: string | null
           created_at?: string
           delivery_location_name?: string | null
           delivery_method?: string | null
@@ -1015,6 +1072,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancellation_note?: string | null
+          cancellation_reason?: string | null
           created_at?: string
           delivery_location_name?: string | null
           delivery_method?: string | null
@@ -1055,6 +1114,8 @@ export type Database = {
       }
       trades: {
         Row: {
+          cancellation_note: string | null
+          cancellation_reason: string | null
           completed_at: string | null
           delivery_location_name: string | null
           delivery_method: string | null
@@ -1068,6 +1129,8 @@ export type Database = {
           status: string
         }
         Insert: {
+          cancellation_note?: string | null
+          cancellation_reason?: string | null
           completed_at?: string | null
           delivery_location_name?: string | null
           delivery_method?: string | null
@@ -1081,6 +1144,8 @@ export type Database = {
           status?: string
         }
         Update: {
+          cancellation_note?: string | null
+          cancellation_reason?: string | null
           completed_at?: string | null
           delivery_location_name?: string | null
           delivery_method?: string | null

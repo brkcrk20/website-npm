@@ -8,7 +8,6 @@ import {
   CommunityPost,
   CommunityEvent,
   MysterySwapItem,
-  NotificationItem,
 } from '../types';
 
 export const CURRENT_USER: UserProfile = {
@@ -975,39 +974,9 @@ export const INITIAL_MYSTERY_ITEMS: MysterySwapItem[] = [
   },
 ];
 
-export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'notif-1',
-    userId: 'user-current',
-    type: 'trade_offer',
-    title: 'Yeni Takas Teklifi!',
-    message: 'Aslı T. Canon EOS 200D ilanına Bianchi Bisiklet teklif etti.',
-    linkUrl: '/teklif/trade-offer-1',
-    isRead: false,
-    createdAt: '10 dakika önce',
-    thumbnail: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=100&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'notif-2',
-    userId: 'user-current',
-    type: 'badge',
-    title: 'Yeni Rozet Kazandın: Çevre Dostu 🌱',
-    message: 'Toplam 50 kg CO₂e emisyonunun önlenmesine katkı sağladın!',
-    linkUrl: '/rozetler',
-    isRead: false,
-    createdAt: '1 saat önce',
-  },
-  {
-    id: 'notif-3',
-    userId: 'user-current',
-    type: 'trade_status',
-    title: 'Takas Ürünleri Kilitlendi 🔒',
-    message: 'Mehmet K. ile MacBook Air & iPad Pro takasınız için ürünler kilitlendi.',
-    linkUrl: '/takas/trade-offer-2',
-    isRead: true,
-    createdAt: 'Dün',
-  },
-];
+// NOT: INITIAL_NOTIFICATIONS buradan kaldırıldı — bildirimler artık sahte
+// bir liste değil, gerçek `notifications` tablosundan geliyor (bkz.
+// src/services/notificationService.ts ve migration 20260820100000).
 
 // NOT: INITIAL_ADMIN_KPIS / INITIAL_REPORTS / INITIAL_ADMIN_LOGS buradan
 // kaldırıldı — admin paneli artık bu sabit/sahte verileri değil, doğrudan

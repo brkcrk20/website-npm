@@ -3,7 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
-import { TradeOffer } from '../../types';
+import {
+  TradeOffer,
+  TradeCancellationReason,
+  TRADE_CANCELLATION_REASONS,
+} from '../../types';
 import { Timeline } from '../../components/common/Timeline';
 import { ImpactCard } from '../../components/common/ImpactCard';
 import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
@@ -35,9 +39,12 @@ export const TradeDetailPage: React.FC = () => {
   const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showCounterModal, setShowCounterModal] = useState(false);
   const [showSvsModal, setShowSvsModal] = useState(false);
-  const [counterNote, setCounterNote] = useState('');
+  // Takastan vazgeçme (rapor md. 31): neden seçilmeden iptal edilemez.
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState<TradeCancellationReason | ''>('');
+  const [cancelNote, setCancelNote] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewCategories, setReviewCategories] = useState({
@@ -92,6 +99,11 @@ export const TradeDetailPage: React.FC = () => {
   const myItem = isInitiator ? trade.offeredListings[0] : trade.requestedListings[0];
   const otherItem = isInitiator ? trade.requestedListings[0] : trade.offeredListings[0];
 
+  const CANCELLABLE_STATUSES = ['offer_sent', 'accepted', 'locked', 'delivery_planned', 'shipped'];
+  const canCancel =
+    CANCELLABLE_STATUSES.includes(trade.status) &&
+    (trade.status !== 'offer_sent' || isInitiator);
+
   const handleAccept = async () => {
     const updated = await tradeService.acceptOffer(trade.id);
     if (updated) {
@@ -107,6 +119,25 @@ export const TradeDetailPage: React.FC = () => {
       setTrade(updated);
       showToast('Teklif Reddedildi', undefined, 'info');
     }
+  };
+
+  const handleCancelTrade = async () => {
+    if (!cancelReason) return;
+
+    setIsCancelling(true);
+    const updated = await tradeService.cancelTrade(trade.id, cancelReason, cancelNote);
+    setIsCancelling(false);
+
+    if (!updated) {
+      showToast('Takas iptal edilemedi', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
+    setTrade(updated);
+    setShowCancelModal(false);
+    setCancelReason('');
+    setCancelNote('');
+    showToast('Takastan vazgeçildi', 'İlanlar yeniden takasa açıldı.', 'info');
   };
 
   const handleAdvanceStep = async (step: 4 | 5 | 6) => {
@@ -377,6 +408,14 @@ export const TradeDetailPage: React.FC = () => {
                   Teklifi Kabul Et
                 </button>
               </div>
+              {/* Reddet ile Kabul arasındaki üçüncü yol (rapor md. 26) */}
+              <button
+                type="button"
+                onClick={() => navigate(`/karsi-teklif/${trade.id}`)}
+                className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Karşı Teklif Ver
+              </button>
             </div>
           )}
 
@@ -459,10 +498,84 @@ export const TradeDetailPage: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* Takastan vazgeçme (rapor md. 31). Teklif aşamasında yalnızca
+              teklifi GÖNDEREN görür — alan taraf zaten "Reddet"i kullanır. */}
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              className="w-full py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+            >
+              {trade.status === 'offer_sent' ? 'Teklifi Geri Çek' : 'Takastan Vazgeç'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Review Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900">Takastan vazgeç</h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Neden vazgeçtiğini seçersen karşı taraf için de, bizim için de daha anlaşılır olur.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              {TRADE_CANCELLATION_REASONS.map((reason) => {
+                const selected = cancelReason === reason.id;
+
+                return (
+                  <button
+                    key={reason.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setCancelReason(reason.id)}
+                    className={`w-full p-3 rounded-2xl border-2 text-left text-xs font-semibold transition-colors cursor-pointer ${
+                      selected
+                        ? 'border-emerald-600 bg-emerald-50/60 text-emerald-950'
+                        : 'border-stone-200 text-stone-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    {reason.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <textarea
+              value={cancelNote}
+              onChange={(e) => setCancelNote(e.target.value)}
+              rows={2}
+              maxLength={300}
+              placeholder="Eklemek istediğin bir şey var mı? (opsiyonel)"
+              className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-hidden focus:border-emerald-600 resize-none"
+            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                className="py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Vazgeçme
+              </button>
+              <button
+                type="button"
+                disabled={!cancelReason || isCancelling}
+                onClick={handleCancelTrade}
+                className="py-2.5 rounded-xl bg-stone-900 hover:bg-black disabled:bg-stone-300 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                {isCancelling ? 'İptal ediliyor…' : 'Takası İptal Et'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReviewModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">

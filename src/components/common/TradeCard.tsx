@@ -167,8 +167,14 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <span>Toplam +{trade.combinedImpact.co2eKg} kg CO₂e</span>
         </div>
 
-        {/* Quick action buttons if incoming and waiting */}
-        {isIncoming && trade.status === 'offer_received' && onAccept && onReject ? (
+        {/* Quick action buttons if incoming and waiting.
+            NOT: koşul eskiden yalnızca 'offer_received' idi; oysa DB'den
+            gelen bekleyen teklifler hydrateOffer() içinde 'offer_sent'e
+            eşleniyor — yani bu butonlar pratikte hiç görünmüyordu. */}
+        {isIncoming &&
+        (trade.status === 'offer_received' || trade.status === 'offer_sent') &&
+        onAccept &&
+        onReject ? (
           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
@@ -177,6 +183,17 @@ export const TradeCard: React.FC<TradeCardProps> = ({
             >
               Reddet
             </button>
+            {/* Karşı teklif: reddet ile kabul arasındaki üçüncü yol
+                (rapor md. 26) */}
+            {onCounter && (
+              <button
+                type="button"
+                onClick={() => onCounter(trade.id)}
+                className="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-100 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Karşı Teklif
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onAccept(trade.id)}
