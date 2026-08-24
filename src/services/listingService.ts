@@ -6,6 +6,7 @@ import {
 
 import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
+import { blockService } from './blockService';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImagesToWebp } from '../utils/imageToWebp';
 
@@ -208,6 +209,12 @@ function mapListing(row: any): Listing {
 
     lookingFor: row.looking_for ?? '',
 
+    // Yapılandırılmış "arıyorum": eşleştirme motorunun okuduğu kategori
+    // listesi (bkz. migration 20260820000000, rapor md. 20).
+    lookingForCategories: Array.isArray(row.looking_for_categories)
+      ? (row.looking_for_categories as CategoryId[])
+      : [],
+
     deliveryOptions:
       Array.isArray(row.delivery_options)
         ? row.delivery_options
@@ -226,6 +233,26 @@ function mapListing(row: any): Listing {
 
     tags: Array.isArray(row.tags) ? row.tags : [],
   };
+}
+
+/**
+ * Engellenen kullanıcıların ilanlarını keşif akışlarından düşürür
+ * (rapor md. 106).
+ *
+ * Bilinçli olarak SADECE keşif/arama yollarında uygulanır: devam eden bir
+ * takasın ya da geçmişin içindeki ilanlar gizlenirse takas ekranı boş
+ * görünür ve kullanıcı ne olduğunu anlamaz.
+ */
+async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
+  if (!rows.length) return rows;
+
+  const blockedIds = await blockService.getBlockedIdsForCurrentUser();
+
+  if (!blockedIds.length) return rows;
+
+  const blocked = new Set(blockedIds);
+
+  return rows.filter((row) => !blocked.has(row.owner_id));
 }
 
 export async function enrichListings(rows: any[]): Promise<Listing[]> {
@@ -299,7 +326,7 @@ export const listingService = {
       return [];
     }
 
-    return enrichListings(data ?? []);
+    return enrichListings(await withoutBlockedOwners(data ?? []));
   },
 
   async getListingById(
@@ -369,6 +396,7 @@ export const listingService = {
     images: string[];
     location: Listing['location'];
     lookingFor: string;
+    lookingForCategories?: CategoryId[];
     deliveryOptions: (
       | 'in_person'
       | 'cargo'
@@ -402,6 +430,7 @@ export const listingService = {
         latitude: data.location.lat ?? null,
         longitude: data.location.lng ?? null,
         looking_for: data.lookingFor,
+        looking_for_categories: data.lookingForCategories ?? [],
         delivery_options: data.deliveryOptions,
         tags: data.tags ?? [],
         status: 'active',
@@ -459,6 +488,7 @@ export const listingService = {
       location: data.location,
 
       lookingFor: data.lookingFor,
+      lookingForCategories: data.lookingForCategories ?? [],
 
       deliveryOptions: data.deliveryOptions,
 
@@ -526,6 +556,10 @@ export const listingService = {
 
     if (updates.lookingFor !== undefined) {
       updateData.looking_for = updates.lookingFor;
+    }
+
+    if (updates.lookingForCategories !== undefined) {
+      updateData.looking_for_categories = updates.lookingForCategories;
     }
 
     if (updates.deliveryOptions !== undefined) {
@@ -769,7 +803,7 @@ export const listingService = {
 
     let listings =
       await enrichListings(
-        data ?? []
+        await withoutBlockedOwners(data ?? [])
       );
 
     if (

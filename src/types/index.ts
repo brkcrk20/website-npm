@@ -121,7 +121,10 @@ export interface Listing {
     lat?: number;
     lng?: number;
   };
-  lookingFor: string; // What the user wants in exchange
+  lookingFor: string; // Serbest metin: "karşılığında ne arıyorum" (insan okuması için)
+  // Yapılandırılmış karşılığı: eşleştirme motorunun okuduğu kategori listesi.
+  // lookingFor'un YERİNE geçmez, onu tamamlar (bkz. rapor md. 20).
+  lookingForCategories: CategoryId[];
   deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
   estimatedImpact: EnvironmentalImpact;
   status: 'active' | 'in_trade' | 'traded' | 'paused' | 'removed';
@@ -132,6 +135,36 @@ export interface Listing {
   interestedUsersCount?: number;
   isFavorite?: boolean;
   tags: string[];
+}
+
+// ─── İHTİYAÇ ("Need") ────────────────────────────────────────────────────
+// Swaloop'un temel birimi sadece "elimde ne var" (Listing) değil, "neye
+// ihtiyacım var" (Need) da olmalı — ilanı olmayan bir kullanıcı da bir şey
+// arayabilmeli (bkz. rapor md. 78-82). Bu yüzden Need, Listing'ten AYRI bir
+// nesnedir; DB karşılığı `public.needs` tablosudur.
+export type NeedStatus = 'active' | 'paused' | 'fulfilled';
+
+export interface Need {
+  id: string;
+  userId: string;
+  title: string;
+  categoryId?: CategoryId;
+  note?: string;
+  status: NeedStatus;
+  createdAt: string;
+  updatedAt: string;
+  fulfilledAt?: string;
+}
+
+// Bir ihtiyacın, açık bir ilanla ne kadar örtüştüğü. DİKKAT: bu bir DEĞER
+// karşılaştırması değildir (rapor md. 47) — "bu ürün şu kadar eder" demez,
+// sadece "bu iki tarafın aradığı şeyler birbirini karşılıyor mu" der.
+export interface NeedMatch {
+  need: Need;
+  listing: Listing;
+  // 0-100 arası uyum yüzdesi ve nedenleri (kullanıcıya açıklanabilir olmalı).
+  score: number;
+  reasons: string[];
 }
 
 export type TradeStatus =
@@ -328,10 +361,24 @@ export interface CommunityEvent {
   category: 'swap_party' | 'eco_workshop' | 'repair_cafe' | 'meetup';
 }
 
+// DB karşılığı: `public.notifications.type` CHECK constraint'i
+// (bkz. migration 20260820100000). İkisi birebir aynı kalmalı —
+// notificationService testinde doğrulanıyor.
+export type NotificationType =
+  | 'trade_offer'
+  | 'counter_offer'
+  | 'trade_status'
+  | 'need_matched'
+  | 'message'
+  | 'review_request'
+  | 'loop'
+  | 'badge'
+  | 'system';
+
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'trade_offer' | 'trade_status' | 'message' | 'loop' | 'badge' | 'system';
+  type: NotificationType;
   title: string;
   message: string;
   linkUrl: string;
@@ -339,6 +386,27 @@ export interface NotificationItem {
   createdAt: string;
   thumbnail?: string;
 }
+
+// Takas iptal/ret nedenleri (rapor md. 31). Serbest metin değil sabit küme:
+// bu veri ileride güven sisteminin girdisi olacak. DB karşılığı
+// `public.trade_cancellation_reason` enum'ı.
+export type TradeCancellationReason =
+  | 'item_unavailable'
+  | 'no_agreement'
+  | 'delivery_problem'
+  | 'no_response'
+  | 'other';
+
+export const TRADE_CANCELLATION_REASONS: Array<{
+  id: TradeCancellationReason;
+  label: string;
+}> = [
+  { id: 'item_unavailable', label: 'Ürün artık uygun değil' },
+  { id: 'no_agreement', label: 'Karşı tarafla anlaşamadım' },
+  { id: 'delivery_problem', label: 'Teslimat konusunda sorun oldu' },
+  { id: 'no_response', label: 'Karşı taraf yanıt vermedi' },
+  { id: 'other', label: 'Başka bir sorun' },
+];
 
 export interface Report {
   id: string;

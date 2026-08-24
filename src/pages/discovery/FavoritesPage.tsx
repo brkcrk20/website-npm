@@ -1,58 +1,68 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Heart } from 'lucide-react';
 import { listingService } from '../../services/listingService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { Listing } from '../../types';
-import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
 
+// 14. FAVORİLER
 export const FavoritesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
+  const [favorites, setFavorites] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    listingService.getFavorites().then(setFavoriteListings);
+    listingService.getFavorites().then((data) => {
+      setFavorites(data);
+      setIsLoading(false);
+    });
   }, []);
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
-      <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 pt-3 space-y-4">
-        <div className="flex items-center gap-3">
+    <div className="sw-screen">
+      <div className="sw-container pt-4">
+        <div className="flex items-center gap-2 mb-4">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs"
+            aria-label="Geri"
+            className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-ink-soft hover:bg-surface transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-stone-900 font-display">Favori İlanlarım</h1>
-            <p className="text-xs text-stone-500">{favoriteListings.length} kayıtlı ilan</p>
+            <h1 className="text-lg text-ink">Favoriler</h1>
+            <p className="text-xs text-ink-soft">{favorites.length} kayıtlı ilan</p>
           </div>
         </div>
 
-        {favoriteListings.length === 0 ? (
-          <div className="bg-white rounded-3xl p-10 border border-stone-200 text-center space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-rose-50 text-rose-500 flex items-center justify-center mx-auto">
-              <Heart className="w-8 h-8" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-stone-900">Henüz favori ilan eklemedin</h3>
-              <p className="text-xs text-stone-500 max-w-xs mx-auto mt-1">
-                İlgini çeken ürünlerdeki kalp ikonuna tıklayarak takas için saklayabilirsin.
-              </p>
-            </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="sw-skeleton aspect-[4/3]" />
+            ))}
+          </div>
+        ) : favorites.length === 0 ? (
+          <div className="sw-card p-10 text-center">
+            <span className="w-14 h-14 rounded-2xl bg-brand-soft text-brand-dark flex items-center justify-center mx-auto">
+              <Heart className="w-6 h-6" />
+            </span>
+            <h2 className="text-base text-ink mt-4">Henüz bir şey kaydetmedin</h2>
+            <p className="text-xs text-ink-soft mt-1.5 max-w-xs mx-auto">
+              Beğendiğin ilanları buraya kaydedip sonra teklif verebilirsin.
+            </p>
             <button
               type="button"
               onClick={() => navigate('/kesfet')}
-              className="px-5 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-colors"
+              className="sw-btn sw-btn-primary mt-4"
             >
-              İlanları Keşfet
+              İlanları keşfet
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {favoriteListings.map((listing) => (
-              <ProductCard key={listing.id} listing={listing} variant="grid" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {favorites.map((listing) => (
+              <ProductCard key={listing.id} listing={listing} />
             ))}
           </div>
         )}

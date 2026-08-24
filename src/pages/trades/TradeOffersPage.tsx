@@ -227,6 +227,7 @@ export const TradeOffersPage: React.FC = () => {
                 isIncoming={trade.receiverId === currentUser.id}
                 onAccept={handleAccept}
                 onReject={handleReject}
+                onCounter={(tradeId) => navigate(`/karsi-teklif/${tradeId}`)}
               />
             ))
           ) : (

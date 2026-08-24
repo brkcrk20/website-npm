@@ -51,6 +51,10 @@ export const CreateListingPage: React.FC = () => {
 
   const [condition, setCondition] = useState<ProductCondition>('very_good');
   const [lookingFor, setLookingFor] = useState('');
+  // Yapılandırılmış "arıyorum" (rapor md. 20-21): serbest metnin yanında,
+  // eşleştirme motorunun okuyabildiği kategori listesi. Kullanıcı birden
+  // fazla kategori seçebilir; zorunlu değildir.
+  const [lookingForCategories, setLookingForCategories] = useState<CategoryId[]>([]);
   const [deliveryOptions, setDeliveryOptions] = useState<('in_person' | 'cargo' | 'safe_point')[]>([
     'in_person',
     'safe_point',
@@ -186,6 +190,7 @@ export const CreateListingPage: React.FC = () => {
       images: finalImages,
       condition,
       lookingFor,
+      lookingForCategories,
       deliveryOptions,
       location: {
         city: currentUser.city,
@@ -448,12 +453,50 @@ export const CreateListingPage: React.FC = () => {
                   type="text"
                   value={lookingFor}
                   onChange={(e) => setLookingFor(e.target.value)}
-                  placeholder="Örn: Bisiklet, Nintendo Switch veya benzer değerde tablet"
+                  placeholder="Örn: Bisiklet, Nintendo Switch veya tablet"
                   className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
                 />
                 <span className="text-[11px] text-stone-400 block mt-1">
                   İpucu: Net ifadeler yazarsan akıllı algoritmamız sana uygun takasları daha hızlı
                   önerir.
+                </span>
+              </div>
+
+              {/* Aradığın kategoriler — rapor md. 20-21. Serbest metin insan
+                  için, bu liste eşleştirme motoru için. */}
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                  Aradığın Kategoriler
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORIES.map((cat) => {
+                    const selected = lookingForCategories.includes(cat.id);
+
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setLookingForCategories((prev) =>
+                            prev.includes(cat.id)
+                              ? prev.filter((id) => id !== cat.id)
+                              : [...prev, cat.id]
+                          )
+                        }
+                        className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                          selected
+                            ? 'bg-emerald-700 border-emerald-700 text-white'
+                            : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-emerald-600'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-[11px] text-stone-400 block mt-1.5">
+                  Birden fazla seçebilirsin. Seçmezsen sadece yazdığın metne göre eşleştirilir.
                 </span>
               </div>
             </div>

@@ -146,8 +146,14 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       ? new Date(row.created_at).toLocaleDateString('tr-TR')
       : 'Bugün',
 
-    interests: [],
-    wantedCategories: [],
+    // Rapor md. 13: "ilgi alanı" (profil kişiselleştirmesi) ile "aradığım
+    // kategoriler" (eşleştirme motoru girdisi) AYRI iki alandır. İkisi de
+    // artık profiles tablosunda kalıcı — önceden burada sabit [] dönülüyor,
+    // yani kayıt formunda seçilen değerler sessizce kayboluyordu.
+    interests: Array.isArray(row.interests) ? (row.interests as CategoryId[]) : [],
+    wantedCategories: Array.isArray(row.wanted_categories)
+      ? (row.wanted_categories as CategoryId[])
+      : [],
 
     isVerified: true,
     smsVerificationEnabled: row.sms_verification_enabled ?? false,
@@ -505,6 +511,8 @@ export const authService = {
     city: string;
     district: string;
     avatarUrl?: string;
+    username?: string;
+    bio?: string;
     interests?: CategoryId[];
     wantedCategories?: CategoryId[];
   }): Promise<UserProfile | undefined> {
@@ -550,6 +558,10 @@ export const authService = {
           city: data.city,
           district: data.district,
           avatar_url: data.avatarUrl ?? null,
+          username: data.username?.trim() || null,
+          bio: data.bio?.trim() || null,
+          interests: data.interests ?? [],
+          wanted_categories: data.wantedCategories ?? [],
           updated_at: new Date().toISOString(),
         },
         {
@@ -567,9 +579,6 @@ export const authService = {
 
     const trust = await getTrustProfileRow(profile.id);
     const newUser = mapProfile(profile, trust);
-
-    newUser.interests = data.interests ?? [];
-    newUser.wantedCategories = data.wantedCategories ?? [];
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,
@@ -645,6 +654,16 @@ export const authService = {
     return CURRENT_USER;
   },
 
+  /**
+   * GERÇEK Supabase oturumu var mı? (localStorage'daki önbellek DEĞİL.)
+   * Route koruması bunu kullanır — bkz. components/auth/RequireAuth.tsx.
+   */
+  async hasActiveSession(): Promise<boolean> {
+    const { data, error } = await supabase.auth.getUser();
+
+    return !error && !!data.user;
+  },
+
   isOnboardingDone(): boolean {
     return (
       localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true'
@@ -706,6 +725,14 @@ export const authService = {
 
     if (updates.bio !== undefined) {
       dbUpdates.bio = updates.bio;
+    }
+
+    if (updates.interests !== undefined) {
+      dbUpdates.interests = updates.interests;
+    }
+
+    if (updates.wantedCategories !== undefined) {
+      dbUpdates.wanted_categories = updates.wantedCategories;
     }
 
     dbUpdates.updated_at = new Date().toISOString();

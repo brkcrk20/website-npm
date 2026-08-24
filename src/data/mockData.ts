@@ -8,7 +8,6 @@ import {
   CommunityPost,
   CommunityEvent,
   MysterySwapItem,
-  NotificationItem,
 } from '../types';
 
 export const CURRENT_USER: UserProfile = {
@@ -217,6 +216,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       lng: 29.0254,
     },
     lookingFor: 'Şehir bisikleti (Bianchi/Carraro vb.), Apple Watch veya kaliteli yürüyüş/kamp ekipmanı ile takas düşünüyorum.',
+    lookingForCategories: ['sports', 'electronics'],
     deliveryOptions: ['in_person', 'safe_point', 'cargo'],
     estimatedImpact: {
       co2eKg: 8.6,
@@ -266,6 +266,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       lng: 29.028,
     },
     lookingFor: 'DSLR veya aynasız fotoğraf makinesi gövdesi veya tablet arıyorum.',
+    lookingForCategories: ['photography', 'electronics'],
     deliveryOptions: ['in_person', 'safe_point'],
     estimatedImpact: {
       co2eKg: 14.2,
@@ -315,6 +316,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       lng: 29.023,
     },
     lookingFor: 'iPad Pro 11 inç (M1/M2) ve Magic Keyboard ile birebir takas.',
+    lookingForCategories: ['electronics'],
     deliveryOptions: ['in_person', 'safe_point', 'cargo'],
     estimatedImpact: {
       co2eKg: 24.5,
@@ -362,6 +364,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       safeMeetingPoint: 'Kadıköy İskelesi Güvenli Takas Alanı',
     },
     lookingFor: 'MacBook Air veya hafif ultrabook ile takas.',
+    lookingForCategories: ['electronics'],
     deliveryOptions: ['in_person', 'safe_point'],
     estimatedImpact: {
       co2eKg: 16.8,
@@ -408,6 +411,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       safeMeetingPoint: 'Beşiktaş Meydan Takas Noktası',
     },
     lookingFor: 'Pikap / Plak çalar veya elektro akustik gitar takası arıyorum.',
+    lookingForCategories: ['music'],
     deliveryOptions: ['in_person', 'cargo', 'safe_point'],
     estimatedImpact: {
       co2eKg: 6.2,
@@ -453,6 +457,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       distanceKm: 1.8,
     },
     lookingFor: 'Trekking sırt çantası (60L+) veya mat/uyku tulumu seti ile takas.',
+    lookingForCategories: ['sports'],
     deliveryOptions: ['in_person', 'cargo'],
     estimatedImpact: {
       co2eKg: 9.4,
@@ -498,6 +503,7 @@ export const INITIAL_LISTINGS: Listing[] = [
       distanceKm: 3.4,
     },
     lookingFor: 'Retro oyun konsolu (Nintendo Switch / Game Boy vb.) veya masa oyunu koleksiyonu takası.',
+    lookingForCategories: ['hobby', 'collectibles'],
     deliveryOptions: ['in_person', 'safe_point', 'cargo'],
     estimatedImpact: {
       co2eKg: 7.8,
@@ -968,39 +974,9 @@ export const INITIAL_MYSTERY_ITEMS: MysterySwapItem[] = [
   },
 ];
 
-export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'notif-1',
-    userId: 'user-current',
-    type: 'trade_offer',
-    title: 'Yeni Takas Teklifi!',
-    message: 'Aslı T. Canon EOS 200D ilanına Bianchi Bisiklet teklif etti.',
-    linkUrl: '/teklif/trade-offer-1',
-    isRead: false,
-    createdAt: '10 dakika önce',
-    thumbnail: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=100&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'notif-2',
-    userId: 'user-current',
-    type: 'badge',
-    title: 'Yeni Rozet Kazandın: Çevre Dostu 🌱',
-    message: 'Toplam 50 kg CO₂e emisyonunun önlenmesine katkı sağladın!',
-    linkUrl: '/rozetler',
-    isRead: false,
-    createdAt: '1 saat önce',
-  },
-  {
-    id: 'notif-3',
-    userId: 'user-current',
-    type: 'trade_status',
-    title: 'Takas Ürünleri Kilitlendi 🔒',
-    message: 'Mehmet K. ile MacBook Air & iPad Pro takasınız için ürünler kilitlendi.',
-    linkUrl: '/takas/trade-offer-2',
-    isRead: true,
-    createdAt: 'Dün',
-  },
-];
+// NOT: INITIAL_NOTIFICATIONS buradan kaldırıldı — bildirimler artık sahte
+// bir liste değil, gerçek `notifications` tablosundan geliyor (bkz.
+// src/services/notificationService.ts ve migration 20260820100000).
 
 // NOT: INITIAL_ADMIN_KPIS / INITIAL_REPORTS / INITIAL_ADMIN_LOGS buradan
 // kaldırıldı — admin paneli artık bu sabit/sahte verileri değil, doğrudan

@@ -1,91 +1,99 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Compass, Repeat, Plus, MessageSquare, User } from 'lucide-react';
+import { Home, Search, Plus, MessageSquare, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+
+// Alt navigasyon (md. 87): Ana Sayfa | Keşfet | + | Mesajlar | Profil
+// Ortadaki "+" belirgin: ilan vermek uygulamanın en değerli eylemi.
+
+const HIDDEN_PREFIXES = [
+  '/onboarding',
+  '/kayit',
+  '/dogrulama',
+  '/giris',
+  '/profil-olustur',
+  '/admin',
+];
 
 export const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, t } = useApp();
+  const { unreadNotificationCount } = useApp();
 
-  const isAuthPage =
+  const hidden =
     location.pathname === '/' ||
-    location.pathname.startsWith('/onboarding') ||
-    location.pathname.startsWith('/kayit') ||
-    location.pathname.startsWith('/dogrulama') ||
-    location.pathname.startsWith('/giris') ||
-    location.pathname.startsWith('/profil-olustur');
+    HIDDEN_PREFIXES.some((prefix) => location.pathname.startsWith(prefix));
 
-  const isAdminPage = location.pathname.startsWith('/admin');
+  if (hidden) return null;
 
-  if (isAuthPage || isAdminPage) return null;
-
-  const navItems = [
+  const items = [
     {
-      id: 'kesfet',
-      label: t('nav_discover'),
-      icon: Compass,
+      id: 'home',
+      label: 'Ana Sayfa',
+      icon: Home,
       path: '/kesfet',
-      activeCheck: (p: string) => p === '/kesfet' || p.startsWith('/arama') || p.startsWith('/harita'),
+      isActive: (p: string) => p === '/kesfet' || p.startsWith('/ilan/'),
     },
     {
-      id: 'takaslarim',
-      label: t('nav_trades'),
-      icon: Repeat,
-      path: '/takaslarim',
-      activeCheck: (p: string) =>
-        p.startsWith('/takas') ||
-        p.startsWith('/teklif') ||
-        p.startsWith('/eslesme') ||
-        p.startsWith('/kaydir') ||
-        p.startsWith('/swipe') ||
-        p.startsWith('/istekler'),
+      id: 'search',
+      label: 'Keşfet',
+      icon: Search,
+      path: '/arama',
+      isActive: (p: string) =>
+        p.startsWith('/arama') || p.startsWith('/kategoriler') || p.startsWith('/harita'),
     },
     {
-      id: 'ilan-ver',
-      label: t('nav_create'),
+      id: 'create',
+      label: 'İlan Ver',
       icon: Plus,
       path: '/ilan-ver',
-      isCenterAction: true,
-      activeCheck: (p: string) => p === '/ilan-ver',
+      isCenter: true,
+      isActive: (p: string) => p === '/ilan-ver',
     },
     {
-      id: 'mesajlar',
-      label: t('action_send_message') === 'Send Message' ? 'Messages' : 'Mesajlar',
+      id: 'messages',
+      label: 'Mesajlar',
       icon: MessageSquare,
       path: '/mesajlar',
-      badgeCount: 1,
-      activeCheck: (p: string) => p.startsWith('/mesaj'),
+      badge: unreadNotificationCount,
+      isActive: (p: string) => p.startsWith('/mesaj'),
     },
     {
-      id: 'profil',
-      label: t('nav_profile'),
+      id: 'profile',
+      label: 'Profil',
       icon: User,
       path: '/profil',
-      activeCheck: (p: string) =>
-        p === '/profil' || p.startsWith('/ayarlar') || p.startsWith('/etkim') || p.startsWith('/rozetler'),
+      isActive: (p: string) =>
+        p.startsWith('/profil') ||
+        p.startsWith('/takaslarim') ||
+        p.startsWith('/aradiklarim') ||
+        p.startsWith('/favoriler'),
     },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 py-1 px-2 shadow-lg max-w-lg mx-auto sm:rounded-t-2xl safe-area-bottom">
-      <div className="flex items-center justify-around">
-        {navItems.map((item) => {
-          const isActive = item.activeCheck(location.pathname);
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line">
+      <div
+        className="sw-container flex items-stretch justify-between"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        {items.map((item) => {
           const Icon = item.icon;
+          const active = item.isActive(location.pathname);
 
-          if (item.isCenterAction) {
+          if (item.isCenter) {
             return (
-              <div key={item.id} className="relative -top-2.5">
-                <button
-                  type="button"
-                  onClick={() => navigate(item.path)}
-                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-emerald-800 via-emerald-700 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-900/30 hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-stone-800"
-                  title={t('nav_create')}
-                >
-                  <Plus className="w-5 h-5 stroke-[2.5]" />
-                </button>
-              </div>
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => navigate(item.path)}
+                aria-label={item.label}
+                className="flex-1 flex items-center justify-center py-2 cursor-pointer"
+              >
+                <span className="w-12 h-12 rounded-2xl bg-brand text-white flex items-center justify-center shadow-sm">
+                  <Icon className="w-6 h-6" />
+                </span>
+              </button>
             );
           }
 
@@ -94,25 +102,22 @@ export const BottomNav: React.FC = () => {
               key={item.id}
               type="button"
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer relative min-w-[52px] ${
-                isActive
-                  ? 'text-emerald-800 dark:text-emerald-400'
-                  : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300'
+              aria-current={active ? 'page' : undefined}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] cursor-pointer transition-colors ${
+                active ? 'text-brand' : 'text-ink-faint hover:text-ink-soft'
               }`}
             >
-              <div className="relative">
-                <Icon className={`w-4.5 h-4.5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
-                {item.badgeCount && item.badgeCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-stone-900" />
+              <span className="relative">
+                <Icon className="w-5 h-5" strokeWidth={active ? 2.4 : 2} />
+                {!!item.badge && item.badge > 0 && (
+                  <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">
+                    {item.badge}
+                  </span>
                 )}
-              </div>
-              <span
-                className={`text-[9.5px] tracking-tight mt-0.5 whitespace-nowrap ${
-                  isActive
-                    ? 'font-bold text-emerald-900 dark:text-emerald-300'
-                    : 'font-medium'
-                }`}
-              >
+              </span>
+              {/* Aktif sekme rengin yanında kalın metinle de belirtiliyor:
+                  renk tek başına durum taşımamalı (md. 98). */}
+              <span className={`text-[10px] ${active ? 'font-bold' : 'font-medium'}`}>
                 {item.label}
               </span>
             </button>

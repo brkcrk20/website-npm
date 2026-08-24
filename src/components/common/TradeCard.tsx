@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TradeOffer } from '../../types';
+import { tradeStatusBadge } from '../../utils/tradeStatus';
 import { ArrowLeftRight, Check, X, Clock, Leaf, ShieldCheck, CornerUpRight } from 'lucide-react';
 import { CircularExchangeIcon } from './SwaloopLogo';
 
@@ -27,30 +28,8 @@ export const TradeCard: React.FC<TradeCardProps> = ({
   const requestedItem = trade.requestedListings[0];
   const otherUser = isIncoming ? trade.initiator : trade.receiver;
 
-  const getStatusBadge = (status: TradeOffer['status']) => {
-    switch (status) {
-      case 'offer_sent':
-        return { label: 'Bekliyor', color: 'bg-amber-50 text-amber-800 border-amber-200' };
-      case 'offer_received':
-        return { label: 'Gelen Teklif', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
-      case 'locked':
-        return { label: 'Ürünler Kilitlendi', color: 'bg-blue-50 text-blue-800 border-blue-200' };
-      case 'delivery_planned':
-        return { label: 'Teslimat Planlandı', color: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
-      case 'verified':
-        return { label: 'Teslim Alındı', color: 'bg-teal-50 text-teal-800 border-teal-200' };
-      case 'completed':
-        return { label: 'Tamamlandı', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
-      case 'rejected':
-        return { label: 'Reddedildi', color: 'bg-stone-100 text-stone-600 border-stone-200' };
-      case 'counter_offered':
-        return { label: 'Karşı Teklif Verildi', color: 'bg-purple-50 text-purple-800 border-purple-200' };
-      default:
-        return { label: status, color: 'bg-stone-100 text-stone-700 border-stone-200' };
-    }
-  };
-
-  const statusInfo = getStatusBadge(trade.status);
+  // Etiketler artık tek kaynaktan (src/utils/tradeStatus.ts) geliyor.
+  const statusInfo = tradeStatusBadge(trade.status);
 
   return (
     <div
@@ -167,8 +146,14 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <span>Toplam +{trade.combinedImpact.co2eKg} kg CO₂e</span>
         </div>
 
-        {/* Quick action buttons if incoming and waiting */}
-        {isIncoming && trade.status === 'offer_received' && onAccept && onReject ? (
+        {/* Quick action buttons if incoming and waiting.
+            NOT: koşul eskiden yalnızca 'offer_received' idi; oysa DB'den
+            gelen bekleyen teklifler hydrateOffer() içinde 'offer_sent'e
+            eşleniyor — yani bu butonlar pratikte hiç görünmüyordu. */}
+        {isIncoming &&
+        (trade.status === 'offer_received' || trade.status === 'offer_sent') &&
+        onAccept &&
+        onReject ? (
           <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
@@ -177,6 +162,17 @@ export const TradeCard: React.FC<TradeCardProps> = ({
             >
               Reddet
             </button>
+            {/* Karşı teklif: reddet ile kabul arasındaki üçüncü yol
+                (rapor md. 26) */}
+            {onCounter && (
+              <button
+                type="button"
+                onClick={() => onCounter(trade.id)}
+                className="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-100 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Karşı Teklif
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onAccept(trade.id)}

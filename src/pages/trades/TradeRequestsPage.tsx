@@ -268,6 +268,7 @@ export const TradeRequestsPage: React.FC = () => {
                   isIncoming={true}
                   onAccept={handleAccept}
                   onReject={handleReject}
+                  onCounter={(tradeId) => navigate(`/karsi-teklif/${tradeId}`)}
                 />
               ))
             ) : (
@@ -310,6 +311,7 @@ export const TradeRequestsPage: React.FC = () => {
                   isIncoming={false}
                   onAccept={handleAccept}
                   onReject={handleReject}
+                  onCounter={(tradeId) => navigate(`/karsi-teklif/${tradeId}`)}
                 />
               ))
             ) : (

@@ -1,8 +1,17 @@
-import { TradeOffer, TradeStatus, UserProfile, Listing, Review, TradeEvent } from '../types';
+import {
+  TradeOffer,
+  TradeStatus,
+  UserProfile,
+  Listing,
+  Review,
+  TradeEvent,
+  TradeCancellationReason,
+} from '../types';
 import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import { enrichListings } from './listingService';
+import { messageService } from './messageService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -27,6 +36,11 @@ import type { TablesInsert, TablesUpdate } from '../types/supabase';
 //      yerde yanlış yazılması (typo) derleme zamanında yakalanır.
 // ─────────────────────────────────────────────────────────────────────────
 
+// Bir teklifin yanıtsız kalabileceği süre. DB tarafındaki karşılığı
+// `trade_offers.expires_at` kolonunun varsayılanıdır (48 saat) — ikisi
+// birlikte değişmeli (bkz. migration 20260820000000, rapor md. 32).
+export const OFFER_LIFETIME_HOURS = 48;
+
 // Tek doğruluk kaynağı: DB CHECK constraint'i ile birebir eşleşmeli.
 export const TRADE_ITEM_ROLE = {
   OFFERED: 'offered',
@@ -46,6 +60,7 @@ type TradeOfferRow = {
   delivery_scheduled_at: string | null;
   delivery_location_name: string | null;
   delivery_notes: string | null;
+  expires_at?: string | null;
   created_at: string;
   updated_at: string;
   sender?: any;
@@ -88,6 +103,14 @@ type TradeEventRow = {
 
 const OFFER_SELECT =
   '*, sender:profiles!trade_offers_sender_id_fkey(*), receiver:profiles!trade_offers_receiver_id_fkey(*), items:trade_offer_items(*, listing:listings(*, user:profiles(*), images:listing_images(storage_path)))';
+
+/** Sohbete düşen takas kartının metni: "PS5 ↔ Kamera" (rapor md. 33). */
+function buildTradeSummary(offered: Listing[], requested: Listing[]): string {
+  const left = offered.map((l) => l.title).join(' + ') || 'Ürün';
+  const right = requested.map((l) => l.title).join(' + ') || 'Ürün';
+
+  return `${left} ↔ ${right}`;
+}
 
 function fmtDateTime(iso: string | null | undefined): string {
   if (!iso) return 'Bekleniyor';
@@ -268,12 +291,16 @@ async function hydrateOffer(
     deliveryDetails: buildDeliveryDetails(tradeRow, offerRow),
     status,
     createdAt: offerRow.created_at,
-    // DB'de `trade_offers` için bir expires_at kolonu yok; UI'da gösterim
-    // amaçlı, oluşturulma + 2 gün olarak hesaplanıyor (gerçek bir DB alanı
-    // değil, gelecekte migration ile eklenebilir).
-    expiresAt: new Date(
-      new Date(offerRow.created_at).getTime() + 2 * 24 * 60 * 60 * 1000
-    ).toISOString(),
+    // Teklif ömrü artık gerçek bir DB alanı (rapor md. 32):
+    // `trade_offers.expires_at`, varsayılan oluşturulma + 48 saat. Süresi
+    // geçen bekleyen teklifleri `expire_stale_trade_offers()` kapatır
+    // (bkz. migration 20260820000000). Kolon migration uygulanmadan önce
+    // oluşmuş satırlarda boş olabilir, o yüzden eski hesap yedek kalıyor.
+    expiresAt:
+      offerRow.expires_at ??
+      new Date(
+        new Date(offerRow.created_at).getTime() + OFFER_LIFETIME_HOURS * 60 * 60 * 1000
+      ).toISOString(),
     updatedAt: offerRow.updated_at,
     counterOfferFromId: offerRow.parent_offer_id ?? undefined,
     timeline,
@@ -416,6 +443,8 @@ export const tradeService = {
       locationName?: string;
       notes?: string;
     };
+    // Sohbete düşen kartın etiketi için: karşı teklif mi, ilk teklif mi?
+    isCounterOffer?: boolean;
   }): Promise<TradeOffer | undefined> {
     const insertPayload: TablesInsert<'trade_offers'> = {
       sender_id: data.initiator.id,
@@ -474,6 +503,23 @@ export const tradeService = {
       // Teklif satırı yetim kalmasın diye geri alınıyor.
       await supabase.from('trade_offers').delete().eq('id', offerRow.id);
       return undefined;
+    }
+
+    // Sohbeti takas bağlamına bağla (rapor md. 33): teklif gönderildiğinde
+    // iki kullanıcının sohbetine "şu ↔ bu" kartı düşer.
+    //
+    // Bilerek yutuluyor: teklif zaten oluştu; sohbet kartı yazılamadı diye
+    // kullanıcıya "teklif gönderilemedi" demek yanlış olur.
+    try {
+      await messageService.attachTradeToConversation(
+        data.initiator.id,
+        data.receiver.id,
+        offerRow.id,
+        buildTradeSummary(data.offeredListings, data.requestedListings),
+        data.isCounterOffer ? 'counter_card' : 'trade_card'
+      );
+    } catch (chatError) {
+      console.error('Teklif oluştu ama sohbete takas kartı düşürülemedi:', chatError);
     }
 
     return this.getTradeById(offerRow.id);
@@ -536,10 +582,22 @@ export const tradeService = {
     return this.getTradeById(tradeId);
   },
 
-  async rejectOffer(tradeId: string, reason?: string): Promise<TradeOffer | undefined> {
+  async rejectOffer(
+    tradeId: string,
+    reason?: TradeCancellationReason,
+    note?: string
+  ): Promise<TradeOffer | undefined> {
+    // DÜZELTİLDİ: burada eskiden `message: reason` yazılıyordu — yani ret
+    // nedeni, teklifi gönderenin yazdığı NOTUN ÜZERİNE geçiyordu ve not
+    // kalıcı olarak kayboluyordu. Neden artık kendi kolonunda tutuluyor
+    // (rapor md. 31); ileride güven sisteminin girdisi olacak.
     const { error } = await supabase
       .from('trade_offers')
-      .update({ status: 'rejected', message: reason })
+      .update({
+        status: 'rejected',
+        cancellation_reason: reason ?? null,
+        cancellation_note: note ?? null,
+      })
       .eq('id', tradeId);
 
     if (error) {
@@ -548,6 +606,65 @@ export const tradeService = {
     }
 
     return this.getTradeById(tradeId);
+  },
+
+  /**
+   * Takastan vazgeçme (rapor md. 31).
+   *
+   * İki durumu birden karşılar:
+   *   * Teklif henüz kabul edilmediyse (`trades` satırı yok) → teklif geri
+   *     çekilir.
+   *   * Takas başlamışsa → `trades.status = 'cancelled'`. Bu, önceki
+   *     migration'daki `release_listings_on_trade_end()` trigger'ını
+   *     tetikleyip kilitli ilanları tekrar `active` yapar; aksi hâlde
+   *     ilanlar sonsuza kadar kilitli kalırdı.
+   */
+  async cancelTrade(
+    offerId: string,
+    reason: TradeCancellationReason,
+    note?: string
+  ): Promise<TradeOffer | undefined> {
+    const tradeRow = await fetchTradeRowByOfferId(offerId);
+
+    if (!tradeRow) {
+      const { error } = await supabase
+        .from('trade_offers')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: reason,
+          cancellation_note: note ?? null,
+        })
+        .eq('id', offerId);
+
+      if (error) {
+        console.error('Teklif geri çekilemedi:', error);
+        return undefined;
+      }
+
+      return this.getTradeById(offerId);
+    }
+
+    const { error } = await supabase
+      .from('trades')
+      .update({
+        status: 'cancelled',
+        cancellation_reason: reason,
+        cancellation_note: note ?? null,
+      })
+      .eq('id', tradeRow.id);
+
+    if (error) {
+      console.error('Takas iptal edilemedi:', error);
+      return undefined;
+    }
+
+    await supabase.from('trade_events').insert({
+      trade_id: tradeRow.id,
+      event_type: 'cancelled',
+      note: note ?? null,
+    } as TablesInsert<'trade_events'>);
+
+    return this.getTradeById(offerId);
   },
 
   async createCounterOffer(
@@ -571,6 +688,10 @@ export const tradeService = {
       offeredListings: newOfferedListings,
       requestedListings: newRequestedListings,
       deliveryMethod: newDeliveryMethod,
+      isCounterOffer: true,
+      // Orijinal teklifte kararlaştırılan tarih/buluşma yeri karşı teklifte
+      // kaybolmasın; karşı teklif veren yalnızca yöntemi değiştirebiliyor.
+      deliveryDetails: orig.deliveryDetails,
       note: note || `Karşı teklif: ${orig.offeredListings[0]?.title ?? ''} yerine alternatif öneri.`,
     });
 

@@ -11,6 +11,27 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Satıcı (vendor) kütüphaneleri ayrı parçalara bölünüyor: bunlar
+          // sürüm değişene kadar sabit kaldığı için tarayıcı önbelleğinde
+          // kalır, uygulama kodu her deploy'da yeniden inse bile tekrar
+          // indirilmez. Sayfa bazlı bölme App.tsx'teki React.lazy ile
+          // yapılıyor (rapor.txt §3).
+          //
+          // NOT: package.json'daki `motion` paketi kodda hiç kullanılmıyor;
+          // bu yüzden burada listelenmiyor (listelenirse boş bir parça
+          // üretiyor). Bağımlılığın kaldırılması ayrı bir temizlik işi.
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            supabase: ['@supabase/supabase-js'],
+            icons: ['lucide-react'],
+          },
+        },
+      },
+    },
+
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
@@ -20,6 +41,20 @@ export default defineConfig(() => {
     },
     test: {
       environment: 'node',
+      // `proje/` klasörü, kullanıcıya gönderilen proje.zip'in açılmış bir
+      // KOPYASIDIR; aynı testleri ikinci kez (ve eski haliyle) çalıştırıp
+      // gürültü üretiyordu. Tek doğruluk kaynağı `src/`.
+      exclude: ['node_modules/**', 'dist/**', 'build/**', 'proje/**'],
+      // src/lib/supabase.ts, bu iki değişken yoksa import anında hata
+      // fırlatıyor; testlerde gerçek bir Supabase projesine bağlanılmadığı
+      // için (istemci hep mock'lanıyor) yer tutucu değerler yeterli.
+      // Gerçek bir .env varsa onun değerleri kazanır.
+      env: {
+        VITE_SUPABASE_URL:
+          process.env.VITE_SUPABASE_URL ?? 'http://localhost:54321',
+        VITE_SUPABASE_PUBLISHABLE_KEY:
+          process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? 'test-publishable-key',
+      },
     },
   };
 });

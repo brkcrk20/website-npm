@@ -1,5 +1,65 @@
 import React from 'react';
 
+// SWALOOP MARKA İŞARETİ
+//
+// Onaylanan tasarımdaki mark: tek renk yeşil, kapalı bir döngü — iki kalın
+// yay ve iki ok ucu. Küçük boyutta da okunur (favicon, uygulama ikonu,
+// splash), tek renk olduğu için koyu zeminde de çalışır (md. 149).
+//
+// Önceki sürüm iki renkli (yeşil + amber) ve "swal-oo-p" şeklinde harflerin
+// arasına giren bir işaretti; yeni tasarımda mark ve kelime ayrı duruyor.
+
+interface LoopMarkProps {
+  size?: number;
+  className?: string;
+  color?: string;
+}
+
+export const LoopMark: React.FC<LoopMarkProps> = ({
+  size = 32,
+  className = '',
+  color = 'currentColor',
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-hidden="true"
+  >
+    {/* Üst yay + sağ ok ucu */}
+    <path
+      d="M9 24a15 15 0 0 1 15-15c5.2 0 9.8 2.6 12.5 6.6"
+      stroke={color}
+      strokeWidth="6"
+      strokeLinecap="round"
+    />
+    <path
+      d="M38 6.5V16h-9.5"
+      stroke={color}
+      strokeWidth="6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    {/* Alt yay + sol ok ucu */}
+    <path
+      d="M39 24a15 15 0 0 1-15 15c-5.2 0-9.8-2.6-12.5-6.6"
+      stroke={color}
+      strokeWidth="6"
+      strokeLinecap="round"
+    />
+    <path
+      d="M10 41.5V32h9.5"
+      stroke={color}
+      strokeWidth="6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 interface SwaloopLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -7,88 +67,63 @@ interface SwaloopLogoProps {
   showSlogan?: boolean;
 }
 
+const SIZES = {
+  sm: { mark: 22, text: 'text-lg' },
+  md: { mark: 28, text: 'text-xl' },
+  lg: { mark: 40, text: 'text-3xl' },
+  xl: { mark: 64, text: 'text-4xl' },
+};
+
 export const SwaloopLogo: React.FC<SwaloopLogoProps> = ({
   className = '',
   size = 'md',
   variant = 'full',
   showSlogan = false,
 }) => {
-  const sizeMap = {
-    sm: { height: '24px', fontSize: 'text-lg', iconSize: 22 },
-    md: { height: '32px', fontSize: 'text-2xl', iconSize: 28 },
-    lg: { height: '44px', fontSize: 'text-3xl', iconSize: 38 },
-    xl: { height: '60px', fontSize: 'text-4xl', iconSize: 52 },
-  };
-
   const isWhite = variant === 'white';
-  const textColor = isWhite ? 'text-white' : 'text-emerald-950';
+  const markColor = isWhite ? '#ffffff' : 'var(--color-brand)';
+  const dims = SIZES[size];
+
+  if (variant === 'icon-only') {
+    return <LoopMark size={dims.mark} color={markColor} className={className} />;
+  }
 
   return (
     <div className={`inline-flex flex-col ${className}`}>
-      <div className="inline-flex items-center gap-1.5 font-display font-extrabold tracking-tight select-none">
-        {variant === 'icon-only' ? (
-          <CircularExchangeIcon size={sizeMap[size].iconSize} />
-        ) : (
-          <div className="flex items-center">
-            <span className={`${textColor} ${sizeMap[size].fontSize} tracking-tighter font-extrabold`}>
-              swal
-            </span>
-            {/* The circular dual loop replaces "oo" */}
-            <div className="inline-flex items-center mx-0.5 transform translate-y-[1px]">
-              <CircularExchangeIcon size={sizeMap[size].iconSize} />
-            </div>
-            <span className={`${textColor} ${sizeMap[size].fontSize} tracking-tighter font-extrabold`}>
-              p
-            </span>
-          </div>
-        )}
+      <div className="inline-flex items-center gap-2 select-none">
+        <LoopMark size={dims.mark} color={markColor} />
+        {/* Kelime işareti küçük harf ve orta ağırlıkta: mark zaten güçlü,
+            kelimenin de bağırmasına gerek yok. */}
+        <span
+          className={`font-display ${dims.text} tracking-tight ${
+            isWhite ? 'text-white' : 'text-ink'
+          }`}
+          style={{ fontWeight: 600 }}
+        >
+          swaloop
+        </span>
       </div>
+
       {showSlogan && (
         <span
-          className={`text-xs font-medium tracking-wide mt-0.5 ${
-            isWhite ? 'text-emerald-100/90' : 'text-stone-600'
-          }`}
+          className={`text-xs mt-1.5 ${isWhite ? 'text-white/70' : 'text-ink-soft'}`}
         >
-          Satma. Takas et. Yeniden kullan.
+          İhtiyaçlarını paylaş, döngüyü başlat.
         </span>
       )}
     </div>
   );
 };
 
+// Geriye dönük uyumluluk: eski adla import eden ekranlar kırılmasın.
 export const CircularExchangeIcon: React.FC<{
   size?: number;
   className?: string;
   animate?: boolean;
-}> = ({ size = 28, className = '', animate = false }) => {
-  return (
-    <svg
-      width={size * 1.6}
-      height={size}
-      viewBox="0 0 54 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`inline-block ${animate ? 'animate-pulse' : ''} ${className}`}
-    >
-      {/* Left Loop: Natural Deep Emerald Green (#047857) */}
-      <path
-        d="M17 6C10.9249 6 6 10.4772 6 16C6 21.5228 10.9249 26 17 26C23.0751 26 27.5 19.5 32 12.5C36.5 5.5 40.9249 6 47 6"
-        stroke="#047857"
-        strokeWidth="5.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Right Loop: Warm Saffron Amber / Orange (#f59e0b) */}
-      <path
-        d="M37 26C43.0751 26 48 21.5228 48 16C48 10.4772 43.0751 6 37 6C30.9249 6 26.5 12.5 22 19.5C17.5 26.5 13.0751 26 7 26"
-        stroke="#f59e0b"
-        strokeWidth="5.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Interlocking knot accents */}
-      <circle cx="17" cy="16" r="3.2" fill="#047857" />
-      <circle cx="37" cy="16" r="3.2" fill="#f59e0b" />
-    </svg>
-  );
-};
+}> = ({ size = 28, className = '', animate = false }) => (
+  <LoopMark
+    size={size}
+    color="var(--color-brand)"
+    className={`${animate ? 'animate-pulse' : ''} ${className}`}
+  />
+);

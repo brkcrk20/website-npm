@@ -23,9 +23,15 @@ export const CreateProfilePage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [username, setUsername] = useState('');
+  const [bio, setBio] = useState('');
+  // Kayıt üç adıma bölündü: profil → konum → ne arıyorsun.
+  // Her ekranın tek bir amacı olsun diye (md. 145); tek uzun formda 12 alan
+  // gören kullanıcı kaçıyor (md. 142).
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  const [city, setCity] = useState('İstanbul');
-  const [district, setDistrict] = useState('Kadıköy');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
   const districtsForCity = useMemo(() => getDistrictsForCity(city), [city]);
 
   const handleCityChange = (newCity: string) => {
@@ -34,13 +40,13 @@ export const CreateProfilePage: React.FC = () => {
     setDistrict(districts[0] ?? '');
   };
 
-  const [avatarUrl, setAvatarUrl] = useState(
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
-  );
+  // Varsayılan olarak stok bir portre atamak yerine boş bırakılıyor:
+  // kullanıcı fotoğraf yüklemediyse baş harfleri gösteriliyor.
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [selectedInterests, setSelectedInterests] = useState<CategoryId[]>(['electronics', 'sports']);
-  const [selectedWanted, setSelectedWanted] = useState<CategoryId[]>(['electronics', 'books']);
+  const [selectedInterests, setSelectedInterests] = useState<CategoryId[]>([]);
+  const [selectedWanted, setSelectedWanted] = useState<CategoryId[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleInterest = (id: CategoryId) => {
@@ -130,6 +136,8 @@ export const CreateProfilePage: React.FC = () => {
       city,
       district,
       avatarUrl,
+      username,
+      bio,
       interests: selectedInterests,
       wantedCategories: selectedWanted,
     });
@@ -158,239 +166,261 @@ export const CreateProfilePage: React.FC = () => {
     city &&
     district;
 
+  const step1Valid =
+    firstName.trim() && lastName.trim() && email.trim() && password && passwordConfirm;
+
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col justify-between p-6 max-w-md mx-auto">
-      <div>
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-surface flex flex-col">
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarFileChange}
+        className="hidden"
+      />
+
+      <div className="max-w-md w-full mx-auto px-6 pt-6 pb-10 flex-1 flex flex-col">
+        <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors"
+            onClick={() => (step === 1 ? navigate(-1) : setStep((s) => (s === 3 ? 2 : 1)))}
+            aria-label="Geri"
+            className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-ink-soft hover:bg-canvas transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-            Adım 3 / 3
-          </span>
+          <span className="text-xs font-semibold text-ink-faint">{step} / 3</span>
         </div>
 
-        <div className="space-y-2 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 font-display tracking-tight">
-            Profilini Oluştur
-          </h1>
-          <p className="text-sm text-stone-500">
-            Topluluğun seni tanıması ve akıllı takas eşleşmeleri için birkaç bilgi ekle.
-          </p>
-        </div>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col mt-4">
+          {step === 1 && (
+            <div className="flex-1">
+              <h1 className="text-2xl text-ink">Profili Tamamla</h1>
+              <p className="text-sm text-ink-soft mt-2">
+                Diğer kullanıcıların seni tanıyabilmesi için birkaç bilgi.
+              </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Avatar Upload Bubble */}
-          <div className="flex flex-col items-center justify-center my-2">
-            <div className="relative group cursor-pointer" onClick={handleAvatarButtonClick}>
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-emerald-100">
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className={`w-full h-full object-cover transition-opacity ${isUploadingAvatar ? 'opacity-50' : ''}`}
-                />
+              <div className="flex justify-center my-6">
+                <button
+                  type="button"
+                  onClick={handleAvatarButtonClick}
+                  className="relative w-24 h-24 rounded-full bg-canvas border border-line flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-line transition-colors"
+                  aria-label="Profil fotoğrafı seç"
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-9 h-9 text-ink-faint" />
+                  )}
+                  <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center border-2 border-white">
+                    {isUploadingAvatar ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                  </span>
+                </button>
               </div>
-              {isUploadingAvatar && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 text-emerald-700 animate-spin" />
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Ad"
+                    className="sw-input"
+                    aria-label="Ad"
+                  />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Soyad"
+                    className="sw-input"
+                    aria-label="Soyad"
+                  />
                 </div>
-              )}
-              <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center border-2 border-white shadow-md group-hover:scale-110 transition-transform">
-                <Camera className="w-4 h-4" />
-              </div>
-            </div>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarFileChange}
-              className="hidden"
-            />
-            <button
-              type="button"
-              disabled={isUploadingAvatar}
-              onClick={handleAvatarButtonClick}
-              className="text-xs font-semibold text-emerald-700 hover:underline mt-2 cursor-pointer disabled:opacity-60"
-            >
-              {isUploadingAvatar ? 'Yükleniyor...' : 'Fotoğraf Değiştir'}
-            </button>
-          </div>
 
-          {/* Ad & Soyad — ayrı ayrı */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                Ad
-              </label>
-              <div className="relative">
-                <User className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Adın"
-                  required
-                  className="w-full pl-11 pr-3 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Kullanıcı adı (opsiyonel)"
+                  className="sw-input"
+                  aria-label="Kullanıcı adı"
+                />
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="E-posta"
+                  className="sw-input"
+                  aria-label="E-posta"
+                />
+
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Şifre (en az 8 karakter)"
+                    className="sw-input pr-12"
+                    aria-label="Şifre"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-ink-faint cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
+                  placeholder="Şifre tekrar"
+                  className="sw-input"
+                  aria-label="Şifre tekrar"
+                />
+
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={2}
+                  maxLength={160}
+                  placeholder="Kısa bio (opsiyonel)"
+                  className="sw-input resize-none"
+                  aria-label="Kısa bio"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                Soyad
-              </label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Soyadın"
-                required
-                className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
-            </div>
-          </div>
 
-          {/* E-posta */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-              E-posta Adresi
-            </label>
-            <div className="relative">
-              <Mail className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ornek@mail.com"
-                required
-                className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
-            </div>
-          </div>
-
-          {/* Şifre */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-              Şifre
-            </label>
-            <div className="relative">
-              <Lock className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="En az 8 karakter, harf + rakam"
-                required
-                className="w-full pl-11 pr-11 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
               <button
                 type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                disabled={!step1Valid}
+                onClick={() => setStep(2)}
+                className="sw-btn sw-btn-primary sw-btn-block mt-6"
               >
-                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                Devam Et
               </button>
             </div>
-          </div>
+          )}
 
-          {/* Şifre Tekrar */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-              Şifre (Tekrar)
-            </label>
-            <div className="relative">
-              <Lock className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                placeholder="Şifreni tekrar gir"
-                required
-                className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
-            </div>
-          </div>
+          {step === 2 && (
+            <div className="flex-1">
+              <h1 className="text-2xl text-ink">Konumunu Seç</h1>
+              <p className="text-sm text-ink-soft mt-2">
+                Takasların daha kolay gerçekleşmesi için konumunu seç. Tam adresin kimseye
+                gösterilmez, yalnızca ilçe ve yaklaşık mesafe görünür.
+              </p>
 
-          {/* Şehir & İlçe — kademeli seçim */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                Şehir
-              </label>
-              <select
-                value={city}
-                onChange={(e) => handleCityChange(e.target.value)}
-                className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              >
-                {TURKEY_CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-                İlçe
-              </label>
-              <select
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              >
-                {districtsForCity.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* İlgi Alanların */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-              İlgi Alanların & Sahip Olduğun Kategoriler
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((cat) => {
-                const isSelected = selectedInterests.includes(cat.id);
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => toggleInterest(cat.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-700 text-white shadow-xs'
-                        : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
-                    }`}
+              <div className="space-y-3 mt-6">
+                <div>
+                  <label htmlFor="city" className="sw-label">
+                    İl
+                  </label>
+                  <select
+                    id="city"
+                    value={city}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className="sw-input"
                   >
-                    {isSelected && '✓ '}
-                    {cat.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    <option value="">İl Seçin</option>
+                    {TURKEY_CITIES.map((cityName) => (
+                      <option key={cityName} value={cityName}>
+                        {cityName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          <button
-            type="submit"
-            disabled={!isFormValid || isSubmitting}
-            className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer mt-4"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Kaydediliyor...
-              </>
-            ) : (
-              'Kaydı Tamamla ve Keşfet'
-            )}
-          </button>
+                <div>
+                  <label htmlFor="district" className="sw-label">
+                    İlçe
+                  </label>
+                  <select
+                    id="district"
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    disabled={!city}
+                    className="sw-input disabled:opacity-60"
+                  >
+                    <option value="">İlçe Seçin</option>
+                    {districtsForCity.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={!city || !district}
+                onClick={() => setStep(3)}
+                className="sw-btn sw-btn-primary sw-btn-block mt-6"
+              >
+                Devam Et
+              </button>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="flex-1">
+              <h1 className="text-2xl text-ink">Ne arıyorsun?</h1>
+              <p className="text-sm text-ink-soft mt-2">
+                Aradığın kategorileri seç; sana uygun takasları bulalım. Sonradan
+                değiştirebilirsin.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mt-6">
+                {CATEGORIES.map((category) => {
+                  const selected = selectedWanted.includes(category.id);
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleWanted(category.id)}
+                      className={`sw-chip ${selected ? 'sw-chip-active' : ''}`}
+                    >
+                      {category.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="sw-label mt-8">İlgi alanların (opsiyonel)</p>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((category) => {
+                  const selected = selectedInterests.includes(category.id);
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleInterest(category.id)}
+                      className={`sw-chip ${selected ? 'sw-chip-active' : ''}`}
+                    >
+                      {category.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || !isFormValid}
+                className="sw-btn sw-btn-primary sw-btn-block mt-8"
+              >
+                {isSubmitting ? 'Kaydediliyor…' : 'Kaydet ve Başla'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

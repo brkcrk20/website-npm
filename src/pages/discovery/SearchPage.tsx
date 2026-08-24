@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { listingService } from '../../services/listingService';
+import { needService, NeedSeeker } from '../../services/needService';
+import { useApp } from '../../context/AppContext';
 import { CATEGORIES } from '../../constants';
 import { ProductCard } from '../../components/common/ProductCard';
 import { Search, SlidersHorizontal, ArrowLeft, X, Filter } from 'lucide-react';
-import { Listing } from '../../types';
+import { Listing, Need } from '../../types';
 
 export const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { currentUser } = useApp();
 
   const queryParam = searchParams.get('q') || '';
   const [query, setQuery] = useState(queryParam);
@@ -23,6 +26,12 @@ export const SearchPage: React.FC = () => {
 
   const [results, setResults] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Rapor md. 76: aynı kelime iki farklı soruyu yanıtlar —
+  //   "kim veriyor?" (ilanlar)  ve  "kim arıyor?" (ihtiyaçlar).
+  // Swaloop'u klasik ilan sitelerinden ayıran şey ikincisi.
+  const [tab, setTab] = useState<'giving' | 'seeking'>('giving');
+  const [seekers, setSeekers] = useState<Array<{ need: Need; seeker: NeedSeeker }>>([]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -41,6 +50,25 @@ export const SearchPage: React.FC = () => {
       isCancelled = true;
     };
   }, [query, selectedCategory, selectedCondition, maxDistance]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!query.trim()) {
+      setSeekers([]);
+      return;
+    }
+
+    needService
+      .searchNeeds(query, { excludeUserId: currentUser.id })
+      .then((data) => {
+        if (!isCancelled) setSeekers(data);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [query, currentUser.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,15 +225,83 @@ export const SearchPage: React.FC = () => {
 
         {/* Results Stream */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-stone-900">
-              {results.length > 0
-                ? `${results.length} Takas İlanı Bulundu`
-                : 'Sonuç Bulunamadı'}
-            </h2>
-          </div>
+          {query.trim() && (
+            <div className="inline-flex p-0.5 rounded-2xl bg-stone-200/70 mb-3">
+              <button
+                type="button"
+                onClick={() => setTab('giving')}
+                aria-pressed={tab === 'giving'}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  tab === 'giving' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                }`}
+              >
+                Verenler ({results.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('seeking')}
+                aria-pressed={tab === 'seeking'}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  tab === 'seeking' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                }`}
+              >
+                Arayanlar ({seekers.length})
+              </button>
+            </div>
+          )}
 
-          {isLoading ? (
+          {/* Arama kutusu boşaltılırsa sekme durumu takılı kalmasın:
+              "Arayanlar" yalnızca aktif bir arama varken anlamlı. */}
+          {tab === 'seeking' && query.trim() ? (
+            seekers.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 border border-stone-200 text-center space-y-2">
+                <h3 className="text-base font-bold text-stone-900">Bunu arayan kimse yok</h3>
+                <p className="text-xs text-stone-500 max-w-xs mx-auto">
+                  Sen arayabilirsin: aradığın şeyi listene ekle, uygun bir ilan yayınlandığında
+                  haberin olsun.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/aradiklarim')}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-colors"
+                >
+                  Aradıklarıma Ekle
+                </button>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {seekers.map(({ need, seeker }) => (
+                  <li key={need.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/profil/${seeker.id}`)}
+                      className="w-full bg-white rounded-2xl p-3 border border-stone-200 flex items-center gap-3 text-left hover:bg-stone-50 transition-colors cursor-pointer"
+                    >
+                      {seeker.avatarUrl ? (
+                        <img
+                          src={seeker.avatarUrl}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 rounded-full bg-stone-100 shrink-0" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-bold text-stone-900 truncate">
+                          {need.title}
+                        </span>
+                        <span className="block text-[11px] text-stone-500 truncate">
+                          {seeker.fullName}
+                          {seeker.district ? ` · ${seeker.district}` : ''}
+                          {seeker.city ? `, ${seeker.city}` : ''}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="aspect-[3/4] rounded-2xl bg-stone-100 animate-pulse" />

@@ -1,80 +1,140 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Bell,
+  Repeat,
+  ArrowLeftRight,
+  Sparkles,
+  Search,
+  MessageSquare,
+  Star,
+  ShieldCheck,
+  Check,
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ArrowLeft, Bell, Repeat, Sparkles, ShieldCheck, Check } from 'lucide-react';
+
+// 13. BİLDİRİMLER
+//
+// İkonlar DB'deki notifications.type değerleriyle eşleşir
+// (migration 20260820100000).
+
+const ICONS: Record<string, React.ElementType> = {
+  trade_offer: Repeat,
+  counter_offer: ArrowLeftRight,
+  trade_status: Sparkles,
+  need_matched: Search,
+  message: MessageSquare,
+  review_request: Star,
+  badge: ShieldCheck,
+};
 
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { notifications, markNotificationAsRead } = useApp();
+  const {
+    notifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    unreadNotificationCount,
+  } = useApp();
 
-  const handleNotificationClick = (n: (typeof notifications)[0]) => {
-    markNotificationAsRead(n.id);
-    if (n.linkUrl) {
-      navigate(n.linkUrl);
-    }
-  };
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'trade_offer':
-        return <Repeat className="w-4 h-4 text-emerald-700" />;
-      case 'trade_update':
-        return <Sparkles className="w-4 h-4 text-amber-600" />;
-      case 'badge_earned':
-        return <ShieldCheck className="w-4 h-4 text-purple-600" />;
-      default:
-        return <Bell className="w-4 h-4 text-sky-600" />;
-    }
+  const handleClick = (id: string, linkUrl: string) => {
+    markNotificationAsRead(id);
+    if (linkUrl) navigate(linkUrl);
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
-      <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="sw-screen">
+      <div className="sw-container pt-4">
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Geri"
+            className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-ink-soft hover:bg-surface transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-lg text-ink">Bildirimler</h1>
+            {unreadNotificationCount > 0 && (
+              <p className="text-xs text-ink-soft">{unreadNotificationCount} okunmamış</p>
+            )}
+          </div>
+
+          {unreadNotificationCount > 0 && (
             <button
               type="button"
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs"
+              onClick={() => markAllNotificationsAsRead()}
+              className="sw-btn sw-btn-ghost text-xs px-3"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <Check className="w-3.5 h-3.5" />
+              Tümünü okundu yap
             </button>
-            <div>
-              <h1 className="text-lg font-bold text-stone-900 font-display">Bildirimler</h1>
-              <p className="text-xs text-stone-500">Takas teklifleri ve güncellemeler</p>
-            </div>
-          </div>
+          )}
         </div>
 
-        <div className="space-y-2">
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => handleNotificationClick(n)}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
-                n.isRead
-                  ? 'bg-white border-stone-200/80 hover:bg-stone-50'
-                  : 'bg-emerald-50/50 border-emerald-200 shadow-xs hover:bg-emerald-50'
-              }`}
+        {notifications.length === 0 ? (
+          <div className="sw-card p-10 text-center">
+            <span className="w-14 h-14 rounded-2xl bg-brand-soft text-brand-dark flex items-center justify-center mx-auto">
+              <Bell className="w-6 h-6" />
+            </span>
+            <h2 className="text-base text-ink mt-4">Henüz bildirimin yok</h2>
+            <p className="text-xs text-ink-soft mt-1.5 max-w-xs mx-auto">
+              Aradığın şeyleri listene eklersen, uyan bir ilan yayınlandığında ilk sen haberdar
+              olursun.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/aradiklarim')}
+              className="sw-btn sw-btn-primary mt-4"
             >
-              <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-                {getIcon(n.type)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className={`text-xs font-bold ${n.isRead ? 'text-stone-800' : 'text-emerald-950'}`}>
-                    {n.title}
-                  </h4>
-                  <span className="text-[10px] text-stone-400">{n.createdAt}</span>
-                </div>
-                <p className="text-xs text-stone-600 mt-0.5 leading-snug">{n.message}</p>
-              </div>
-              {!n.isRead && (
-                <div className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 mt-2" />
-              )}
-            </div>
-          ))}
-        </div>
+              Aradıklarımı ekle
+            </button>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {notifications.map((item) => {
+              const Icon = ICONS[item.type] ?? Bell;
+
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleClick(item.id, item.linkUrl)}
+                    className={`w-full p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-colors cursor-pointer ${
+                      item.isRead
+                        ? 'bg-surface border-line hover:bg-canvas'
+                        : 'bg-brand-soft border-brand-line'
+                    }`}
+                  >
+                    <span className="w-9 h-9 rounded-xl bg-surface border border-line flex items-center justify-center shrink-0 text-brand-dark">
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-ink truncate">
+                          {item.title}
+                        </span>
+                        <span className="text-[10px] text-ink-faint shrink-0">
+                          {item.createdAt}
+                        </span>
+                      </span>
+                      <span className="block text-xs text-ink-soft mt-0.5 leading-snug">
+                        {item.message}
+                      </span>
+                    </span>
+                    {/* Okunmamış durumu renkle birlikte nokta ile de
+                        belirtiliyor (md. 98). */}
+                    {!item.isRead && (
+                      <span className="w-2 h-2 rounded-full bg-brand shrink-0 mt-2" />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );
