@@ -8,7 +8,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { ImpactCard } from '../../components/common/ImpactCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
-import { BADGES_LIST } from '../../data/mockData';
+import { getUserBadges } from '../../constants/badges';
 import {
   ShieldCheck,
   Award,
@@ -30,6 +30,7 @@ import {
   Sun,
   Globe,
   Check,
+  LogOut,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
@@ -37,6 +38,7 @@ export const ProfilePage: React.FC = () => {
   const {
     currentUser,
     showToast,
+    logoutUser,
     language,
     setLanguage,
     theme,
@@ -49,6 +51,8 @@ export const ProfilePage: React.FC = () => {
 
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myReviews, setMyReviews] = useState<Review[]>([]);
+
+  const BADGES_LIST = React.useMemo(() => getUserBadges(currentUser), [currentUser]);
 
   useEffect(() => {
     listingService.getUserListings(currentUser.id).then(setMyListings);
@@ -318,10 +322,10 @@ export const ProfilePage: React.FC = () => {
               >
                 <div
                   className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 text-xl ${
-                    badge.isEarned ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' : 'bg-stone-200 dark:bg-stone-700 text-stone-400'
+                    badge.isEarned ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-stone-200 dark:bg-stone-700 grayscale opacity-70'
                   }`}
                 >
-                  <Award className="w-6 h-6" />
+                  {badge.iconName}
                 </div>
                 <h4 className="text-xs font-bold text-stone-900 dark:text-white line-clamp-1">{badge.title}</h4>
                 <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">{badge.description}</p>
@@ -562,6 +566,23 @@ export const ProfilePage: React.FC = () => {
               <span>{language === 'en' ? 'Admin & Moderation Panel' : 'Admin & Moderasyon Paneli'}</span>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
+          </button>
+
+          {/* Çıkış Yap Butonu */}
+          <button
+            type="button"
+            onClick={async () => {
+              await logoutUser();
+              navigate('/');
+              window.location.reload();
+            }}
+            className="w-full p-3.5 flex items-center justify-between hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-xs font-semibold text-rose-600 dark:text-rose-400 cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <span>{language === 'en' ? 'Log Out' : 'Çıkış Yap'}</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-rose-400" />
           </button>
         </div>
       </div>

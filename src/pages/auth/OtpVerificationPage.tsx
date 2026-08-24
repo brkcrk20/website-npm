@@ -9,9 +9,11 @@ export const OtpVerificationPage: React.FC = () => {
   const navigate = useNavigate();
   const { setCurrentUser, showToast } = useApp();
 
-  const state = (location.state as { phone?: string; isExisting?: boolean }) || {};
+  const state =
+    (location.state as { phone?: string; isExisting?: boolean; passwordVerified?: boolean }) || {};
   const phone = state.phone || '+90 532 890 12 34';
   const isExisting = state.isExisting || false;
+  const passwordVerified = state.passwordVerified || false;
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [timer, setTimer] = useState<number>(56);
@@ -96,6 +98,11 @@ export const OtpVerificationPage: React.FC = () => {
             Doğrulama Kodu
           </h1>
           <p className="text-sm text-stone-500">
+            {passwordVerified && (
+              <span className="block text-xs font-semibold text-emerald-700 mb-1">
+                Şifren doğrulandı, ek güvenlik için son adım kaldı.
+              </span>
+            )}
             <span className="font-semibold text-stone-800">{phone}</span> numarasına gönderilen 6 haneli SMS kodunu gir.
           </p>
         </div>

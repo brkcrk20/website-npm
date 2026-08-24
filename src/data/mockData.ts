@@ -9,16 +9,13 @@ import {
   CommunityEvent,
   MysterySwapItem,
   NotificationItem,
-  Report,
-  Dispute,
-  AdminKPI,
-  AdminAuditLog,
 } from '../types';
 
 export const CURRENT_USER: UserProfile = {
   id: 'user-current',
   phone: '+90 532 890 12 34',
   fullName: 'Berke Çelik',
+  smsVerificationEnabled: false,
   avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
   city: 'İstanbul',
   district: 'Kadıköy',
@@ -66,6 +63,7 @@ export const OTHER_USERS: Record<string, UserProfile> = {
     id: 'user-asli',
     phone: '+90 544 123 45 67',
     fullName: 'Aslı T.',
+    smsVerificationEnabled: false,
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
     city: 'İstanbul',
     district: 'Kadıköy',
@@ -106,6 +104,7 @@ export const OTHER_USERS: Record<string, UserProfile> = {
     id: 'user-mehmet',
     phone: '+90 533 765 43 21',
     fullName: 'Mehmet K.',
+    smsVerificationEnabled: false,
     avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&auto=format&fit=crop&q=80',
     city: 'İstanbul',
     district: 'Kadıköy',
@@ -146,6 +145,7 @@ export const OTHER_USERS: Record<string, UserProfile> = {
     id: 'user-zeynep',
     phone: '+90 555 987 65 43',
     fullName: 'Zeynep B.',
+    smsVerificationEnabled: false,
     avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
     city: 'İstanbul',
     district: 'Beşiktaş',
@@ -187,6 +187,7 @@ export const OTHER_USERS: Record<string, UserProfile> = {
 export const INITIAL_LISTINGS: Listing[] = [
   {
     id: 'list-canon-200d',
+    slug: 'canon-eos-200d',
     userId: 'user-current',
     user: {
       id: 'user-current',
@@ -236,6 +237,7 @@ export const INITIAL_LISTINGS: Listing[] = [
   },
   {
     id: 'list-bianchi-bike',
+    slug: 'bianchi-sehir-bisikleti',
     userId: 'user-asli',
     user: {
       id: 'user-asli',
@@ -284,6 +286,7 @@ export const INITIAL_LISTINGS: Listing[] = [
   },
   {
     id: 'list-macbook-m1',
+    slug: 'macbook-air-m1',
     userId: 'user-mehmet',
     user: {
       id: 'user-mehmet',
@@ -332,6 +335,7 @@ export const INITIAL_LISTINGS: Listing[] = [
   },
   {
     id: 'list-ipad-pro-11',
+    slug: 'ipad-pro-11',
     userId: 'user-current',
     user: {
       id: 'user-current',
@@ -378,6 +382,7 @@ export const INITIAL_LISTINGS: Listing[] = [
   },
   {
     id: 'list-sony-headphones',
+    slug: 'sony-kulaklik',
     userId: 'user-zeynep',
     user: {
       id: 'user-zeynep',
@@ -423,6 +428,7 @@ export const INITIAL_LISTINGS: Listing[] = [
   },
   {
     id: 'list-tent-camping',
+    slug: 'kamp-cadiri',
     userId: 'user-asli',
     user: {
       id: 'user-asli',
@@ -467,6 +473,7 @@ export const INITIAL_LISTINGS: Listing[] = [
   },
   {
     id: 'list-lego-saturn',
+    slug: 'lego-saturn-v',
     userId: 'user-zeynep',
     user: {
       id: 'user-zeynep',
@@ -995,92 +1002,10 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
-export const INITIAL_ADMIN_KPIS: AdminKPI = {
-  totalUsers: 24580,
-  activeUsers: 8941,
-  totalListings: 15247,
-  activeTrades: 1240,
-  completedTrades: 15247,
-  activeLoops: 1892,
-  totalSvsImpactCo2Kg: 18247,
-  totalWaterSavedL: 420800,
-  totalEnergyKwh: 189400,
-  pendingReports: 23,
-  userGrowthPercent: 12.4,
-  tradeGrowthPercent: 18.6,
-};
-
-export const INITIAL_REPORTS: Report[] = [
-  {
-    id: 'rep-1',
-    reporterId: 'user-mehmet',
-    reporterName: 'Mehmet K.',
-    targetType: 'listing',
-    targetId: 'list-rep-x',
-    targetTitle: 'Kopya / Sahte AirPods Pro İlanı',
-    reason: 'fraud',
-    description: 'İlan sahibi orijinal olduğunu belirtmiş fakat fotoğraflar taklit ürüne ait.',
-    priority: 'high',
-    status: 'pending',
-    createdAt: '18 Mayıs 2024, 11:20',
-  },
-  {
-    id: 'rep-2',
-    reporterId: 'user-asli',
-    reporterName: 'Aslı T.',
-    targetType: 'user',
-    targetId: 'user-bad-1',
-    targetTitle: 'Şüpheli Kullanıcı Hesabı',
-    reason: 'inappropriate',
-    description: 'Mesajlarda kaba dil kullandı ve platform dışı nakit ödeme teklif etti.',
-    priority: 'critical',
-    status: 'investigating',
-    createdAt: '18 Mayıs 2024, 09:40',
-  },
-  {
-    id: 'rep-3',
-    reporterId: 'user-zeynep',
-    reporterName: 'Zeynep B.',
-    targetType: 'trade',
-    targetId: 'trade-disp-1',
-    targetTitle: 'Teslim Edilmeyen Kargo Bildirimi',
-    reason: 'broken_item',
-    description: 'Kargo 4 gündür hareket etmiyor, kullanıcı telefonlara yanıt vermiyor.',
-    priority: 'high',
-    status: 'pending',
-    createdAt: '17 Mayıs 2024, 17:30',
-  },
-];
-
-export const INITIAL_ADMIN_LOGS: AdminAuditLog[] = [
-  {
-    id: 'log-1',
-    adminName: 'Admin Kemal S.',
-    action: 'Kullanıcı Askıya Alındı',
-    target: 'Kullanıcı #8942 (Sahte kimlik şüphesi)',
-    timestamp: '18 Mayıs 2024, 14:10',
-    ipAddress: '194.27.12.8',
-    details: 'Telefon doğrulaması başarısız oldu, şüpheli IP aktivitesi saptandı.',
-  },
-  {
-    id: 'log-2',
-    adminName: 'Admin Selin K.',
-    action: 'İlan Kaldırıldı',
-    target: 'İlan #4012 (Yasaklı Ürün / Reçeteli)',
-    timestamp: '18 Mayıs 2024, 13:45',
-    ipAddress: '194.27.12.15',
-    details: 'Swaloop topluluk kuralları 3. maddesi uyarınca moderasyon tarafından silindi.',
-  },
-  {
-    id: 'log-3',
-    adminName: 'Admin Kemal S.',
-    action: 'SVS Katsayı Güncellemesi',
-    target: 'Elektronik / Tablet Emisyon Çarpanı (v2.1 -> v2.2)',
-    timestamp: '17 Mayıs 2024, 16:30',
-    ipAddress: '194.27.12.8',
-    details: 'LCA metodolojisi uyarınca lityum batarya geri dönüşüm katsayısı revize edildi.',
-  },
-];
+// NOT: INITIAL_ADMIN_KPIS / INITIAL_REPORTS / INITIAL_ADMIN_LOGS buradan
+// kaldırıldı — admin paneli artık bu sabit/sahte verileri değil, doğrudan
+// Supabase'i (reports/disputes/admin_audit_logs tabloları) okuyor. Bkz.
+// src/services/adminService.ts.
 
 export { INITIAL_BADGES as BADGES_LIST, PAPERCLIP_STAGES } from '../constants';
 export const MYSTERY_SWAP_ITEMS = INITIAL_MYSTERY_ITEMS;

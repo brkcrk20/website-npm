@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { authService } from '../../services/authService';
 import {
   X,
   Globe,
@@ -19,9 +20,32 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { language, setLanguage, theme, setTheme, showToast, t } = useApp();
+  const { language, setLanguage, theme, setTheme, showToast, t, currentUser, setCurrentUser } = useApp();
+  const [isUpdatingSms, setIsUpdatingSms] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleToggleSmsVerification = async () => {
+    if (isUpdatingSms) return;
+    const nextValue = !currentUser.smsVerificationEnabled;
+    setIsUpdatingSms(true);
+    const updated = await authService.setSmsVerificationEnabled(nextValue);
+    setIsUpdatingSms(false);
+
+    if (!updated) {
+      showToast('Hata', 'Ayar güncellenemedi. Lütfen tekrar deneyin.', 'error');
+      return;
+    }
+
+    setCurrentUser(updated);
+    showToast(
+      nextValue ? 'SMS Doğrulaması Açıldı' : 'SMS Doğrulaması Kapatıldı',
+      nextValue
+        ? 'Artık her girişte şifreden sonra SMS kodu da istenecek.'
+        : 'Artık girişte sadece telefon + şifre yeterli olacak.',
+      'info'
+    );
+  };
 
   const handleLanguageSelect = (lang: 'tr' | 'en') => {
     setLanguage(lang);
@@ -173,6 +197,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   {theme === 'dark' && <Check className="w-3.5 h-3.5" />}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Section: Security */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              Güvenlik
+            </h3>
+
+            <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 pr-2">
+                <Smartphone className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-stone-900 dark:text-white block">
+                    Her Girişte SMS Doğrulaması
+                  </span>
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block">
+                    Açıksa şifrenden sonra ayrıca SMS kodu da istenir.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleSmsVerification}
+                disabled={isUpdatingSms}
+                className={`w-9 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-colors disabled:opacity-50 ${
+                  currentUser.smsVerificationEnabled
+                    ? 'bg-emerald-700 justify-end'
+                    : 'bg-stone-300 dark:bg-stone-600 justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+              </button>
             </div>
           </div>
 

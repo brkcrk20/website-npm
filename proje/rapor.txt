@@ -1,0 +1,32 @@
+🟠 2. TAMAMEN SAHTE / MOCK VERİ ÜZERİNDE ÇALIŞAN ÖZELLİKLER
+
+Bunlar "buton var, tıklanıyor ama arkasında gerçek veri yok" durumundaki bölümler — kullanıcı için görünmeyen ama işlevsiz özellikler:
+
+Özellik	Durum
+Admin Paneli (KPI, raporlar, disputes, audit log)	Tamamen bellekte tutulan sahte veri — sayfa yenilenince her şey sıfırlanıyor. Sadece "ilan kaldır" gerçekten DB'ye yazıyor.
+Profil fotoğrafı (avatar) yükleme	Gerçek yükleme yok — her tıklamada 5 sabit stok avatar arasında sırayla geçiş yapıyor.
+Rozetler (Badges)	Sabit sabit veri, DB'de hiç tablo yok.
+Etkinlikler (Events) sayfası	Kendi hardcoded verisi var, communityService'teki mock veriden bile ayrı.
+Gizemli Kutu (Mystery Swap)	Tamamen mock.
+Takas Yolculuğum / Kırmızı Ataş (Paperclip)	Tamamen mock.
+Bildirimler (Notifications)	Sabit mock liste, gerçek olaylardan (yeni teklif, mesaj vs.) tetiklenmiyor.
+"Döngü oluştur / döngüye katıl" arayüzü	Backend fonksiyonu (createLoop/joinLoop) yazılmış ama hiçbir buton/form onu çağırmıyor — kullanıcı yeni döngü başlatamıyor, sadece var olanları görebiliyor.
+
+Müşteri gözünden risk: Bir kullanıcı admin panelinde bir raporu "çözüldü" işaretlerse, sayfayı kapatıp açtığında rapor eski haline döner. Rozet kazandığını sanır ama bu hiçbir yerde kalıcı değildir. Bu tutarsızlıklar güven kaybettirir.
+
+🟡 3. TASARIM / KULLANICI DENEYİMİ (UX) BULGULARI
+Pinch-to-zoom kapalı (index.html'de user-scalable=no, maximum-scale=1.0). Görme zorluğu yaşayan kullanıcılar sayfayı büyütemiyor — hem erişilebilirlik hem Apple/Google mağaza incelemelerinde sorun çıkarabilecek bir ayar.
+Global bir "hata sayfası" (Error Boundary) yok. Herhangi bir bileşende beklenmedik bir JS hatası olursa kullanıcı tamamen beyaz/boş bir ekranla karşılaşır, geri dönecek bir buton bile göremez.
+Favicon yok, public/ klasörü hiç yok — tarayıcı sekmesinde varsayılan boş ikon görünür, markasız bir izlenim verir.
+robots.txt / sitemap.xml yok — ilan sayfaları Google'da düzgün indexlenmeyebilir (bu bir pazaryeri için organik trafik kaybı demek).
+Open Graph görseli (og:image) tanımlı değil — WhatsApp/Instagram'da link paylaşınca resimsiz, sönük bir kart görünür.
+Route koruması (auth guard) hiç yok. /admin, /profil, /ilan-ver gibi sayfalara giriş yapmadan da doğrudan URL ile gidilebiliyor; oturum yoksa uygulama sessizce sahte bir "misafir kullanıcı" (CURRENT_USER) ile devam ediyor — kullanıcı "giriş yapmışım gibi" bir arayüz görüp sonra işlemler (ilan verme, mesaj) sessizce başarısız olabilir, net bir "giriş yap" uyarısı almadan.
+JS bundle boyutu 862 KB (gzip ~223 KB), tek parça halinde — Vite kendisi de build çıktısında uyarıyor. Sayfa yüklenmesi özellikle mobil/yavaş bağlantıda yavaş kalabilir; kod bölme (React.lazy + dynamic import) hiç kullanılmamış.
+
+✅ 6. SENİN ORTAMINDA YAPMAN GEREKEN TESTLER (öncelik sırasıyla)
+Supabase Studio → Policies ekranından tüm tablolarda gerçekten RLS açık mı, politika var mı kontrol et. (§1.1 — en kritik.)
+Bir ilana teklif gönder → kabul et → teslimat adımlarını ilerlet → değerlendirme bırak → profilde görünüyor mu? (Uçtan uca hiç test edilmemiş.)
+İki farklı test hesabıyla mesajlaşmayı dene, okundu bilgisi doğru mu?
+Bir kullanıcı olarak /admin adresine git — girişte bir uyarı/engel var mı yoksa direkt açılıyor mu?
+Deploy sonrası bir ilan linkini kopyala, yeni sekmede doğrudan aç ve sayfayı yenile (F5) — 404 alıyor musun?
+Mobilde pinch-to-zoom gerçekten kapalı mı, gözle kontrol et.

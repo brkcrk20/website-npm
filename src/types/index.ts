@@ -36,14 +36,21 @@ export interface UserProfile {
   id: string;
   phone: string; // Masked: +90 5XX XXX XX XX
   fullName: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   avatarUrl: string;
   city: string;
   district: string;
   memberSince: string;
   bio?: string;
+  isAdmin?: boolean;
   interests: CategoryId[];
   wantedCategories: CategoryId[];
   isVerified: boolean;
+  // true ise her girişte şifreden sonra ayrıca SMS/OTP doğrulaması istenir.
+  // Varsayılan false: normal girişte sadece telefon + şifre yeterlidir.
+  smsVerificationEnabled: boolean;
   trustProfile: TrustProfile;
   stats: {
     totalTrades: number;
@@ -87,6 +94,10 @@ export interface EnvironmentalImpact {
 
 export interface Listing {
   id: string;
+  // SEO-dostu URL için: /ilan/:id yerine /ilan/:slug kullanılır
+  // (örn. "deneme-ilanlari-2"). DB tetikleyicisi ilan oluşturulurken
+  // başlıktan otomatik üretir, bkz. supabase/migrations/20260818180000_add_listing_slugs.sql
+  slug: string;
   userId: string;
   user: {
     id: string;
@@ -247,8 +258,11 @@ export interface Badge {
   id: string;
   title: string;
   description: string;
+  // Şimdilik lucide ikon adı değil, doğrudan gösterilecek emoji karakteri
+  // (bkz. src/constants/badges.ts) — küçük rozet setinde bağımlılık eklemeden
+  // renkli/tanınabilir simgeler için tercih edildi.
   iconName: string;
-  category: 'trade' | 'eco' | 'community' | 'trust';
+  category: 'trade' | 'eco' | 'community' | 'trust' | 'loop';
   isEarned: boolean;
   earnedDate?: string;
   progressPercent: number;
@@ -340,6 +354,8 @@ export interface Report {
   evidenceImages?: string[];
   createdAt: string;
   resolutionNote?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
 }
 
 export interface Dispute {
@@ -347,13 +363,12 @@ export interface Dispute {
   tradeId: string;
   initiator: UserProfile;
   respondent: UserProfile;
-  initiatorItem: Listing;
-  respondentItem: Listing;
   reason: string;
   status: 'open' | 'under_review' | 'resolved_return' | 'resolved_cancel' | 'dismissed';
   evidencePhotos: string[];
   adminDecision?: string;
   createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface AdminKPI {
@@ -377,6 +392,5 @@ export interface AdminAuditLog {
   action: string;
   target: string;
   timestamp: string;
-  ipAddress: string;
   details: string;
 }

@@ -307,6 +307,7 @@ export type Database = {
           looking_for: string
           model: string | null
           owner_id: string
+          slug: string
           status: string
           tags: string[]
           title: string
@@ -329,6 +330,7 @@ export type Database = {
           looking_for?: string
           model?: string | null
           owner_id: string
+          slug?: string
           status?: string
           tags?: string[]
           title: string
@@ -351,6 +353,7 @@ export type Database = {
           looking_for?: string
           model?: string | null
           owner_id?: string
+          slug?: string
           status?: string
           tags?: string[]
           title?: string
@@ -553,9 +556,14 @@ export type Database = {
           city: string | null
           created_at: string
           district: string | null
+          email: string | null
+          first_name: string | null
           full_name: string | null
           id: string
+          is_admin: boolean
+          last_name: string | null
           phone: string
+          sms_verification_enabled: boolean
           updated_at: string
           username: string | null
         }
@@ -565,9 +573,14 @@ export type Database = {
           city?: string | null
           created_at?: string
           district?: string | null
+          email?: string | null
+          first_name?: string | null
           full_name?: string | null
           id: string
+          is_admin?: boolean
+          last_name?: string | null
           phone: string
+          sms_verification_enabled?: boolean
           updated_at?: string
           username?: string | null
         }
@@ -577,13 +590,186 @@ export type Database = {
           city?: string | null
           created_at?: string
           district?: string | null
+          email?: string | null
+          first_name?: string | null
           full_name?: string | null
           id?: string
+          is_admin?: boolean
+          last_name?: string | null
           phone?: string
+          sms_verification_enabled?: boolean
           updated_at?: string
           username?: string | null
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          evidence_images: string[]
+          id: string
+          priority: string
+          reason: string
+          reporter_id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          target_id: string
+          target_title: string | null
+          target_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          evidence_images?: string[]
+          id?: string
+          priority?: string
+          reason: string
+          reporter_id: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          target_id: string
+          target_title?: string | null
+          target_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          evidence_images?: string[]
+          id?: string
+          priority?: string
+          reason?: string
+          reporter_id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          target_id?: string
+          target_title?: string | null
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          admin_decision: string | null
+          created_at: string
+          evidence_photos: string[]
+          id: string
+          initiator_id: string
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          respondent_id: string
+          status: string
+          trade_id: string
+        }
+        Insert: {
+          admin_decision?: string | null
+          created_at?: string
+          evidence_photos?: string[]
+          id?: string
+          initiator_id: string
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          respondent_id: string
+          status?: string
+          trade_id: string
+        }
+        Update: {
+          admin_decision?: string | null
+          created_at?: string
+          evidence_photos?: string[]
+          id?: string
+          initiator_id?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          respondent_id?: string
+          status?: string
+          trade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_respondent_id_fkey"
+            columns: ["respondent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_audit_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          admin_name: string
+          created_at: string
+          details: string | null
+          id: string
+          target: string
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          admin_name: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          target: string
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          admin_name?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          target?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reviews: {
         Row: {
@@ -740,6 +926,10 @@ export type Database = {
       trade_offers: {
         Row: {
           created_at: string
+          delivery_location_name: string | null
+          delivery_method: string | null
+          delivery_notes: string | null
+          delivery_scheduled_at: string | null
           id: string
           message: string | null
           parent_offer_id: string | null
@@ -750,6 +940,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_location_name?: string | null
+          delivery_method?: string | null
+          delivery_notes?: string | null
+          delivery_scheduled_at?: string | null
           id?: string
           message?: string | null
           parent_offer_id?: string | null
@@ -760,6 +954,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_location_name?: string | null
+          delivery_method?: string | null
+          delivery_notes?: string | null
+          delivery_scheduled_at?: string | null
           id?: string
           message?: string | null
           parent_offer_id?: string | null
@@ -795,8 +993,10 @@ export type Database = {
       trades: {
         Row: {
           completed_at: string | null
+          delivery_location_name: string | null
           delivery_method: string | null
           delivery_notes: string | null
+          delivery_scheduled_at: string | null
           id: string
           offer_id: string
           receiver_id: string
@@ -806,8 +1006,10 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          delivery_location_name?: string | null
           delivery_method?: string | null
           delivery_notes?: string | null
+          delivery_scheduled_at?: string | null
           id?: string
           offer_id: string
           receiver_id: string
@@ -817,8 +1019,10 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          delivery_location_name?: string | null
           delivery_method?: string | null
           delivery_notes?: string | null
+          delivery_scheduled_at?: string | null
           id?: string
           offer_id?: string
           receiver_id?: string
@@ -907,27 +1111,36 @@ export type Database = {
       }
       trust_profiles: {
         Row: {
+          average_rating: number
           cancelled_trades: number
+          completed_loops: number
           completed_trades: number
           response_rate: number
+          review_count: number
           trust_score: number
           updated_at: string
           user_id: string
           verification_level: string
         }
         Insert: {
+          average_rating?: number
           cancelled_trades?: number
+          completed_loops?: number
           completed_trades?: number
           response_rate?: number
+          review_count?: number
           trust_score?: number
           updated_at?: string
           user_id: string
           verification_level?: string
         }
         Update: {
+          average_rating?: number
           cancelled_trades?: number
+          completed_loops?: number
           completed_trades?: number
           response_rate?: number
+          review_count?: number
           trust_score?: number
           updated_at?: string
           user_id?: string

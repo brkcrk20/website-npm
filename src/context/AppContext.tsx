@@ -16,13 +16,14 @@ interface ToastMessage {
 interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile>>;
-  currentLocation: { city: string; district: string };
-  setCurrentLocation: (loc: { city: string; district: string }) => void;
+  currentLocation: { city: string; district: string; neighbourhood?: string; label?: string };
+  setCurrentLocation: (loc: { city: string; district: string; neighbourhood?: string; label?: string }) => void;
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
   favoritesCount: number;
-  refreshUserData: () => void;
+  refreshUserData: () => Promise<void>;
+  logoutUser: () => Promise<void>;
   toasts: ToastMessage[];
   showToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
   removeToast: (id: string) => void;
@@ -40,7 +41,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile>(authService.getCurrentUser());
-  const [currentLocation, setCurrentLocation] = useState({ city: 'İstanbul', district: 'Kadıköy' });
+  const [currentLocation, setCurrentLocation] = useState({ city: 'İstanbul', district: '' });
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [deviceFrameMode, setDeviceFrameMode] = useState<boolean>(false);
@@ -50,6 +51,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('swaloop_theme') as 'light' | 'dark') || 'light';
   });
+
+  useEffect(() => {
+    // Uygulama açıldığında Supabase'den güncel kullanıcıyı kontrol et
+    const checkUserSession = async () => {
+      const user = await authService.getCurrentUserFromSupabase();
+      if (user) {
+        setCurrentUser(user);
+      }
+    };
+    checkUserSession();
+  }, []);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -105,8 +117,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const refreshUserData = () => {
+  const refreshUserData = async () => {
+    const user = await authService.getCurrentUserFromSupabase();
+    if (user) {
+      setCurrentUser(user);
+    } else {
+      setCurrentUser(authService.getCurrentUser());
+    }
+  };
+
+  const logoutUser = async () => {
+    await authService.logout();
     setCurrentUser(authService.getCurrentUser());
+    showToast('Çıkış Yapıldı', 'Hesabınızdan güvenli bir şekilde çıkış yapıldı.', 'info');
   };
 
   const t = (key: TranslationKey): string => {
@@ -125,6 +148,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationAsRead,
         favoritesCount,
         refreshUserData,
+        logoutUser,
         toasts,
         showToast,
         removeToast,

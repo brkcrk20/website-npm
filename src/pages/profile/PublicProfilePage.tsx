@@ -1,30 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { authService } from '../../services/authService';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
-import { OTHER_USERS } from '../../data/mockData';
 import { ProductCard } from '../../components/common/ProductCard';
 import { TrustCard } from '../../components/common/TrustCard';
-import { Listing, Review } from '../../types';
-import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Leaf } from 'lucide-react';
+import { Listing, Review, UserProfile } from '../../types';
+import { getUserBadges } from '../../constants/badges';
+import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Leaf, Loader2 } from 'lucide-react';
 
 export const PublicProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const { currentUser, showToast } = useApp();
-  const user = id && OTHER_USERS[id] ? OTHER_USERS[id] : Object.values(OTHER_USERS)[0];
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
 
+  // Önceden bu sayfa hep OTHER_USERS mock verisini gösteriyordu, gerçek
+  // Supabase profiline hiç bağlı değildi. Artık id ile gerçek profil
+  // çekiliyor.
   useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    authService.getPublicProfile(id).then((profile) => {
+      setUser(profile);
+      setIsLoading(false);
+    });
+  }, [id]);
+
+  useEffect(() => {
+    if (!user) return;
     listingService.getUserListings(user.id).then(setUserListings);
     tradeService.getReviewsForUser(user.id).then(setUserReviews);
-  }, [user.id]);
+  }, [user?.id]);
+
+  const earnedBadges = user ? getUserBadges(user).filter((b) => b.isEarned) : [];
 
   const handleStartChat = async () => {
+    if (!user) return;
     const conv = await messageService.getOrCreateConversationWithUser(currentUser.id, user.id);
     if (conv) {
       navigate(`/mesajlar/${conv.id}`);
@@ -32,6 +54,29 @@ export const PublicProfilePage: React.FC = () => {
       showToast('Sohbet açılamadı', 'Lütfen tekrar deneyin.', 'error');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-emerald-700 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-sm font-semibold text-stone-700">Bu kullanıcı bulunamadı.</p>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="text-xs font-bold text-emerald-700 hover:underline"
+        >
+          Geri dön
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
@@ -110,6 +155,28 @@ export const PublicProfilePage: React.FC = () => {
               <span className="text-[10px] text-stone-500 block">Güven Skoru</span>
             </div>
           </div>
+
+          {/* Kazanılan rozetler — küçük önizleme, tamamı /rozetlerim'de değil
+              başka kullanıcının profilinde ayrı bir liste sayfası yok, bu
+              yüzden burada doğrudan gösteriliyor */}
+          {earnedBadges.length > 0 && (
+            <div className="pt-3 mt-3 border-t border-stone-100">
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-2">
+                Rozetler ({earnedBadges.length})
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {earnedBadges.map((badge) => (
+                  <span
+                    key={badge.id}
+                    title={`${badge.title} — ${badge.description}`}
+                    className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-sm shrink-0 cursor-default"
+                  >
+                    {badge.iconName}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* User's Active Listings */}

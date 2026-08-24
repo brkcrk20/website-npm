@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { CATEGORIES } from '../../constants';
 import { CategoryId } from '../../types';
-import { ArrowLeft, Camera, Check, User, MapPin, Sparkles } from 'lucide-react';
+import { TURKEY_CITIES, getDistrictsForCity } from '../../data/turkeyLocations';
+import { ArrowLeft, Camera, User, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — bkz. avatars bucket file_size_limit
 
 export const CreateProfilePage: React.FC = () => {
   const location = useLocation();
@@ -14,14 +17,31 @@ export const CreateProfilePage: React.FC = () => {
   const state = (location.state as { phone?: string }) || {};
   const phone = state.phone || '+90 532 890 12 34';
 
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
   const [city, setCity] = useState('İstanbul');
   const [district, setDistrict] = useState('Kadıköy');
+  const districtsForCity = useMemo(() => getDistrictsForCity(city), [city]);
+
+  const handleCityChange = (newCity: string) => {
+    setCity(newCity);
+    const districts = getDistrictsForCity(newCity);
+    setDistrict(districts[0] ?? '');
+  };
+
   const [avatarUrl, setAvatarUrl] = useState(
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80'
   );
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [selectedInterests, setSelectedInterests] = useState<CategoryId[]>(['electronics', 'sports']);
   const [selectedWanted, setSelectedWanted] = useState<CategoryId[]>(['electronics', 'books']);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleInterest = (id: CategoryId) => {
     setSelectedInterests((prev) =>
@@ -35,49 +55,108 @@ export const CreateProfilePage: React.FC = () => {
     );
   };
 
-  const handleAvatarSelect = () => {
-    // In demo, rotate sample profile avatars
-    const samples = [
-      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=300&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80',
-    ];
-    const nextAvatar = samples[(samples.indexOf(avatarUrl) + 1) % samples.length];
-    setAvatarUrl(nextAvatar);
-    showToast('Profil Fotoğrafı Seçildi', 'Görsel güncellendi.', 'info');
+  const handleAvatarButtonClick = () => {
+    if (isUploadingAvatar) return;
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // aynı dosyayı tekrar seçebilmek için input'u sıfırla
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Geçersiz Dosya', 'Lütfen bir resim dosyası seçin.', 'error');
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      showToast('Dosya Çok Büyük', 'Profil fotoğrafı en fazla 5 MB olabilir.', 'error');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const uploadedUrl = await authService.uploadAvatar(file);
+    setIsUploadingAvatar(false);
+
+    if (!uploadedUrl) {
+      showToast('Yükleme Başarısız', 'Fotoğraf yüklenemedi, lütfen tekrar deneyin.', 'error');
+      return;
+    }
+
+    setAvatarUrl(uploadedUrl);
+    showToast('Profil Fotoğrafı Yüklendi', 'Görsel güncellendi.', 'success');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      showToast('Eksik Bilgi', 'Lütfen adınızı ve soyadınızı giriniz.', 'warning');
+
+    if (!firstName.trim() || !lastName.trim()) {
+      showToast('Eksik Bilgi', 'Lütfen adını ve soyadını ayrı ayrı giriniz.', 'warning');
       return;
     }
 
+    if (!authService.isValidEmail(email)) {
+      showToast('Geçersiz E-posta', 'Lütfen geçerli bir e-posta adresi giriniz.', 'warning');
+      return;
+    }
+
+    if (!authService.isValidPassword(password)) {
+      showToast(
+        'Zayıf Şifre',
+        'Şifre en az 8 karakter olmalı ve en az bir harf ile bir rakam içermelidir.',
+        'warning'
+      );
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      showToast('Şifreler Uyuşmuyor', 'Girdiğin iki şifre birbiriyle aynı değil.', 'warning');
+      return;
+    }
+
+    if (!city || !district) {
+      showToast('Eksik Bilgi', 'Lütfen il ve ilçe seçiniz.', 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
     const newUser = await authService.createProfile({
       phone,
-      fullName,
+      firstName,
+      lastName,
+      email,
+      password,
       city,
       district,
       avatarUrl,
       interests: selectedInterests,
       wantedCategories: selectedWanted,
     });
-    
+    setIsSubmitting(false);
+
     if (!newUser) {
-  showToast(
-    'Hata',
-    'Profil oluşturulamadı. Lütfen tekrar deneyin.',
-    'error'
-  );
-  return;
-}
+      showToast(
+        'Hata',
+        'Profil oluşturulamadı. Lütfen tekrar deneyin.',
+        'error'
+      );
+      return;
+    }
 
     setCurrentUser(newUser);
     showToast('Profil Oluşturuldu! 🎉', 'Swaloop dünyasına hoş geldin.', 'success');
     navigate('/kesfet');
   };
+
+  const isFormValid =
+    firstName.trim() &&
+    lastName.trim() &&
+    email.trim() &&
+    password &&
+    passwordConfirm &&
+    city &&
+    district;
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col justify-between p-6 max-w-md mx-auto">
@@ -107,42 +186,135 @@ export const CreateProfilePage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Avatar Upload Bubble */}
           <div className="flex flex-col items-center justify-center my-2">
-            <div className="relative group cursor-pointer" onClick={handleAvatarSelect}>
+            <div className="relative group cursor-pointer" onClick={handleAvatarButtonClick}>
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-emerald-100">
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className={`w-full h-full object-cover transition-opacity ${isUploadingAvatar ? 'opacity-50' : ''}`}
+                />
               </div>
+              {isUploadingAvatar && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-emerald-700 animate-spin" />
+                </div>
+              )}
               <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center border-2 border-white shadow-md group-hover:scale-110 transition-transform">
                 <Camera className="w-4 h-4" />
               </div>
             </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarFileChange}
+              className="hidden"
+            />
             <button
               type="button"
-              onClick={handleAvatarSelect}
-              className="text-xs font-semibold text-emerald-700 hover:underline mt-2 cursor-pointer"
+              disabled={isUploadingAvatar}
+              onClick={handleAvatarButtonClick}
+              className="text-xs font-semibold text-emerald-700 hover:underline mt-2 cursor-pointer disabled:opacity-60"
             >
-              Fotoğraf Değiştir
+              {isUploadingAvatar ? 'Yükleniyor...' : 'Fotoğraf Değiştir'}
             </button>
           </div>
 
-          {/* Ad Soyad */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
-              Ad Soyad
-            </label>
-            <div className="relative">
-              <User className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          {/* Ad & Soyad — ayrı ayrı */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
+                Ad
+              </label>
+              <div className="relative">
+                <User className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Adın"
+                  required
+                  className="w-full pl-11 pr-3 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
+                Soyad
+              </label>
               <input
                 type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Adını ve soyadını gir"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Soyadın"
+                required
+                className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
+              />
+            </div>
+          </div>
+
+          {/* E-posta */}
+          <div>
+            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
+              E-posta Adresi
+            </label>
+            <div className="relative">
+              <Mail className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ornek@mail.com"
                 required
                 className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
               />
             </div>
           </div>
 
-          {/* Şehir & İlçe */}
+          {/* Şifre */}
+          <div>
+            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
+              Şifre
+            </label>
+            <div className="relative">
+              <Lock className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="En az 8 karakter, harf + rakam"
+                required
+                className="w-full pl-11 pr-11 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Şifre Tekrar */}
+          <div>
+            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
+              Şifre (Tekrar)
+            </label>
+            <div className="relative">
+              <Lock className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                placeholder="Şifreni tekrar gir"
+                required
+                className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
+              />
+            </div>
+          </div>
+
+          {/* Şehir & İlçe — kademeli seçim */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
@@ -150,14 +322,14 @@ export const CreateProfilePage: React.FC = () => {
               </label>
               <select
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => handleCityChange(e.target.value)}
                 className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
               >
-                <option value="İstanbul">İstanbul</option>
-                <option value="Ankara">Ankara</option>
-                <option value="İzmir">İzmir</option>
-                <option value="Bursa">Bursa</option>
-                <option value="Antalya">Antalya</option>
+                {TURKEY_CITIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -165,13 +337,17 @@ export const CreateProfilePage: React.FC = () => {
               <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
                 İlçe
               </label>
-              <input
-                type="text"
+              <select
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
-                placeholder="İlçeni gir"
                 className="w-full px-3.5 py-3.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
+              >
+                {districtsForCity.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -204,10 +380,16 @@ export const CreateProfilePage: React.FC = () => {
 
           <button
             type="submit"
-            disabled={!fullName.trim()}
+            disabled={!isFormValid || isSubmitting}
             className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer mt-4"
           >
-            Kaydı Tamamla ve Keşfet
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Kaydediliyor...
+              </>
+            ) : (
+              'Kaydı Tamamla ve Keşfet'
+            )}
           </button>
         </form>
       </div>

@@ -73,7 +73,8 @@ export const NearbyMapPage: React.FC = () => {
                 Yakınımdaki Takas Haritası
               </h1>
               <p className="text-xs text-stone-500">
-                {currentLocation.district}, {currentLocation.city} Çevresi
+                {currentLocation.district ? `${currentLocation.district}, ` : ''}
+                {currentLocation.city} Çevresi
               </p>
             </div>
           </div>
@@ -150,7 +151,7 @@ export const NearbyMapPage: React.FC = () => {
             return (
               <div
                 key={l.id}
-                onClick={() => navigate(`/ilan/${l.id}`)}
+                onClick={() => navigate(`/ilan/${l.slug || l.id}`)}
                 style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                 className="absolute -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer group"
               >
@@ -216,7 +217,7 @@ export const NearbyMapPage: React.FC = () => {
             {allListings.slice(0, 4).map((listing) => (
               <div
                 key={listing.id}
-                onClick={() => navigate(`/ilan/${listing.id}`)}
+                onClick={() => navigate(`/ilan/${listing.slug || listing.id}`)}
                 className="p-3.5 bg-white rounded-2xl border border-stone-200/90 shadow-xs flex items-center justify-between gap-3 hover:border-emerald-500/50 transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">

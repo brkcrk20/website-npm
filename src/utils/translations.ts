@@ -16,6 +16,7 @@ export const translations = {
     header_favorites: 'Favorilerim',
     header_notifications: 'Bildirimler',
     header_select_location: 'Konum Seçin',
+    header_location_hint: 'Adresini yazarak ara ya da konumunu kullan.',
 
     // Profile Page
     profile_title: 'Profilim',
@@ -166,6 +167,7 @@ export const translations = {
     header_favorites: 'Favorites',
     header_notifications: 'Notifications',
     header_select_location: 'Select Location',
+    header_location_hint: 'Search by typing an address or use your current location.',
 
     // Profile Page
     profile_title: 'My Profile',

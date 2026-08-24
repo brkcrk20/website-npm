@@ -83,6 +83,21 @@ export const MakeOfferPage: React.FC = () => {
     );
   }
 
+  if (targetListing.user.id === currentUser.id) {
+    return (
+      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
+        <p className="text-sm font-bold text-stone-700 mb-3">Kendi ilanınıza takas teklifi yapamazsınız.</p>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold"
+        >
+          Geri Dön
+        </button>
+      </div>
+    );
+  }
+
   const toggleSelectMyListing = (id: string) => {
     if (selectedMyListingIds.includes(id)) {
       if (selectedMyListingIds.length > 1) {
@@ -120,6 +135,7 @@ export const MakeOfferPage: React.FC = () => {
           city: targetListing.location.city,
           district: targetListing.location.district,
           memberSince: '2024',
+          smsVerificationEnabled: false,
           interests: [],
           wantedCategories: [],
           isVerified: targetListing.user.isVerified,

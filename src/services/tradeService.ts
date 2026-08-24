@@ -15,12 +15,25 @@ import type { TablesInsert, TablesUpdate } from '../types/supabase';
 //  - `trades`        : teklif KABUL EDİLİNCE oluşan ayrı kayıt (status/delivery)
 //  - `trade_events`  : trades.id'ye bağlı serbest formatlı olay günlüğü
 //
-// VARSAYIM (doğrulanmadı — bkz. plan §5.5 madde 1):
-// `trade_offer_items.role` kolonu DB'de düz `text`, CHECK/ENUM constraint'i
-// CSV dökümünde görünmüyordu. Bu dosya 'offered' / 'requested' string
-// değerlerini kullanıyor. Kullanıcının kendi ortamında ilk test sırasında
-// insert hata verirse, gerçek constraint değerleri buraya göre güncellenmeli.
+// `trade_offer_items.role` DEĞERLERİ (rapor 1.2 fix):
+// Bu kolon eskiden düz `text` idi ve 'offered' / 'requested' değerleri hiç
+// doğrulanmamış bir varsayımdı. Artık:
+//   1) DB'de `trade_offer_items_role_check` CHECK constraint'i var
+//      (bkz. supabase/migrations/20260819070000_add_trade_offer_items_role_check.sql)
+//      — sadece 'offered' ve 'requested' kabul edilir, başka bir değer
+//      INSERT anında anlaşılır bir Postgres hatası verir.
+//   2) Kodda bu iki değer TRADE_ITEM_ROLE sabiti üzerinden tek noktadan
+//      kullanılıyor (aşağıda), böylece "offered" gibi bir string'in bir
+//      yerde yanlış yazılması (typo) derleme zamanında yakalanır.
 // ─────────────────────────────────────────────────────────────────────────
+
+// Tek doğruluk kaynağı: DB CHECK constraint'i ile birebir eşleşmeli.
+export const TRADE_ITEM_ROLE = {
+  OFFERED: 'offered',
+  REQUESTED: 'requested',
+} as const;
+
+type TradeItemRole = (typeof TRADE_ITEM_ROLE)[keyof typeof TRADE_ITEM_ROLE];
 
 type TradeOfferRow = {
   id: string;
@@ -29,6 +42,10 @@ type TradeOfferRow = {
   status: string;
   message: string | null;
   parent_offer_id: string | null;
+  delivery_method: string | null;
+  delivery_scheduled_at: string | null;
+  delivery_location_name: string | null;
+  delivery_notes: string | null;
   created_at: string;
   updated_at: string;
   sender?: any;
@@ -41,7 +58,7 @@ type TradeOfferItemRow = {
   offer_id: string;
   listing_id: string;
   owner_id: string;
-  role: string;
+  role: TradeItemRole;
   created_at: string;
   listing?: any;
 };
@@ -53,6 +70,8 @@ type TradeRow = {
   receiver_id: string;
   status: string;
   delivery_method: string | null;
+  delivery_scheduled_at: string | null;
+  delivery_location_name: string | null;
   delivery_notes: string | null;
   started_at: string;
   completed_at: string | null;
@@ -78,6 +97,28 @@ function fmtDateTime(iso: string | null | undefined): string {
   });
 }
 
+// Rapor 1.3 fix: teslimat detaylarını (tarih/konum/not) tradeRow varsa
+// oradan (kabul sonrası kilitlenmiş değer), yoksa offerRow'dan (teklif
+// anında seçilen, henüz kabul edilmemiş değer) okur. Üç alan de boşsa
+// `undefined` döner, böylece TradeDetailPage'in kendi placeholder
+// metinleri devreye girebilir.
+function buildDeliveryDetails(
+  tradeRow: TradeRow | null,
+  offerRow: TradeOfferRow
+): TradeOffer['deliveryDetails'] {
+  const scheduledDate = tradeRow?.delivery_scheduled_at ?? offerRow.delivery_scheduled_at;
+  const locationName = tradeRow?.delivery_location_name ?? offerRow.delivery_location_name;
+  const notes = tradeRow?.delivery_notes ?? offerRow.delivery_notes;
+
+  if (!scheduledDate && !locationName && !notes) return undefined;
+
+  return {
+    ...(scheduledDate ? { scheduledDate } : {}),
+    ...(locationName ? { locationName } : {}),
+    ...(notes ? { notes } : {}),
+  };
+}
+
 async function hydrateOffer(
   offerRow: TradeOfferRow,
   tradeRow: TradeRow | null,
@@ -86,8 +127,8 @@ async function hydrateOffer(
   const initiator = mapProfile(offerRow.sender);
   const receiver = mapProfile(offerRow.receiver);
 
-  const offeredItemRows = (offerRow.items ?? []).filter((i) => i.role === 'offered');
-  const requestedItemRows = (offerRow.items ?? []).filter((i) => i.role === 'requested');
+  const offeredItemRows = (offerRow.items ?? []).filter((i) => i.role === TRADE_ITEM_ROLE.OFFERED);
+  const requestedItemRows = (offerRow.items ?? []).filter((i) => i.role === TRADE_ITEM_ROLE.REQUESTED);
 
   const offeredListings = await enrichListings(
     offeredItemRows.map((i) => i.listing).filter(Boolean)
@@ -104,7 +145,17 @@ async function hydrateOffer(
   // Frontend durumu: teklif reddedilmediyse ve henüz `trades` satırı yoksa
   // teklifin kendi durumu (offer_sent / counter_offered) geçerli; `trades`
   // satırı oluştuktan sonra asıl ilerleme onun `status`'una göre okunur.
-  const status: TradeStatus = (tradeRow?.status ?? offerRow.status) as TradeStatus;
+  // DB'deki ham status değerleri (trade_offers_status_check /
+  // trades_status_check constraint'lerine uyan kısıtlı kelime kümesi)
+  // burada UI'nin kullandığı zengin TradeStatus kümesine çevrilir.
+  const rawStatus = tradeRow?.status ?? offerRow.status;
+  const DB_TO_UI_STATUS: Record<string, TradeStatus> = {
+    pending: 'offer_sent',
+    countered: 'counter_offered',
+    received: 'verified',
+    in_transit: 'shipped',
+  };
+  const status: TradeStatus = (DB_TO_UI_STATUS[rawStatus] ?? rawStatus) as TradeStatus;
 
   const deliveryEvent = events.find((e) => e.event_type === 'delivery_planned');
   const verifiedEvent = events.find((e) => e.event_type === 'verified');
@@ -205,10 +256,16 @@ async function hydrateOffer(
     requestedListingIds: requestedListings.map((l) => l.id),
     requestedListings,
     note: offerRow.message ?? undefined,
-    deliveryMethod: (tradeRow?.delivery_method as TradeOffer['deliveryMethod']) ?? 'in_person',
-    deliveryDetails: tradeRow?.delivery_notes
-      ? { notes: tradeRow.delivery_notes }
-      : undefined,
+    // Teklif kabul edilene kadar `trades` satırı yok, bu yüzden
+    // teslimat tercihi `trade_offers`'tan (offerRow) okunur — bu, teklif
+    // eden kişinin MakeOfferPage'de seçtiği değerdir. Kabul edildikten
+    // sonra `trades` satırı oluşurken bu değerler oraya kopyalanır
+    // (bkz. acceptOffer) ve artık `tradeRow`'dan (kilitlenmiş/nihai
+    // değer olarak) okunur. Rapor 1.3 fix.
+    deliveryMethod: ((tradeRow?.delivery_method ?? offerRow.delivery_method) as
+      | TradeOffer['deliveryMethod']
+      | null) ?? 'in_person',
+    deliveryDetails: buildDeliveryDetails(tradeRow, offerRow),
     status,
     createdAt: offerRow.created_at,
     // DB'de `trade_offers` için bir expires_at kolonu yok; UI'da gösterim
@@ -363,8 +420,23 @@ export const tradeService = {
     const insertPayload: TablesInsert<'trade_offers'> = {
       sender_id: data.initiator.id,
       receiver_id: data.receiver.id,
-      status: 'offer_sent',
+      // DB check constraint (trade_offers_status_check) sadece
+      // 'pending' | 'accepted' | 'rejected' | 'countered' | 'cancelled' |
+      // 'expired' değerlerine izin veriyor. UI'daki zengin durumlar
+      // ('offer_sent' vb.) hydrateOffer() içinde bu DB değerinden türetiliyor.
+      status: 'pending',
       message: data.note ?? null,
+      // Rapor 1.3 fix: teklif anında seçilen teslimat tercihi artık
+      // trade_offers'a yazılıyor. `trades` satırı henüz yok (ancak
+      // acceptOffer'da oluşuyor), bu yüzden bu bilgi teklif kabul
+      // edilene kadar burada tutulur; acceptOffer sırasında trades'e
+      // kopyalanır.
+      delivery_method: data.deliveryMethod,
+      delivery_scheduled_at: data.deliveryDetails?.scheduledDate
+        ? new Date(data.deliveryDetails.scheduledDate).toISOString()
+        : null,
+      delivery_location_name: data.deliveryDetails?.locationName ?? null,
+      delivery_notes: data.deliveryDetails?.notes ?? null,
     };
 
     const { data: offerRow, error: offerError } = await supabase
@@ -383,13 +455,13 @@ export const tradeService = {
         offer_id: offerRow.id,
         listing_id: l.id,
         owner_id: data.initiator.id,
-        role: 'offered',
+        role: TRADE_ITEM_ROLE.OFFERED,
       })),
       ...data.requestedListings.map((l) => ({
         offer_id: offerRow.id,
         listing_id: l.id,
         owner_id: data.receiver.id,
-        role: 'requested',
+        role: TRADE_ITEM_ROLE.REQUESTED,
       })),
     ];
 
@@ -403,15 +475,6 @@ export const tradeService = {
       await supabase.from('trade_offers').delete().eq('id', offerRow.id);
       return undefined;
     }
-
-    // NOT: deliveryMethod/deliveryDetails burada henüz kaydedilmiyor —
-    // DB'de bu bilgiler `trades` tablosunda tutuluyor ve `trades` satırı
-    // ancak teklif KABUL EDİLİNCE (acceptOffer) oluşuyor. Kullanıcının
-    // teklif ekranında seçtiği teslimat tercihi şimdilik hiçbir yere
-    // kaydedilmiyor; ileride ya `trade_offers`'a bir kolon eklenip
-    // taşınmalı ya da acceptOffer sırasında receiver'ın teslimat
-    // tercihiyle birleştirilmeli. Bu, yeni oturumda netleştirilmesi
-    // gereken bir karar.
 
     return this.getTradeById(offerRow.id);
   },
@@ -443,6 +506,13 @@ export const tradeService = {
       sender_id: offerRow.sender_id,
       receiver_id: offerRow.receiver_id,
       status: 'locked',
+      // Rapor 1.3 fix: teklif oluşturulurken trade_offers'a kaydedilen
+      // teslimat tercihi burada trades'e taşınıyor, böylece kabul
+      // edildikten sonra da kaybolmuyor.
+      delivery_method: offerRow.delivery_method,
+      delivery_scheduled_at: offerRow.delivery_scheduled_at,
+      delivery_location_name: offerRow.delivery_location_name,
+      delivery_notes: offerRow.delivery_notes,
     };
 
     const { data: tradeRow, error: tradeError } = await supabase
@@ -492,7 +562,7 @@ export const tradeService = {
 
     await supabase
       .from('trade_offers')
-      .update({ status: 'counter_offered' })
+      .update({ status: 'countered' })
       .eq('id', originalTradeId);
 
     const counterOffer = await this.createTradeOffer({
@@ -529,7 +599,11 @@ export const tradeService = {
       newStatus = 'delivery_planned';
       eventType = 'delivery_planned';
     } else if (targetStep === 5) {
-      newStatus = 'verified';
+      // trades_status_check DB constraint'i 'verified' değerini kabul
+      // etmiyor (izinli: locked/delivery_planned/in_transit/received/
+      // completed/disputed/cancelled) — DB'ye 'received' yazılır, UI
+      // tarafı bunu hydrateOffer() içinde 'verified' olarak gösterir.
+      newStatus = 'received';
       eventType = 'verified';
     } else {
       newStatus = 'completed';
@@ -638,7 +712,11 @@ export const tradeService = {
     };
   },
 
-  async getReviewsForUser(userId: string): Promise<Review[]> {
+async getReviewsForUser(userId: string): Promise<Review[]> {
+    if (!userId || userId === 'user-current' || userId.length < 30) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('reviews')
       .select('*, reviewer:profiles!reviews_reviewer_id_fkey(*)')
@@ -667,5 +745,5 @@ export const tradeService = {
       comment: row.comment ?? '',
       createdAt: row.created_at,
     }));
-  },
-};
+  }
+}

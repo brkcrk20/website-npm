@@ -236,7 +236,7 @@ export const DiscoverPage: React.FC = () => {
               </h4>
 
               <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 truncate">
-                {currentLocation.district} ({nearbyListings.length}{' '}
+                {currentLocation.district || currentLocation.city} ({nearbyListings.length}{' '}
                 {language === 'en' ? 'nearby listings' : 'aktif ilan'})
               </p>
             </div>

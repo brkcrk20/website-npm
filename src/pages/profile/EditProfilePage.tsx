@@ -1,21 +1,83 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { authService } from '../../services/authService';
 import { CATEGORIES } from '../../constants';
-import { ArrowLeft, Camera, ShieldCheck, Check } from 'lucide-react';
+import { TURKEY_CITIES, getDistrictsForCity } from '../../data/turkeyLocations';
+import { ArrowLeft, Camera, Check, Loader2 } from 'lucide-react';
+
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — bkz. avatars bucket file_size_limit
 
 export const EditProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, setCurrentUser, showToast } = useApp();
 
-  const [fullName, setFullName] = useState(currentUser.fullName);
+  // Ad/Soyad kayıt formuyla (CreateProfilePage) aynı şekilde ayrı ayrı
+  // düzenlenir. Eski kullanıcılarda first_name/last_name boş olabilir
+  // (yalnızca fullName vardı) — bu durumda fullName'i tek kelimeye
+  // düşürmek yerine ilk boşluktan ayırıyoruz.
+  const [nameParts] = useState(() => {
+    if (currentUser.firstName || currentUser.lastName) {
+      return { first: currentUser.firstName ?? '', last: currentUser.lastName ?? '' };
+    }
+    const [first, ...rest] = (currentUser.fullName ?? '').trim().split(' ');
+    return { first: first ?? '', last: rest.join(' ') };
+  });
+  const [firstName, setFirstName] = useState(nameParts.first);
+  const [lastName, setLastName] = useState(nameParts.last);
   const [bio, setBio] = useState(currentUser.bio || '');
-  const [city, setCity] = useState(currentUser.city);
-  const [district, setDistrict] = useState(currentUser.district);
+
+  // İl/İlçe, kayıt formundaki gibi kademeli seçim: il değişince ilçe
+  // listesi otomatik güncellenir, böylece ikisi birbirinden bağımsız
+  // görünmez. Kullanıcının mevcut ilçesi, seçili ilin ilçe listesinde
+  // yoksa (örn. eski/serbest metin veri) listeye eklenir, veri kaybı
+  // olmaz.
+  const [city, setCity] = useState(currentUser.city || TURKEY_CITIES[0]);
+  const [district, setDistrict] = useState(currentUser.district || '');
+  const districtsForCity = useMemo(() => {
+    const base = getDistrictsForCity(city);
+    return district && !base.includes(district) ? [district, ...base] : base;
+  }, [city, district]);
+
+  const handleCityChange = (newCity: string) => {
+    setCity(newCity);
+    const districts = getDistrictsForCity(newCity);
+    setDistrict(districts[0] ?? '');
+  };
+
   const [avatarUrl, setAvatarUrl] = useState(currentUser.avatarUrl);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [interests, setInterests] = useState(currentUser.interests);
   const [wantedCategories, setWantedCategories] = useState(currentUser.wantedCategories);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // aynı dosyayı tekrar seçebilmek için input'u sıfırla
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Geçersiz Dosya', 'Lütfen bir resim dosyası seçin.', 'error');
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      showToast('Dosya Çok Büyük', 'Profil fotoğrafı en fazla 5 MB olabilir.', 'error');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const uploadedUrl = await authService.uploadAvatar(file);
+    setIsUploadingAvatar(false);
+
+    if (!uploadedUrl) {
+      showToast('Yükleme Başarısız', 'Fotoğraf yüklenemedi, lütfen tekrar deneyin.', 'error');
+      return;
+    }
+
+    setAvatarUrl(uploadedUrl);
+    showToast('Fotoğraf Yüklendi', 'Kaydetmek için "Değişiklikleri Kaydet"e basın.', 'success');
+  };
 
   const toggleInterest = (id: any) => {
     if (interests.includes(id)) {
@@ -37,9 +99,21 @@ export const EditProfilePage: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!firstName.trim() || !lastName.trim()) {
+      showToast('Eksik Bilgi', 'Lütfen adını ve soyadını ayrı ayrı giriniz.', 'warning');
+      return;
+    }
+
+    if (!city || !district) {
+      showToast('Eksik Bilgi', 'Lütfen il ve ilçe seçiniz.', 'warning');
+      return;
+    }
+
     setIsSaving(true);
     const updated = await authService.updateUserProfile({
-      fullName,
+      firstName,
+      lastName,
       bio,
       city,
       district,
@@ -83,14 +157,27 @@ export const EditProfilePage: React.FC = () => {
               <img
                 src={avatarUrl}
                 alt="Avatar"
-                className="w-16 h-16 rounded-full object-cover border-2 border-emerald-700"
+                className={`w-16 h-16 rounded-full object-cover border-2 border-emerald-700 transition-opacity ${
+                  isUploadingAvatar ? 'opacity-50' : ''
+                }`}
+              />
+              {isUploadingAvatar && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-emerald-700 animate-spin" />
+                </div>
+              )}
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFileChange}
+                className="hidden"
               />
               <button
                 type="button"
-                onClick={() =>
-                  setAvatarUrl('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80')
-                }
-                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-emerald-800 text-white shadow-sm"
+                disabled={isUploadingAvatar}
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-emerald-800 text-white shadow-sm disabled:opacity-60"
               >
                 <Camera className="w-3.5 h-3.5" />
               </button>
@@ -103,15 +190,27 @@ export const EditProfilePage: React.FC = () => {
 
           {/* Form fields */}
           <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
-            <div>
-              <label className="text-xs font-bold text-stone-700 block mb-1">Ad Soyad</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
-                required
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Ad</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-stone-700 block mb-1">Soyad</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -124,24 +223,36 @@ export const EditProfilePage: React.FC = () => {
               />
             </div>
 
+            {/* İl/İlçe — kayıt formuyla aynı kademeli seçim: il
+                değişince ilçe listesi otomatik güncellenir. */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-bold text-stone-700 block mb-1">İl</label>
-                <input
-                  type="text"
+                <select
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={(e) => handleCityChange(e.target.value)}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
-                />
+                >
+                  {TURKEY_CITIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-bold text-stone-700 block mb-1">İlçe</label>
-                <input
-                  type="text"
+                <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
-                />
+                >
+                  {districtsForCity.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

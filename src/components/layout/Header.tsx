@@ -1,42 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SwaloopLogo } from '../common/SwaloopLogo';
 import { useApp } from '../../context/AppContext';
+import { LocationPicker } from './LocationPicker';
 import {
   Bell,
   Heart,
-  MapPin,
-  Search,
-  SlidersHorizontal,
-  ChevronDown,
   Shield,
-  Smartphone,
   Globe,
-  Sparkles,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    currentLocation,
-    setCurrentLocation,
     unreadNotificationCount,
     favoritesCount,
-    deviceFrameMode,
-    setDeviceFrameMode,
     t,
   } = useApp();
-
-  const [showLocationMenu, setShowLocationMenu] = useState(false);
-
-  const availableLocations = [
-    { city: 'İstanbul', district: 'Kadıköy' },
-    { city: 'İstanbul', district: 'Beşiktaş' },
-    { city: 'İstanbul', district: 'Şişli' },
-    { city: 'Ankara', district: 'Çankaya' },
-    { city: 'İzmir', district: 'Konak' },
-  ];
 
   const isAuthPage =
     location.pathname === '/' ||
@@ -59,51 +40,7 @@ export const Header: React.FC = () => {
             <SwaloopLogo size="sm" />
           </div>
 
-          {!isAuthPage && (
-            <div className="relative shrink min-w-0">
-              <button
-                type="button"
-                onClick={() => setShowLocationMenu(!showLocationMenu)}
-                className="flex items-center gap-1 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:text-emerald-800 bg-stone-100/90 dark:bg-stone-800 hover:bg-stone-200/70 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full transition-colors cursor-pointer whitespace-nowrap"
-              >
-                <MapPin className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                <span className="max-w-[70px] xs:max-w-[105px] sm:max-w-none truncate">
-                  {currentLocation.district}, {currentLocation.city}
-                </span>
-                <ChevronDown className="w-3 h-3 text-stone-400 shrink-0" />
-              </button>
-
-              {showLocationMenu && (
-                <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3 py-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                    {t('header_select_location')}
-                  </div>
-                  {availableLocations.map((loc) => (
-                    <button
-                      key={`${loc.city}-${loc.district}`}
-                      type="button"
-                      onClick={() => {
-                        setCurrentLocation(loc);
-                        setShowLocationMenu(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-emerald-50 dark:hover:bg-stone-800 transition-colors whitespace-nowrap ${
-                        currentLocation.district === loc.district
-                          ? 'font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50/60 dark:bg-stone-800/80'
-                          : 'text-stone-700 dark:text-stone-300'
-                      }`}
-                    >
-                      <span>
-                        {loc.district}, {loc.city}
-                      </span>
-                      {currentLocation.district === loc.district && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {!isAuthPage && <LocationPicker />}
         </div>
 
         {/* Right: Quick actions (Favorites, Notifications, Public Pages, Admin switch, Device toggle) */}

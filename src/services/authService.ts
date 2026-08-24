@@ -2,9 +2,63 @@ import { UserProfile, CategoryId, TrustProfile } from '../types';
 import { CURRENT_USER } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
+import { convertImageToWebp } from '../utils/imageToWebp';
 
 const AUTH_STORAGE_KEY = 'swaloop_auth_user';
 const ONBOARDING_COMPLETED_KEY = 'swaloop_onboarding_done';
+const AVATARS_BUCKET = 'avatars';
+
+/**
+ * Kullanıcının seçtiği gerçek profil fotoğrafını Supabase Storage'a
+ * ({auth.uid()}/avatar-{random}.webp yoluna) yükler ve public URL'ini
+ * döndürür. `uploadListingImages` ile aynı desen — bkz.
+ * supabase/migrations/20260819100000_create_avatars_storage_bucket.sql
+ *
+ * Önceki durum: EditProfilePage'deki kamera butonu hiçbir şey yüklemiyor,
+ * sadece sabit bir stok görsele set ediyordu (gerçek dosya seçimi yoktu).
+ */
+async function uploadAvatar(file: File): Promise<string | null> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    console.error(
+      'Avatar yüklenemedi: geçerli bir Supabase oturumu bulunamadı. ' +
+        'Kullanıcının tekrar giriş (telefon+OTP) yapması gerekebilir.',
+      authError
+    );
+    return null;
+  }
+
+  const ownerId = authData.user.id;
+  const webpFile = await convertImageToWebp(file);
+  const fileExt = webpFile.name.split('.').pop() || 'jpg';
+  const randomId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  // Her yükleme yeni bir dosya adı alır (upsert değil) — böylece eski
+  // avatar'ın CDN/tarayıcı önbelleğinde takılı kalma riski olmaz.
+  const path = `${ownerId}/avatar-${randomId}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(AVATARS_BUCKET)
+    .upload(path, webpFile, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (uploadError) {
+    console.error('Avatar yüklenemedi:', uploadError);
+    return null;
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path);
+
+  return publicUrl;
+}
 
 export interface PhoneCheckResult {
   exists: boolean;
@@ -78,12 +132,16 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
     id: row.id,
     phone: formatPhone(row.phone ?? ''),
     fullName: row.full_name ?? '',
+    firstName: row.first_name ?? undefined,
+    lastName: row.last_name ?? undefined,
+    email: row.email ?? undefined,
     avatarUrl:
       row.avatar_url ||
       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
     city: row.city ?? '',
     district: row.district ?? '',
     bio: row.bio ?? undefined,
+    isAdmin: row.is_admin ?? false,
     memberSince: row.created_at
       ? new Date(row.created_at).toLocaleDateString('tr-TR')
       : 'Bugün',
@@ -92,6 +150,7 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
     wantedCategories: [],
 
     isVerified: true,
+    smsVerificationEnabled: row.sms_verification_enabled ?? false,
 
     trustProfile: {
       score,
@@ -102,10 +161,11 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       cancellationRate:
         totalTrades > 0 ? cancelledTrades / totalTrades : 0,
       responseRate: trust?.response_rate ?? 1,
-      // DB'de reviews tablosu var ama ortalama puan/adet henüz burada
-      // agregе edilmiyor; bu iki alan hâlâ placeholder.
-      averageRating: 5,
-      reviewCount: 0,
+      // trust_profiles.average_rating / review_count artık reviews
+      // tablosundan trigger ile gerçek zamanlı besleniyor (bkz.
+      // supabase/migrations/20260819120000_add_badge_trust_tracking.sql).
+      averageRating: trust?.average_rating ?? 5,
+      reviewCount: trust?.review_count ?? 0,
       reportCount: 0,
       accountAgeDays: row.created_at
         ? Math.max(
@@ -122,7 +182,9 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
     stats: {
       totalTrades: completedTrades,
       activeListings: 0,
-      completedLoops: 0,
+      // trust_profiles.completed_loops, loop_participants tamamlanınca
+      // trigger ile artırılıyor (bkz. yukarıdaki migration notu).
+      completedLoops: trust?.completed_loops ?? 0,
       totalCo2Prevented: 0,
       totalWaterSaved: 0,
       totalEnergySaved: 0,
@@ -139,6 +201,8 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
 }
 
 export const authService = {
+  uploadAvatar,
+
   async getSupabaseSession() {
     const { data, error } = await supabase.auth.getSession();
 
@@ -192,6 +256,16 @@ export const authService = {
         : digits;
 
     return normalized.length === 10 && normalized.startsWith('5');
+  },
+
+  // En az 8 karakter, en az 1 harf ve en az 1 rakam.
+  isValidPassword(password: string): boolean {
+    if (password.length < 8) return false;
+    return /[A-Za-zÇĞİÖŞÜçğıöşü]/.test(password) && /\d/.test(password);
+  },
+
+  isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   },
 
   async checkPhoneRegistered(
@@ -300,9 +374,134 @@ export const authService = {
     };
   },
 
+  /**
+   * Telefon + şifre ile giriş. Kullanıcının profilinde
+   * `sms_verification_enabled` açıksa şifre doğru olsa bile oturum hemen
+   * açılmaz: oturum kapatılır, yeni bir SMS kodu gönderilir ve çağıran
+   * taraf (`PhoneAuthPage`) kullanıcıyı `/dogrulama` sayfasına yönlendirip
+   * `authService.verifyOtp` ile ikinci faktörü tamamlatmalıdır.
+   */
+  async loginWithPassword(
+    phone: string,
+    password: string
+  ): Promise<{
+    success: boolean;
+    requiresOtp: boolean;
+    user?: UserProfile;
+    error?: string;
+  }> {
+    const normalizedPhone = normalizePhone(phone);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      phone: normalizedPhone,
+      password,
+    });
+
+    if (error || !data.user) {
+      console.error('Şifre ile giriş başarısız:', error);
+
+      return {
+        success: false,
+        requiresOtp: false,
+        error: error?.message || 'Telefon numarası veya şifre hatalı.',
+      };
+    }
+
+    const { data: profileRow, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profileRow) {
+      console.error('Profil bulunamadı:', profileError);
+      await supabase.auth.signOut();
+
+      return {
+        success: false,
+        requiresOtp: false,
+        error: 'Kullanıcı profili bulunamadı.',
+      };
+    }
+
+    if (profileRow.sms_verification_enabled) {
+      // Kullanıcı ekstra SMS doğrulaması istiyor: şifre oturumunu kapat,
+      // yeni bir OTP kodu gönder; asıl oturum OTP doğrulandığında açılacak.
+      await supabase.auth.signOut();
+
+      const otpResult = await this.sendOtp(phone);
+
+      if (!otpResult.success) {
+        return {
+          success: false,
+          requiresOtp: true,
+          error: otpResult.error || 'SMS kodu gönderilemedi.',
+        };
+      }
+
+      return {
+        success: true,
+        requiresOtp: true,
+      };
+    }
+
+    const trust = await getTrustProfileRow(profileRow.id);
+    const user = mapProfile(profileRow, trust);
+
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+
+    return {
+      success: true,
+      requiresOtp: false,
+      user,
+    };
+  },
+
+  /**
+   * Profil ayarlarından "her girişte SMS doğrulaması iste" tercihini
+   * günceller.
+   */
+  async setSmsVerificationEnabled(
+    enabled: boolean
+  ): Promise<UserProfile | undefined> {
+    const {
+      data: authData,
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      return undefined;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        sms_verification_enabled: enabled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', authData.user.id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      console.error('SMS doğrulama tercihi güncellenemedi:', error);
+      return undefined;
+    }
+
+    const trust = await getTrustProfileRow(data.id);
+    const user = mapProfile(data, trust);
+
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+
+    return user;
+  },
+
   async createProfile(data: {
     phone: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
     city: string;
     district: string;
     avatarUrl?: string;
@@ -322,6 +521,21 @@ export const authService = {
 
     const userId = authData.user.id;
     const phone = normalizePhone(data.phone);
+    const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+
+    // Telefon+OTP ile açılan oturuma artık bir şifre ve e-posta tanımlıyoruz;
+    // böylece kullanıcı sonraki girişlerde telefon + şifre ile
+    // (her seferinde SMS beklemeden) oturum açabilir.
+    const { error: updateAuthError } = await supabase.auth.updateUser({
+      password: data.password,
+      email: data.email,
+    });
+
+    if (updateAuthError) {
+      console.error('Şifre/e-posta ayarlanamadı:', updateAuthError);
+
+      return undefined;
+    }
 
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -329,7 +543,10 @@ export const authService = {
         {
           id: userId,
           phone,
-          full_name: data.fullName,
+          full_name: fullName,
+          first_name: data.firstName.trim(),
+          last_name: data.lastName.trim(),
+          email: data.email.trim(),
           city: data.city,
           district: data.district,
           avatar_url: data.avatarUrl ?? null,
@@ -393,6 +610,27 @@ export const authService = {
     return user;
   },
 
+  /**
+   * Başka bir kullanıcının (kendisi olmayan) genel profilini id ile çeker.
+   * PublicProfilePage burayı kullanır — önceden tamamen OTHER_USERS mock
+   * verisiyle çalışıyordu, gerçek Supabase profiline hiç bağlı değildi.
+   */
+  async getPublicProfile(userId: string): Promise<UserProfile | null> {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error || !profile) {
+      console.error('Kullanıcı profili bulunamadı:', error);
+      return null;
+    }
+
+    const trust = await getTrustProfileRow(profile.id);
+    return mapProfile(profile, trust);
+  },
+
   getCurrentUser(): UserProfile {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
 
@@ -441,7 +679,16 @@ export const authService = {
 
     const dbUpdates: TablesUpdate<'profiles'> = {};
 
-    if (updates.fullName !== undefined) {
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const firstName = updates.firstName?.trim() ?? '';
+      const lastName = updates.lastName?.trim() ?? '';
+      dbUpdates.first_name = firstName || null;
+      dbUpdates.last_name = lastName || null;
+      // Kayıt akışıyla (createProfile) tutarlı: `full_name` her zaman
+      // first_name + last_name birleşiminden türetilir, bu yüzden
+      // Ad/Soyad ayrı ayrı düzenlense bile görünen ad senkron kalır.
+      dbUpdates.full_name = `${firstName} ${lastName}`.trim();
+    } else if (updates.fullName !== undefined) {
       dbUpdates.full_name = updates.fullName;
     }
 
