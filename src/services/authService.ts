@@ -650,6 +650,16 @@ export const authService = {
     return CURRENT_USER;
   },
 
+  /**
+   * GERÇEK Supabase oturumu var mı? (localStorage'daki önbellek DEĞİL.)
+   * Route koruması bunu kullanır — bkz. components/auth/RequireAuth.tsx.
+   */
+  async hasActiveSession(): Promise<boolean> {
+    const { data, error } = await supabase.auth.getUser();
+
+    return !error && !!data.user;
+  },
+
   isOnboardingDone(): boolean {
     return (
       localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true'

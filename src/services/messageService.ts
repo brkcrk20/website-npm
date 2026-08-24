@@ -191,6 +191,40 @@ export const messageService = {
     return mapMessageRow(data as MessageRow);
   },
 
+  /**
+   * Bir takas teklifini sohbete bağlar (rapor md. 33).
+   *
+   * Swaloop'ta mesajlaşma sosyal sohbet değil, TAKAS BAĞLAMLI bir kanaldır:
+   * teklif gönderildiğinde sohbete "şu ↔ bu" kartı düşer ve konuşmanın
+   * aktif takası (`conversations.active_trade_offer_id`) işaretlenir. Sohbet
+   * ekranı bu alanı okuyup üstte kalıcı bir bağlam kartı gösterir.
+   *
+   * Sessizce başarısız olur: takas teklifi oluşmuşken sohbet kartı
+   * yazılamadı diye teklif akışı kırılmamalı.
+   */
+  async attachTradeToConversation(
+    senderId: string,
+    receiverId: string,
+    offerId: string,
+    summary: string,
+    type: Extract<Message['type'], 'trade_card' | 'counter_card'> = 'trade_card'
+  ): Promise<void> {
+    const conversation = await this.getOrCreateConversationWithUser(senderId, receiverId);
+
+    if (!conversation) return;
+
+    const { error } = await supabase
+      .from('conversations')
+      .update({ active_trade_offer_id: offerId })
+      .eq('id', conversation.id);
+
+    if (error) {
+      console.error('Sohbetin aktif takası güncellenemedi:', error);
+    }
+
+    await this.sendMessage(conversation.id, senderId, summary, type, offerId);
+  },
+
   /** Karşı tarafın mesajlarını "okundu" olarak işaretler. */
   async markConversationRead(conversationId: string, currentUserId: string): Promise<void> {
     const { error } = await supabase

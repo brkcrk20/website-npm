@@ -5,11 +5,12 @@ import { authService } from '../../services/authService';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
+import { blockService } from '../../services/blockService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { Listing, Review, UserProfile } from '../../types';
 import { getUserBadges } from '../../constants/badges';
-import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Leaf, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Leaf, Loader2, Ban, Flag } from 'lucide-react';
 
 export const PublicProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,9 @@ export const PublicProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
+  // Engelleme (rapor md. 106)
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
 
   // Önceden bu sayfa hep OTHER_USERS mock verisini gösteriyordu, gerçek
   // Supabase profiline hiç bağlı değildi. Artık id ile gerçek profil
@@ -35,7 +39,42 @@ export const PublicProfilePage: React.FC = () => {
       setUser(profile);
       setIsLoading(false);
     });
+
+    blockService.isBlocked(currentUser.id, id).then(setIsBlocked);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const handleToggleBlock = async () => {
+    if (!user) return;
+
+    if (isBlocked) {
+      const ok = await blockService.unblockUser(currentUser.id, user.id);
+
+      if (!ok) {
+        showToast('Engel kaldırılamadı', 'Lütfen tekrar dene.', 'error');
+        return;
+      }
+
+      setIsBlocked(false);
+      showToast('Engel kaldırıldı', `${user.fullName} artık sana ulaşabilir.`, 'info');
+      return;
+    }
+
+    const ok = await blockService.blockUser(currentUser.id, user.id);
+    setShowBlockConfirm(false);
+
+    if (!ok) {
+      showToast('Kullanıcı engellenemedi', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
+    setIsBlocked(true);
+    showToast(
+      'Kullanıcı engellendi',
+      'İlanları keşfette görünmeyecek; sana mesaj ya da teklif gönderemeyecek.',
+      'success'
+    );
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -90,8 +129,76 @@ export const PublicProfilePage: React.FC = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-base font-bold text-stone-900">Kullanıcı Profili</h1>
+          <h1 className="text-base font-bold text-stone-900 flex-1">Kullanıcı Profili</h1>
+
+          {/* Şikayet ve engelleme her profilde erişilebilir olmalı
+              (rapor md. 106) — ama dikkat çekmeden. */}
+          {user.id !== currentUser.id && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => navigate(`/dispute?targetUserId=${user.id}`)}
+                aria-label="Şikayet et"
+                title="Şikayet et"
+                className="w-11 h-11 rounded-2xl bg-white border border-stone-200 text-stone-500 flex items-center justify-center hover:bg-stone-100 transition-colors cursor-pointer"
+              >
+                <Flag className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => (isBlocked ? handleToggleBlock() : setShowBlockConfirm(true))}
+                aria-label={isBlocked ? 'Engeli kaldır' : 'Engelle'}
+                title={isBlocked ? 'Engeli kaldır' : 'Engelle'}
+                className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-colors cursor-pointer ${
+                  isBlocked
+                    ? 'bg-rose-50 border-rose-200 text-rose-600'
+                    : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-100'
+                }`}
+              >
+                <Ban className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
+
+        {isBlocked && (
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 font-semibold">
+            ● Bu kullanıcıyı engelledin. İlanları keşfette görünmüyor, sana mesaj veya teklif
+            gönderemiyor.
+          </div>
+        )}
+
+        {showBlockConfirm && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+              <div>
+                <h3 className="text-sm font-bold text-stone-900">
+                  {user.fullName} engellensin mi?
+                </h3>
+                <p className="text-xs text-stone-500 mt-1">
+                  İlanları keşfette görünmez, sana mesaj veya takas teklifi gönderemez. Bu işlemi
+                  istediğin zaman geri alabilirsin.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBlockConfirm(false)}
+                  className="py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleBlock}
+                  className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Engelle
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Card */}
         <div className="bg-white rounded-3xl border border-stone-200/90 p-5 shadow-xs">

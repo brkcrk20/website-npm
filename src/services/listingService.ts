@@ -6,6 +6,7 @@ import {
 
 import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
+import { blockService } from './blockService';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImagesToWebp } from '../utils/imageToWebp';
 
@@ -234,6 +235,26 @@ function mapListing(row: any): Listing {
   };
 }
 
+/**
+ * Engellenen kullanıcıların ilanlarını keşif akışlarından düşürür
+ * (rapor md. 106).
+ *
+ * Bilinçli olarak SADECE keşif/arama yollarında uygulanır: devam eden bir
+ * takasın ya da geçmişin içindeki ilanlar gizlenirse takas ekranı boş
+ * görünür ve kullanıcı ne olduğunu anlamaz.
+ */
+async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
+  if (!rows.length) return rows;
+
+  const blockedIds = await blockService.getBlockedIdsForCurrentUser();
+
+  if (!blockedIds.length) return rows;
+
+  const blocked = new Set(blockedIds);
+
+  return rows.filter((row) => !blocked.has(row.owner_id));
+}
+
 export async function enrichListings(rows: any[]): Promise<Listing[]> {
   if (!rows.length) return [];
 
@@ -305,7 +326,7 @@ export const listingService = {
       return [];
     }
 
-    return enrichListings(data ?? []);
+    return enrichListings(await withoutBlockedOwners(data ?? []));
   },
 
   async getListingById(
@@ -782,7 +803,7 @@ export const listingService = {
 
     let listings =
       await enrichListings(
-        data ?? []
+        await withoutBlockedOwners(data ?? [])
       );
 
     if (

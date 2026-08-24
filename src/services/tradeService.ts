@@ -11,6 +11,7 @@ import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import { enrichListings } from './listingService';
+import { messageService } from './messageService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -102,6 +103,14 @@ type TradeEventRow = {
 
 const OFFER_SELECT =
   '*, sender:profiles!trade_offers_sender_id_fkey(*), receiver:profiles!trade_offers_receiver_id_fkey(*), items:trade_offer_items(*, listing:listings(*, user:profiles(*), images:listing_images(storage_path)))';
+
+/** Sohbete düşen takas kartının metni: "PS5 ↔ Kamera" (rapor md. 33). */
+function buildTradeSummary(offered: Listing[], requested: Listing[]): string {
+  const left = offered.map((l) => l.title).join(' + ') || 'Ürün';
+  const right = requested.map((l) => l.title).join(' + ') || 'Ürün';
+
+  return `${left} ↔ ${right}`;
+}
 
 function fmtDateTime(iso: string | null | undefined): string {
   if (!iso) return 'Bekleniyor';
@@ -434,6 +443,8 @@ export const tradeService = {
       locationName?: string;
       notes?: string;
     };
+    // Sohbete düşen kartın etiketi için: karşı teklif mi, ilk teklif mi?
+    isCounterOffer?: boolean;
   }): Promise<TradeOffer | undefined> {
     const insertPayload: TablesInsert<'trade_offers'> = {
       sender_id: data.initiator.id,
@@ -492,6 +503,23 @@ export const tradeService = {
       // Teklif satırı yetim kalmasın diye geri alınıyor.
       await supabase.from('trade_offers').delete().eq('id', offerRow.id);
       return undefined;
+    }
+
+    // Sohbeti takas bağlamına bağla (rapor md. 33): teklif gönderildiğinde
+    // iki kullanıcının sohbetine "şu ↔ bu" kartı düşer.
+    //
+    // Bilerek yutuluyor: teklif zaten oluştu; sohbet kartı yazılamadı diye
+    // kullanıcıya "teklif gönderilemedi" demek yanlış olur.
+    try {
+      await messageService.attachTradeToConversation(
+        data.initiator.id,
+        data.receiver.id,
+        offerRow.id,
+        buildTradeSummary(data.offeredListings, data.requestedListings),
+        data.isCounterOffer ? 'counter_card' : 'trade_card'
+      );
+    } catch (chatError) {
+      console.error('Teklif oluştu ama sohbete takas kartı düşürülemedi:', chatError);
     }
 
     return this.getTradeById(offerRow.id);
@@ -660,6 +688,7 @@ export const tradeService = {
       offeredListings: newOfferedListings,
       requestedListings: newRequestedListings,
       deliveryMethod: newDeliveryMethod,
+      isCounterOffer: true,
       // Orijinal teklifte kararlaştırılan tarih/buluşma yeri karşı teklifte
       // kaybolmasın; karşı teklif veren yalnızca yöntemi değiştirebiliyor.
       deliveryDetails: orig.deliveryDetails,

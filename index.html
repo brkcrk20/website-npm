@@ -2,15 +2,23 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Swaloop - Satma. Takas et. Yeniden kullan.</title>
-    <meta name="description" content="Sürdürülebilir sosyal takas ve çevresel etki (SVS) platformu." />
+    <!-- maximum-scale / user-scalable kaldırıldı: görme zorluğu yaşayan
+         kullanıcılar sayfayı büyütebilmeli (rapor md. 98; App Store /
+         Play Store erişilebilirlik incelemelerinde de sorun çıkarıyordu). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Swaloop — İhtiyacın olanı, elindekini takas ederek bul.</title>
+    <meta name="description" content="Elindeki eşyayı, ihtiyacın olan şeyle takas et. Swaloop bir ihtiyaç ağıdır: para yok, fiyat yok, sadece takas." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <meta property="og:title" content="Swaloop - Satma. Takas et. Yeniden kullan." />
-    <meta property="og:description" content="Sürdürülebilir sosyal takas ve çevresel etki (SVS) platformu." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:title" content="Swaloop — İhtiyacın olanı, elindekini takas ederek bul." />
+    <meta property="og:description" content="Elindeki eşyayı, ihtiyacın olan şeyle takas et. Para yok, fiyat yok, sadece takas." />
     <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#16A36A" />
+    <!-- TODO: og:image (1200x630 PNG) hâlâ yok — link paylaşımlarında kart
+         görselsiz görünüyor (rapor.txt §3). Marka görseli hazırlanınca
+         public/ altına konup burada tanımlanmalı. -->
   </head>
   <body class="bg-stone-50 text-stone-900 antialiased selection:bg-emerald-500 selection:text-white font-sans">
     <div id="root"></div>

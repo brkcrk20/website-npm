@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { messageService } from '../../services/messageService';
-import { Conversation, Message } from '../../types';
+import { tradeService } from '../../services/tradeService';
+import { Conversation, Message, TradeOffer } from '../../types';
+import { tradeStatusLabel } from '../../utils/tradeStatus';
 import {
   ArrowLeft,
   Send,
@@ -27,6 +29,10 @@ export const MessagesPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [inputText, setInputText] = useState('');
+  // Sohbetin bağlı olduğu takas (rapor md. 33). Swaloop'ta mesajlaşma
+  // sosyal sohbet değil, takas bağlamlı bir kanaldır: konuşmanın üstünde
+  // hangi takasın konuşulduğu her zaman görünür.
+  const [activeTrade, setActiveTrade] = useState<TradeOffer | undefined>(undefined);
 
   const activeConv = conversations.find((c) => c.id === selectedConvId) || conversations[0];
 
@@ -53,6 +59,23 @@ export const MessagesPage: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshConversations]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!activeConv?.activeTradeId) {
+      setActiveTrade(undefined);
+      return;
+    }
+
+    tradeService.getTradeById(activeConv.activeTradeId).then((offer) => {
+      if (!cancelled) setActiveTrade(offer);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConv?.activeTradeId]);
 
   useEffect(() => {
     if (!activeConv) {
@@ -218,8 +241,36 @@ export const MessagesPage: React.FC = () => {
 
               {/* Safety notice ribbon */}
               <div className="bg-amber-50 px-3 py-1.5 border-b border-amber-200/60 text-[11px] text-amber-900 flex items-center justify-between">
-                <span>🛡️ Swaloop Güvenliği: Kişisel IBAN, para transferi veya harici bağlantı paylaşmayınız.</span>
+                <span>
+                  Swaloop takaslarında para gönderilmez. Ödeme veya kişisel hesap bilgilerini
+                  paylaşma.
+                </span>
               </div>
+
+              {/* Takas bağlam kartı — sohbetin neyle ilgili olduğu her zaman
+                  görünür kalır (rapor md. 33). */}
+              {activeTrade && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/teklif/${activeTrade.id}`)}
+                  className="w-full px-3 py-2.5 bg-emerald-50/70 border-b border-emerald-200 text-left flex items-center gap-2 hover:bg-emerald-50 transition-colors cursor-pointer"
+                >
+                  <ArrowLeftRight className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-bold text-emerald-950 truncate">
+                      {activeTrade.offeredListings.map((l) => l.title).join(' + ') || 'Ürün'}
+                      {' ↔ '}
+                      {activeTrade.requestedListings.map((l) => l.title).join(' + ') || 'Ürün'}
+                    </span>
+                    <span className="block text-[10px] text-emerald-800">
+                      Bu sohbetin takası · {tradeStatusLabel(activeTrade.status)}
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-800 shrink-0">
+                    Teklifi görüntüle →
+                  </span>
+                </button>
+              )}
 
               {/* Messages Feed */}
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
@@ -239,7 +290,12 @@ export const MessagesPage: React.FC = () => {
                     );
                   }
 
-                  if (msg.type === 'trade_card' && msg.tradeOfferId) {
+                  if (
+                    (msg.type === 'trade_card' ||
+                      msg.type === 'counter_card' ||
+                      msg.type === 'delivery_card') &&
+                    msg.tradeOfferId
+                  ) {
                     // NOT: Önceden burada kullanılmayan bir `tradeService.getTradeById(...)`
                     // çağrısı vardı (senkron sürüm). Artık tradeService async olduğu için
                     // ve dönen değer zaten hiçbir yerde kullanılmıyordu, kaldırıldı. Kart
@@ -255,7 +311,13 @@ export const MessagesPage: React.FC = () => {
                       >
                         <div className="flex items-center gap-1.5 text-xs font-bold mb-2">
                           <ArrowLeftRight className="w-4 h-4 text-emerald-400" />
-                          <span>Takas Teklifi İletildi</span>
+                          <span>
+                            {msg.type === 'counter_card'
+                              ? 'Karşı Teklif İletildi'
+                              : msg.type === 'delivery_card'
+                              ? 'Teslimat Güncellemesi'
+                              : 'Takas Teklifi İletildi'}
+                          </span>
                         </div>
                         <p className="text-xs mb-3">{msg.content}</p>
                         <button

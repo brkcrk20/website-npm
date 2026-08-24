@@ -81,6 +81,38 @@ RLS'in gerçek `auth.uid()` oturumundaki davranışı hâlâ canlıda denenmeli.
 eski hatalı kilitleme yüzünden `in_trade` kalmış ilanları bulan bir backfill
 sorgusu var — otomatik çalışmaz, önce sonucunu inceleyin.
 
+## Bu turda ek olarak yapılanlar (2. tur)
+
+10. **Takas bağlamlı mesajlaşma (md. 33).** Teklif/karşı teklif
+    gönderildiğinde sohbete otomatik "PS5 ↔ Kamera" kartı düşüyor, sohbetin
+    üstünde hangi takasın konuşulduğunu gösteren kalıcı bir bağlam kartı
+    var. `messages.type` (`trade_card`/`counter_card`) ilk kez gerçekten
+    kullanılıyor. Kart mesajları bildirim üretmiyor (çift bildirim
+    olmasın). Takas durum etiketleri tek kaynağa alındı
+    (`src/utils/tradeStatus.ts`) ve insan diline çevrildi (md. 28).
+
+11. **Ana ekran artık gerçekten kişiye uygun (md. 14-15).** "Sana uygun
+    takaslar" bölümü en yeni 4 ilanı gösteriyordu; artık kullanıcının açık
+    ihtiyaçlarıyla eşleşen ilanları ve eşleşme nedenini gösteriyor.
+
+12. **Engelleme + gerçek şikayet (md. 106).** `blocked_users` tablosu:
+    engellenen kişi DB seviyesinde mesaj/teklif gönderemiyor, bildirim
+    üretilmiyor, ilanları keşifte görünmüyor. Kimin kimi engellediğini
+    yalnızca engelleyen görüyor. Şikayet formları (ilan detayı ve
+    DisputePage) artık gerçekten `reports` tablosuna yazıyor — önceden
+    sadece toast gösteriyorlardı; kanıt fotoğrafı da gerçekten yükleniyor.
+
+13. **rapor.txt §3 teknik borcu kapatıldı:** error boundary eklendi
+    (beyaz ekran yerine anlaşılır hata sayfası), route koruması eklendi
+    (`RequireAuth` — gerçek Supabase oturumuna bakıyor, `/admin` ayrıca
+    `isAdmin` istiyor), kod bölme yapıldı (**giriş paketi 924 KB → 4.8 KB**,
+    sayfalar ayrı parçalar; 500 KB uyarısı kalktı), pinch-to-zoom açıldı.
+    Ayrıca favicon + robots.txt eklendi, başlık/açıklama marka cümlesiyle
+    güncellendi. `og:image` hâlâ yok (index.html'de TODO).
+
+**Üçüncü migration:** `20260820200000_blocking_and_message_notification_fix.sql`
+— o da `supabase db push` ile uygulanmalı.
+
 ## Önceki turda yapılanlar
 
 1. **Header'daki demo konum isimleri kaldırıldı.** `LocationPicker.tsx`'teki

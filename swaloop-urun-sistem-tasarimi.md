@@ -163,6 +163,11 @@ taklit edilerek) ve davranış uçtan uca denendi:
   süresi geçmiş **bekleyen** teklifleri kapattı (kabul edilmişe dokunmadı).
 - İhtiyaç kısıtları: aynı başlık ikinci kez eklenemedi, 21. açık ihtiyaç
   anlaşılır bir hata ile reddedildi, `fulfilled_at` durumla senkron kaldı.
+- Engelleme (§4.10): engelliyken "aradığın bulundu" bildirimi üretilmedi,
+  engel kalkınca tekrar üretildi; `authenticated` rolüyle yapılan gerçek RLS
+  denemesinde engellenen kullanıcı ne mesaj ne teklif yazabildi ve karşı
+  taraf engel kaydını göremedi. Sohbete düşen takas kartı "yeni mesaj"
+  bildirimi üretmedi, gerçek mesaj üretti.
 - Bildirim trigger'ları (§4.5): kamera ilanı eklenince "Aynasız kamera"
   arayan kullanıcıya `need_matched` bildirimi düştü (doğru başlık, doğru
   `/ilan/<slug>` bağlantısı); teklif → kabul → iptal zinciri iki tarafa
@@ -256,7 +261,78 @@ migration geçmişinde kayıtlı; silmek `supabase db push`'u kırar), içeriği
 no-op'a çevrildi. Tüm migration zinciri artık boş bir veritabanına baştan
 sona hatasız uygulanıyor — geçici bir PostgreSQL 16 üzerinde doğrulandı.
 
-### 4.8 Test altyapısı
+### 4.8 Takas bağlamlı mesajlaşma (md. 33)
+
+Swaloop'ta mesajlaşma sosyal sohbet değil, takas kanalıdır. Artık:
+
+- Teklif (ve karşı teklif) gönderildiğinde iki kullanıcının sohbetine
+  otomatik bir **"PS5 ↔ Kamera"** kartı düşüyor ve konuşmanın aktif takası
+  (`conversations.active_trade_offer_id`) işaretleniyor.
+- Sohbet ekranının üstünde, hangi takasın konuşulduğunu ve durumunu gösteren
+  **kalıcı bir bağlam kartı** var; tıklayınca teklife gidiyor.
+- `messages.type` alanı (`trade_card` / `counter_card` / `delivery_card`)
+  ilk kez gerçekten kullanılıyor; sohbet bu kartları ayrı biçimde çiziyor.
+- Kart mesajları bildirim üretmiyor (yoksa aynı olay için hem "Yeni takas
+  teklifi" hem "Yeni mesaj" bildirimi gidiyordu).
+- Güvenlik şeridi md. 34'e göre yeniden yazıldı: korkutmadan, net —
+  *"Swaloop takaslarında para gönderilmez."*
+
+Takas durum etiketleri artık tek kaynaktan (`src/utils/tradeStatus.ts`)
+geliyor ve insan dilinde (md. 28): `delivery_planned` değil "Teslimat
+planlandı", `locked` değil "Ürünler takas için ayrıldı".
+
+### 4.9 "Sana uygun" ana ekran (md. 14-15)
+
+Ana ekrandaki "Sana uygun takaslar" bölümü aslında **en yeni 4 ilanı**
+gösteriyordu. Artık kullanıcının açık ihtiyaçlarıyla eşleşen ilanları
+gösteriyor, her kartın altında hangi ihtiyaçla ve kaç uyumla eşleştiği
+yazıyor. Hiç ihtiyacı olmayan kullanıcıya bölüm boş görünmüyor: "Ne
+arıyorsun?" yönlendirmesi + eski liste (md. 89-90).
+
+### 4.10 Engelleme ve gerçek şikayet (md. 106)
+
+- **`blocked_users` tablosu.** Engelleme yalnızca arayüz filtresi değil:
+  DB seviyesinde de engellenen kişi mesaj gönderemiyor ve teklif veremiyor
+  (RLS politikaları `is_blocked_between()` ile genişletildi), karşılıklı
+  bildirim üretilmiyor. Keşif ve aramada engellenen kullanıcıların ilanları
+  gizleniyor — ama devam eden takasların içindeki ilanlar gizlenmiyor
+  (aksi hâlde takas ekranı boş görünürdü).
+- **Gizlilik kararı:** kimin kimi engellediğini yalnızca engelleyen görür;
+  karşı taraf engellendiğini hiçbir ekranda görmez.
+- **Şikayet artık gerçekten kaydediliyor.** İlan detayındaki "Şikayet Et"
+  formu ve `DisputePage` yalnızca bir toast gösteriyordu — kayıt hiçbir
+  yere ulaşmıyordu (rapor.txt §2). Yeni `reportService` `reports` tablosuna
+  yazıyor; neden kümesi DB CHECK constraint'iyle aynı (eski formdaki
+  `not_as_described`, `missing_parts` gibi değerler DB'de zaten geçersizdi).
+  Kanıt fotoğrafları da gerçekten yükleniyor (önceden "Ekle" butonu sabit
+  bir stok görseli ekliyordu).
+- Profil ekranına şikayet ve engelleme butonları eklendi.
+
+### 4.11 Teknik borç: hata ekranı, route koruması, kod bölme
+
+`rapor.txt` §3'teki dört madde kapatıldı:
+
+- **Error boundary yoktu:** herhangi bir bileşendeki hata bomboş beyaz ekran
+  demekti. `ErrorBoundary` eklendi — insan dilinde mesaj + "Tekrar dene" /
+  "Keşfete dön" (md. 91).
+- **Route koruması yoktu:** `/ilan-ver`, `/profil`, `/admin` gibi sayfalara
+  oturumsuz girilebiliyor, uygulama sahte bir "misafir kullanıcı" ile devam
+  ediyordu. `RequireAuth` eklendi; kontrol localStorage'a değil **gerçek
+  Supabase oturumuna** bakıyor. `/admin` ayrıca `isAdmin` istiyor.
+- **Kod bölme yoktu:** JS paketi tek parça 924 KB (gzip 242 KB) idi. Tüm
+  sayfalar `React.lazy` ile bölündü, satıcı kütüphaneleri ayrı parçalara
+  ayrıldı. Giriş paketi **533 KB → 4.8 KB**, en büyük paylaşılan parça
+  252 KB; sayfalar ihtiyaç anında iniyor ve 500 KB uyarısı kalktı.
+  Yükleme sırasında beyaz ekran değil iskelet gösteriliyor (md. 92).
+- **Pinch-to-zoom kapalıydı** (`user-scalable=no`): erişilebilirlik sorunu,
+  mağaza incelemelerinde de risk (md. 98). Açıldı.
+
+Ek olarak: favicon ve `robots.txt` eklendi (public/ klasörü hiç yoktu),
+sayfa başlığı/açıklaması marka cümlesiyle (md. 5) güncellendi. `og:image`
+hâlâ yok — görsel hazırlanması gereken bir iş, index.html'de TODO olarak
+duruyor.
+
+### 4.12 Test altyapısı
 
 `vitest` çalıştırıldığında 4 test dosyası çöküyordu: `src/lib/supabase.ts`
 ortam değişkeni yoksa import anında hata fırlatıyor, ve `proje/` klasörü
@@ -285,13 +361,13 @@ Rapordaki 130-136. maddelerin kod tabanına uyarlanmış hâli. ✅ = bugün var
 | Yakınımdakiler | ✅ | `NearbyMapPage`, Nominatim |
 | Takas teklifi | ✅ | `MakeOfferPage` |
 | **Karşı teklif** | ✅ | `/karsi-teklif/:id` |
-| Mesajlaşma | 🟡 | `MessagesPage` çalışıyor; takas bağlam kartı 🔴 (md. 33) |
+| Mesajlaşma | ✅ | `MessagesPage` + takas bağlam kartı (md. 33) |
 | Bildirim | ✅ | `notifications` tablosu + DB trigger'ları |
 | Güven skoru | ✅ | gerçek formül, `20260819120000` |
 | Değerlendirme | ✅ | 4 boyutlu (md. 41) |
 | Takas süreci + kilitleme | ✅ | bu tur düzeltildi |
 | Takas iptali + neden seçimi | ✅ | `cancelTrade()` + neden modalı |
-| Şikayet / engelleme | 🟡 | `reports` tablosu var, engelleme yok (md. 106) |
+| Şikayet / engelleme | ✅ | `reports` gerçekten yazılıyor + `blocked_users` (md. 106) |
 
 ### FAZ 2 — Akıllı Swaloop
 İhtiyaç listeleri ✅ · akıllı eşleştirme 🟡 (kural tabanlı ilk sürüm var) ·
@@ -316,24 +392,22 @@ bir ürün yaratmak olur.
 
 ## 6. Sıradaki adımlar (öncelik sırasıyla)
 
-1. **Mesajlaşmada takas bağlam kartı** (md. 33). Sohbet ekranında "📦 PS5 ↔
-   📷 Kamera / Teklifi görüntüle" kartı. `messages.type` zaten
-   `trade_card` / `counter_card` / `delivery_card` değerlerini destekliyor
-   ama hiç kullanılmıyor.
-2. **Ana ekran sıralaması** (md. 14-15, 120): "en yeni" yerine "sana uygun".
-   İhtiyaç verisi ve `needService.getMatchesForUser()` hazır; `DiscoverPage`
-   bunu kullanmıyor.
-3. **Engelleme** (md. 106). `reports` tablosu var, kullanıcı engelleme yok.
-4. **İlan süresi / "hâlâ takasa açık mı?"** (md. 119) — `expires_at`
-   deseninin ilanlara uygulanması.
-5. **Teklif süresini otomatik kapatma.** `expire_stale_trade_offers()`
-   hazır ama zamanlanmış çalıştırma yok (pg_cron kapalı); şu an elle
-   çağrılıyor.
-6. `rapor.txt`'ten devam eden teknik borç: route guard, error boundary,
-   code splitting (bundle hâlâ ~930 KB tek parça), pinch-to-zoom.
-7. **Push notification** (md. 95). Bildirimler artık gerçek veri olduğuna
-   göre, Capacitor'a geçildiğinde `need_matched` bildirimini push'a bağlamak
-   doğrudan mümkün.
+1. **İlan süresi / "hâlâ takasa açık mı?"** (md. 119). İlanlar sonsuza kadar
+   aktif kalıyor; `trade_offers.expires_at` deseni ilanlara da uygulanmalı.
+2. **Teklif kapatmanın zamanlanması.** `expire_stale_trade_offers()` hazır
+   ama pg_cron kapalı olduğu için elle çağrılıyor.
+3. **Kullanıcı takip** (md. 43/86): "bu kişinin yeni ilanlarından haberdar
+   ol". Bildirim altyapısı hazır, sadece `follows` tablosu + trigger gerekir.
+4. **Kategoriye özel alanlar** (md. 111): telefon → marka/model/depolama,
+   bisiklet → kadro ölçüsü. Eşleştirmeyi güçlendirir ama ilan formunu
+   uzatmamak şart (md. 112).
+5. **Tasarım dili uygulaması** (§7): renk paleti, font ağırlıkları, radius
+   ve kart oranı kararları belgelendi ama koda uygulanmadı.
+6. **Admin paneli hâlâ kısmen mock** (rapor.txt §2) — şikayetler artık
+   gerçek veriyle geliyor, ama KPI'lar ve denetim kaydı gözden geçirilmeli.
+7. **`og:image`** (rapor.txt §3): link paylaşımlarında kart görselsiz.
+8. **FAZ 3'e hazırlık:** 3 kişilik döngüler (md. 48-50) — ihtiyaç verisi
+   artık var, döngü araması bu veri üzerinde kurulabilir.
 
 ## 7. Tasarım dili (md. 62-72, 98-103)
 

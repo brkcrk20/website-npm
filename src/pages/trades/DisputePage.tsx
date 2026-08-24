@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { tradeService } from '../../services/tradeService';
+import { reportService, REPORT_REASONS, ReportReason } from '../../services/reportService';
+import { uploadListingImages } from '../../services/listingService';
 import { TradeOffer } from '../../types';
 import { ArrowLeft, AlertTriangle, ShieldAlert, Camera, UploadCloud, CheckCircle2 } from 'lucide-react';
 
@@ -9,7 +11,10 @@ export const DisputePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tradeId = searchParams.get('tradeId');
-  const { showToast } = useApp();
+  // Şikayet iki bağlamdan açılabilir: bir takas için ya da doğrudan bir
+  // kullanıcı için (profil ekranındaki bayrak butonu).
+  const targetUserId = searchParams.get('targetUserId');
+  const { currentUser, showToast } = useApp();
 
   const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
 
@@ -18,22 +23,77 @@ export const DisputePage: React.FC = () => {
     tradeService.getTradeById(tradeId).then(setTrade);
   }, [tradeId]);
 
-  const [reason, setReason] = useState('broken_item');
+  const [reason, setReason] = useState<ReportReason>('broken_item');
   const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600&auto=format&fit=crop&q=80',
-  ]);
+  // Kanıt fotoğrafları artık gerçekten yükleniyor. Önceden "Ekle" butonu
+  // sabit bir stok görseli listeye ekliyordu (rapor.txt §2: "buton var,
+  // arkasında veri yok").
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAddPhotos = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+
+    if (!files.length) return;
+
+    setIsUploading(true);
+    // Kanıtlar, kullanıcının kendi klasöründe ilan görselleriyle aynı
+    // bucket'a yükleniyor — ayrı bir bucket + politika seti açmamak için.
+    const uploaded = await uploadListingImages(currentUser.id, files.slice(0, 3));
+    setIsUploading(false);
+
+    const urls = uploaded.filter((url): url is string => !!url);
+
+    if (!urls.length) {
+      showToast('Fotoğraf yüklenemedi', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
+    setPhotos((prev) => [...prev, ...urls].slice(0, 5));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!description.trim()) {
       showToast('Lütfen karşılaştığınız sorunu açıklayınız.', undefined, 'error');
       return;
     }
 
+    const targetId = targetUserId ?? tradeId;
+
+    if (!targetId) {
+      showToast('Şikayet hedefi bulunamadı', 'Bu sayfaya takas veya kullanıcı bağlantısı üzerinden gelin.', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const ok = await reportService.createReport({
+      reporterId: currentUser.id,
+      targetType: targetUserId ? 'user' : 'trade',
+      targetId,
+      targetTitle: targetUserId
+        ? 'Kullanıcı şikayeti'
+        : trade
+        ? `${trade.offeredListings[0]?.title ?? ''} ↔ ${trade.requestedListings[0]?.title ?? ''}`
+        : 'Takas şikayeti',
+      reason,
+      description,
+      evidenceImages: photos,
+    });
+    setIsSubmitting(false);
+
+    if (!ok) {
+      showToast('Şikayet gönderilemedi', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
     setIsSubmitted(true);
-    showToast('Sorun Bildirimi Alındı', 'Admin ekibimiz inceleyip 24 saat içinde dönüş yapacaktır.', 'info');
+    showToast('Sorun bildirimi alındı', 'Moderasyon ekibi inceleyip dönüş yapacak.', 'info');
   };
 
   return (
@@ -88,16 +148,21 @@ export const DisputePage: React.FC = () => {
             <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3.5">
               <div>
                 <label className="text-xs font-bold text-stone-800 block mb-1">Sorun Kategorisi</label>
+                {/* Nedenler DB'deki CHECK constraint kümesiyle aynı
+                    (reportService.REPORT_REASONS). Önceki listedeki
+                    değerler ('not_as_described', 'missing_parts'…) DB
+                    tarafında hiç kabul edilmiyordu — zaten hiçbir yere
+                    yazılmadığı için fark edilmemişti. */}
                 <select
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
+                  onChange={(e) => setReason(e.target.value as ReportReason)}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
                 >
-                  <option value="broken_item">Ürün Hasarlı veya Kusurlu Geldi</option>
-                  <option value="not_as_described">Ürün Açıklamaya Uygun Değil / Yanlış Ürün</option>
-                  <option value="missing_parts">Eksik Aksesuar / Parça</option>
-                  <option value="no_delivery">Karşı Taraf Teslimata Gelmedi / Kargolamadı</option>
-                  <option value="other">Diğer Güvenlik Sorunu</option>
+                  {REPORT_REASONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -121,18 +186,24 @@ export const DisputePage: React.FC = () => {
                       <img src={url} alt="Kanıt" className="w-full h-full object-cover" />
                     </div>
                   ))}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleAddPhotos}
+                    className="hidden"
+                  />
                   <button
                     type="button"
-                    onClick={() =>
-                      setPhotos([
-                        ...photos,
-                        'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=600&auto=format&fit=crop&q=80',
-                      ])
-                    }
-                    className="w-16 h-16 rounded-xl border-2 border-dashed border-stone-300 hover:border-emerald-700 flex flex-col items-center justify-center text-stone-400 hover:text-emerald-800 transition-colors"
+                    disabled={isUploading || photos.length >= 5}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-16 h-16 rounded-xl border-2 border-dashed border-stone-300 hover:border-emerald-700 disabled:opacity-50 flex flex-col items-center justify-center text-stone-400 hover:text-emerald-800 transition-colors cursor-pointer"
                   >
                     <Camera className="w-5 h-5" />
-                    <span className="text-[9px] font-bold mt-1">Ekle</span>
+                    <span className="text-[9px] font-bold mt-1">
+                      {isUploading ? '…' : 'Ekle'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -140,9 +211,10 @@ export const DisputePage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 disabled:bg-stone-300 text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer"
             >
-              İnceleme Talebini Gönder
+              {isSubmitting ? 'Gönderiliyor…' : 'İnceleme Talebini Gönder'}
             </button>
           </form>
         )}

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
+import { needService } from '../../services/needService';
+import { NeedMatch } from '../../types';
 import { CATEGORIES } from '../../constants';
 import { ProductCard } from '../../components/common/ProductCard';
 import { CircularExchangeIcon } from '../../components/common/SwaloopLogo';
@@ -19,11 +21,15 @@ import {
 
 export const DiscoverPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentLocation, language, t } = useApp();
+  const { currentUser, currentLocation, language, t } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [allListings, setAllListings] = useState<any[]>([]);
+  // "Sana uygun takaslar" artık gerçekten kişiye uygun: kullanıcının açık
+  // ihtiyaçlarıyla eşleşen ilanlar (rapor md. 14-15). Önceden bu bölüm
+  // sadece en yeni 4 ilanı gösteriyordu.
+  const [matches, setMatches] = useState<NeedMatch[]>([]);
 
   useEffect(() => {
   const loadListings = async () => {
@@ -38,6 +44,20 @@ export const DiscoverPage: React.FC = () => {
 
   loadListings();
 }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    needService
+      .getMatchesForUser(currentUser.id, { city: currentUser.city, limit: 4 })
+      .then((found) => {
+        if (!cancelled) setMatches(found);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.id, currentUser.city]);
 
   const filteredListings = allListings.filter((item) => {
     if (
@@ -205,22 +225,54 @@ export const DiscoverPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/arama')}
+              onClick={() => navigate(matches.length > 0 ? '/aradiklarim' : '/arama')}
               className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer"
             >
               {t('discover_see_all')} →
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            {filteredListings.slice(0, 4).map((listing) => (
-              <ProductCard
-                key={listing.id}
-                listing={listing}
-                variant="grid"
-              />
-            ))}
-          </div>
+          {matches.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {matches.map((match) => (
+                <div key={match.listing.id} className="space-y-1">
+                  <ProductCard listing={match.listing} variant="grid" />
+                  <p className="text-[10px] text-emerald-800 dark:text-emerald-400 font-semibold px-1 truncate">
+                    "{match.need.title}" · %{match.score} uyum
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* İhtiyacı olmayan kullanıcıya eşleştirme yapılamaz; ekranı
+                  boş bırakmak yerine ne yapması gerektiğini söylüyoruz
+                  (rapor md. 89-90). */}
+              <button
+                type="button"
+                onClick={() => navigate('/aradiklarim')}
+                className="w-full mb-2.5 p-3 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-left flex items-center gap-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors cursor-pointer"
+              >
+                <Search className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-xs font-bold">Ne arıyorsun?</span>
+                  <span className="block text-[11px] text-stone-500">
+                    Aradıklarını ekle, sana uyan ilanlar burada listelensin.
+                  </span>
+                </span>
+              </button>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                {filteredListings.slice(0, 4).map((listing) => (
+                  <ProductCard
+                    key={listing.id}
+                    listing={listing}
+                    variant="grid"
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Nearby */}

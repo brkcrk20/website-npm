@@ -1,64 +1,79 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { RequireAuth } from './components/auth/RequireAuth';
 
 // Auth Pages
-import { SplashPage } from './pages/auth/SplashPage';
-import { OnboardingPage } from './pages/auth/OnboardingPage';
-import { PhoneAuthPage } from './pages/auth/PhoneAuthPage';
-import { OtpVerificationPage } from './pages/auth/OtpVerificationPage';
-import { CreateProfilePage } from './pages/auth/CreateProfilePage';
+const SplashPage = lazy(() => import('./pages/auth/SplashPage').then((m) => ({ default: m.SplashPage })));
+const OnboardingPage = lazy(() => import('./pages/auth/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
+const PhoneAuthPage = lazy(() => import('./pages/auth/PhoneAuthPage').then((m) => ({ default: m.PhoneAuthPage })));
+const OtpVerificationPage = lazy(() => import('./pages/auth/OtpVerificationPage').then((m) => ({ default: m.OtpVerificationPage })));
+const CreateProfilePage = lazy(() => import('./pages/auth/CreateProfilePage').then((m) => ({ default: m.CreateProfilePage })));
 
 // Discovery Pages
-import { DiscoverPage } from './pages/discovery/DiscoverPage';
-import { SearchPage } from './pages/discovery/SearchPage';
-import { NearbyMapPage } from './pages/discovery/NearbyMapPage';
-import { FavoritesPage } from './pages/discovery/FavoritesPage';
+const DiscoverPage = lazy(() => import('./pages/discovery/DiscoverPage').then((m) => ({ default: m.DiscoverPage })));
+const SearchPage = lazy(() => import('./pages/discovery/SearchPage').then((m) => ({ default: m.SearchPage })));
+const NearbyMapPage = lazy(() => import('./pages/discovery/NearbyMapPage').then((m) => ({ default: m.NearbyMapPage })));
+const FavoritesPage = lazy(() => import('./pages/discovery/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
 
 // Needs Pages (İhtiyaç sistemi — bkz. swaloop-urun-sistem-tasarimi.md)
-import { NeedsPage } from './pages/needs/NeedsPage';
+const NeedsPage = lazy(() => import('./pages/needs/NeedsPage').then((m) => ({ default: m.NeedsPage })));
 
 // Listings Pages
-import { ProductDetailPage } from './pages/listings/ProductDetailPage';
-import { CreateListingPage } from './pages/listings/CreateListingPage';
+const ProductDetailPage = lazy(() => import('./pages/listings/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const CreateListingPage = lazy(() => import('./pages/listings/CreateListingPage').then((m) => ({ default: m.CreateListingPage })));
 
 // Trade Pages
-import { TradeOffersPage } from './pages/trades/TradeOffersPage';
-import { TradeRequestsPage } from './pages/trades/TradeRequestsPage';
-import { MakeOfferPage } from './pages/trades/MakeOfferPage';
-import { CounterOfferPage } from './pages/trades/CounterOfferPage';
-import { TradeDetailPage } from './pages/trades/TradeDetailPage';
-import { DisputePage } from './pages/trades/DisputePage';
-import { SwipeMatchPage } from './pages/matching/SwipeMatchPage';
+const TradeOffersPage = lazy(() => import('./pages/trades/TradeOffersPage').then((m) => ({ default: m.TradeOffersPage })));
+const TradeRequestsPage = lazy(() => import('./pages/trades/TradeRequestsPage').then((m) => ({ default: m.TradeRequestsPage })));
+const MakeOfferPage = lazy(() => import('./pages/trades/MakeOfferPage').then((m) => ({ default: m.MakeOfferPage })));
+const CounterOfferPage = lazy(() => import('./pages/trades/CounterOfferPage').then((m) => ({ default: m.CounterOfferPage })));
+const TradeDetailPage = lazy(() => import('./pages/trades/TradeDetailPage').then((m) => ({ default: m.TradeDetailPage })));
+const DisputePage = lazy(() => import('./pages/trades/DisputePage').then((m) => ({ default: m.DisputePage })));
+const SwipeMatchPage = lazy(() => import('./pages/matching/SwipeMatchPage').then((m) => ({ default: m.SwipeMatchPage })));
 
 // Messages / Chat
-import { MessagesPage } from './pages/chat/MessagesPage';
+const MessagesPage = lazy(() => import('./pages/chat/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 
 // Notifications
-import { NotificationsPage } from './pages/notifications/NotificationsPage';
+const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 
 // Profile Pages
-import { ProfilePage } from './pages/profile/ProfilePage';
-import { EditProfilePage } from './pages/profile/EditProfilePage';
-import { PublicProfilePage } from './pages/profile/PublicProfilePage';
-import { ImpactBreakdownPage } from './pages/profile/ImpactBreakdownPage';
-import { BadgesPage } from './pages/profile/BadgesPage';
+const ProfilePage = lazy(() => import('./pages/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const EditProfilePage = lazy(() => import('./pages/profile/EditProfilePage').then((m) => ({ default: m.EditProfilePage })));
+const PublicProfilePage = lazy(() => import('./pages/profile/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
+const ImpactBreakdownPage = lazy(() => import('./pages/profile/ImpactBreakdownPage').then((m) => ({ default: m.ImpactBreakdownPage })));
+const BadgesPage = lazy(() => import('./pages/profile/BadgesPage').then((m) => ({ default: m.BadgesPage })));
 
 // Loops & Community Pages
-import { LoopsPage } from './pages/loops/LoopsPage';
-import { PaperclipPage } from './pages/loops/PaperclipPage';
-import { MysterySwapPage } from './pages/loops/MysterySwapPage';
-import { CommunityPage } from './pages/community/CommunityPage';
-import { EventsPage } from './pages/community/EventsPage';
+const LoopsPage = lazy(() => import('./pages/loops/LoopsPage').then((m) => ({ default: m.LoopsPage })));
+const PaperclipPage = lazy(() => import('./pages/loops/PaperclipPage').then((m) => ({ default: m.PaperclipPage })));
+const MysterySwapPage = lazy(() => import('./pages/loops/MysterySwapPage').then((m) => ({ default: m.MysterySwapPage })));
+const CommunityPage = lazy(() => import('./pages/community/CommunityPage').then((m) => ({ default: m.CommunityPage })));
+const EventsPage = lazy(() => import('./pages/community/EventsPage').then((m) => ({ default: m.EventsPage })));
 
 // Trade Steps & Admin Pages
-import { TradeProcessPage } from './pages/trades/TradeProcessPage';
-import { TradeSuccessPage } from './pages/trades/TradeSuccessPage';
-import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
-import { AboutSwaloopPage } from './pages/info/AboutSwaloopPage';
+const TradeProcessPage = lazy(() => import('./pages/trades/TradeProcessPage').then((m) => ({ default: m.TradeProcessPage })));
+const TradeSuccessPage = lazy(() => import('./pages/trades/TradeSuccessPage').then((m) => ({ default: m.TradeSuccessPage })));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const AboutSwaloopPage = lazy(() => import('./pages/info/AboutSwaloopPage').then((m) => ({ default: m.AboutSwaloopPage })));
+
+// Sayfa parçası indirilirken gösterilen iskelet (rapor md. 92: beyaz ekran
+// + spinner yerine içeriğin silüeti).
+const RouteFallback: React.FC = () => (
+  <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-4 space-y-3" aria-hidden="true">
+    <div className="h-10 rounded-2xl bg-stone-200/70 animate-pulse" />
+    <div className="grid grid-cols-2 gap-3">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="aspect-[3/4] rounded-2xl bg-stone-200/60 animate-pulse" />
+      ))}
+    </div>
+  </div>
+);
 
 export default function App() {
   return (
@@ -69,7 +84,14 @@ export default function App() {
             <Header />
 
             <main className="flex-1">
-              <Routes>
+              {/* Kod bölme (rapor.txt §3): tüm sayfalar tek bir dev JS
+                  paketinde geliyordu. Artık her route ayrı bir parça olarak
+                  yükleniyor; ilk açılışta sadece açılan ekran indiriliyor.
+                  Yükleme sırasında beyaz ekran yerine iskelet gösteriliyor
+                  (rapor md. 92). */}
+              <ErrorBoundary>
+                <Suspense fallback={<RouteFallback />}>
+                  <Routes>
                 {/* Auth & Onboarding */}
                 <Route path="/" element={<SplashPage />} />
                 <Route path="/onboarding" element={<OnboardingPage />} />
@@ -82,46 +104,46 @@ export default function App() {
                 <Route path="/kesfet" element={<DiscoverPage />} />
                 <Route path="/arama" element={<SearchPage />} />
                 <Route path="/harita" element={<NearbyMapPage />} />
-                <Route path="/favoriler" element={<FavoritesPage />} />
+                <Route path="/favoriler" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
 
                 {/* Needs — "Aradıklarım" */}
-                <Route path="/aradiklarim" element={<NeedsPage />} />
-                <Route path="/ihtiyaclarim" element={<NeedsPage />} />
+                <Route path="/aradiklarim" element={<RequireAuth><NeedsPage /></RequireAuth>} />
+                <Route path="/ihtiyaclarim" element={<RequireAuth><NeedsPage /></RequireAuth>} />
 
                 {/* Listings */}
                 <Route path="/ilan/:id" element={<ProductDetailPage />} />
-                <Route path="/ilan-ver" element={<CreateListingPage />} />
+                <Route path="/ilan-ver" element={<RequireAuth><CreateListingPage /></RequireAuth>} />
 
                 {/* Trades */}
-                <Route path="/takaslarim" element={<TradeOffersPage />} />
-                <Route path="/takas-istekleri" element={<TradeRequestsPage />} />
-                <Route path="/istekler" element={<TradeRequestsPage />} />
+                <Route path="/takaslarim" element={<RequireAuth><TradeOffersPage /></RequireAuth>} />
+                <Route path="/takas-istekleri" element={<RequireAuth><TradeRequestsPage /></RequireAuth>} />
+                <Route path="/istekler" element={<RequireAuth><TradeRequestsPage /></RequireAuth>} />
                 <Route path="/eslesme" element={<SwipeMatchPage />} />
                 <Route path="/takas-eslesme" element={<SwipeMatchPage />} />
                 <Route path="/kaydir" element={<SwipeMatchPage />} />
                 <Route path="/swipe" element={<SwipeMatchPage />} />
-                <Route path="/teklif-ver" element={<MakeOfferPage />} />
-                <Route path="/teklif/:id" element={<TradeDetailPage />} />
-                <Route path="/karsi-teklif/:id" element={<CounterOfferPage />} />
-                <Route path="/takas-sureci" element={<TradeProcessPage />} />
-                <Route path="/takas-sureci/:id" element={<TradeProcessPage />} />
-                <Route path="/takas-tamamlandi" element={<TradeSuccessPage />} />
-                <Route path="/takas-tamamlandi/:id" element={<TradeSuccessPage />} />
-                <Route path="/dispute" element={<DisputePage />} />
+                <Route path="/teklif-ver" element={<RequireAuth><MakeOfferPage /></RequireAuth>} />
+                <Route path="/teklif/:id" element={<RequireAuth><TradeDetailPage /></RequireAuth>} />
+                <Route path="/karsi-teklif/:id" element={<RequireAuth><CounterOfferPage /></RequireAuth>} />
+                <Route path="/takas-sureci" element={<RequireAuth><TradeProcessPage /></RequireAuth>} />
+                <Route path="/takas-sureci/:id" element={<RequireAuth><TradeProcessPage /></RequireAuth>} />
+                <Route path="/takas-tamamlandi" element={<RequireAuth><TradeSuccessPage /></RequireAuth>} />
+                <Route path="/takas-tamamlandi/:id" element={<RequireAuth><TradeSuccessPage /></RequireAuth>} />
+                <Route path="/dispute" element={<RequireAuth><DisputePage /></RequireAuth>} />
 
                 {/* Messages */}
-                <Route path="/mesajlar" element={<MessagesPage />} />
-                <Route path="/mesajlar/:id" element={<MessagesPage />} />
+                <Route path="/mesajlar" element={<RequireAuth><MessagesPage /></RequireAuth>} />
+                <Route path="/mesajlar/:id" element={<RequireAuth><MessagesPage /></RequireAuth>} />
 
                 {/* Notifications */}
-                <Route path="/bildirimler" element={<NotificationsPage />} />
+                <Route path="/bildirimler" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
 
                 {/* Profile */}
-                <Route path="/profil" element={<ProfilePage />} />
-                <Route path="/profil/duzenle" element={<EditProfilePage />} />
+                <Route path="/profil" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+                <Route path="/profil/duzenle" element={<RequireAuth><EditProfilePage /></RequireAuth>} />
                 <Route path="/profil/:id" element={<PublicProfilePage />} />
-                <Route path="/etkim" element={<ImpactBreakdownPage />} />
-                <Route path="/rozetlerim" element={<BadgesPage />} />
+                <Route path="/etkim" element={<RequireAuth><ImpactBreakdownPage /></RequireAuth>} />
+                <Route path="/rozetlerim" element={<RequireAuth><BadgesPage /></RequireAuth>} />
 
                 {/* Loops & Community */}
                 <Route path="/donguler" element={<LoopsPage />} />
@@ -136,12 +158,14 @@ export default function App() {
                 <Route path="/etkinlikler" element={<EventsPage />} />
 
                 {/* Admin & About */}
-                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboardPage /></RequireAuth>} />
                 <Route path="/hakkimizda" element={<AboutSwaloopPage />} />
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/kesfet" replace />} />
-              </Routes>
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
             </main>
 
             <BottomNav />

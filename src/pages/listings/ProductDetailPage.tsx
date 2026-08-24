@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { listingService } from '../../services/listingService';
 import { needService } from '../../services/needService';
+import { reportService, REPORT_REASONS, ReportReason } from '../../services/reportService';
 import { messageService } from '../../services/messageService';
 import { ImpactCard } from '../../components/common/ImpactCard';
 import { TrustCard } from '../../components/common/TrustCard';
@@ -36,7 +37,8 @@ export const ProductDetailPage: React.FC = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('');
+  const [reportReason, setReportReason] = useState<ReportReason | ''>('');
+  const [isReporting, setIsReporting] = useState(false);
   // "Bu ürünü arayanlar" (rapor md. 77): bu ilanın karşılayabileceği açık
   // ihtiyaç sayısı. Parasal hiçbir bilgi içermez, sadece talebi gösterir.
   const [seekerCount, setSeekerCount] = useState(0);
@@ -140,10 +142,32 @@ export const ProductDetailPage: React.FC = () => {
     }
   };
 
-  const handleReportSubmit = (e: React.FormEvent) => {
+  const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!reportReason || !listing) return;
+
+    // DÜZELTİLDİ: şikayet artık gerçekten `reports` tablosuna yazılıyor.
+    // Önceden yalnızca bir toast gösteriliyordu, kayıt hiçbir yere
+    // ulaşmıyordu (rapor.txt §2).
+    setIsReporting(true);
+    const ok = await reportService.createReport({
+      reporterId: currentUser.id,
+      targetType: 'listing',
+      targetId: listing.id,
+      targetTitle: listing.title,
+      reason: reportReason,
+    });
+    setIsReporting(false);
+
+    if (!ok) {
+      showToast('Şikayet gönderilemedi', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
     setShowReportModal(false);
-    showToast('Şikayetiniz Alındı', 'Moderatörlerimiz ilanı inceleyecek.', 'info');
+    setReportReason('');
+    showToast('Şikayetin alındı', 'Moderatörlerimiz ilanı inceleyecek.', 'info');
   };
 
   const getConditionText = (c: typeof listing.condition) => {
@@ -461,17 +485,22 @@ export const ProductDetailPage: React.FC = () => {
               Swaloop güvenli takas kurallarına aykırı veya yanıltıcı bir durum mu var?
             </p>
             <form onSubmit={handleReportSubmit} className="space-y-3">
+              {/* Nedenler artık DB'deki CHECK constraint ile aynı kümeden
+                  geliyor (reportService.REPORT_REASONS) — önceden buradaki
+                  Türkçe değerler hiçbir yere yazılmadığı için kimse fark
+                  etmiyordu. */}
               <select
                 value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
+                onChange={(e) => setReportReason(e.target.value as ReportReason)}
                 required
                 className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-xs font-medium"
               >
                 <option value="">Şikayet Nedeni Seçin</option>
-                <option value="para_istedi">Nakit para talep etti (Yasak)</option>
-                <option value="yaniltici_urun">Yanıltıcı ürün / Sahte bilgi</option>
-                <option value="uygunsuz_icerik">Uygunsuz içerik veya fotoğraf</option>
-                <option value="diger">Diğer</option>
+                {REPORT_REASONS.map((reason) => (
+                  <option key={reason.id} value={reason.id}>
+                    {reason.label}
+                  </option>
+                ))}
               </select>
               <div className="flex gap-2">
                 <button
@@ -483,9 +512,10 @@ export const ProductDetailPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+                  disabled={!reportReason || isReporting}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:bg-stone-300 text-white text-xs font-bold"
                 >
-                  Gönder
+                  {isReporting ? 'Gönderiliyor…' : 'Gönder'}
                 </button>
               </div>
             </form>

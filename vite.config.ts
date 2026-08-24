@@ -11,6 +11,27 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Satıcı (vendor) kütüphaneleri ayrı parçalara bölünüyor: bunlar
+          // sürüm değişene kadar sabit kaldığı için tarayıcı önbelleğinde
+          // kalır, uygulama kodu her deploy'da yeniden inse bile tekrar
+          // indirilmez. Sayfa bazlı bölme App.tsx'teki React.lazy ile
+          // yapılıyor (rapor.txt §3).
+          //
+          // NOT: package.json'daki `motion` paketi kodda hiç kullanılmıyor;
+          // bu yüzden burada listelenmiyor (listelenirse boş bir parça
+          // üretiyor). Bağımlılığın kaldırılması ayrı bir temizlik işi.
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            supabase: ['@supabase/supabase-js'],
+            icons: ['lucide-react'],
+          },
+        },
+      },
+    },
+
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
