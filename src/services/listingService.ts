@@ -36,8 +36,11 @@ async function getFavoriteIdSet(): Promise<Set<string>> {
     return favoriteCache.ids;
   }
 
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+  // getSession() oturumu yerelden okur; getUser() her çağrıda auth
+  // sunucusuna gider. Bu fonksiyon her liste çiziminde çalıştığı için
+  // yerel okuma tercih ediliyor.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user?.id;
 
   if (!userId) {
     favoriteCache = { ids: new Set(), fetchedAt: Date.now() };
@@ -419,8 +422,8 @@ export const listingService = {
 
   /** Favoriye ekler/çıkarır ve yeni durumu (favoride mi) döndürür. */
   async toggleFavorite(id: string): Promise<boolean> {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user?.id;
 
     if (!userId) {
       console.warn('Favori işlemi için giriş gerekli.');

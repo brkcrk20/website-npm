@@ -92,7 +92,7 @@ export const TradeOffersPage: React.FC = () => {
   const visible = lists[activeTab];
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
       <div className="px-4 pt-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>

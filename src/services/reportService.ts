@@ -27,8 +27,8 @@ export const reportService = {
     reason: string;
     description?: string;
   }): Promise<boolean> {
-    const { data: userData } = await supabase.auth.getUser();
-    const reporterId = userData.user?.id;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const reporterId = sessionData.session?.user?.id;
 
     if (!reporterId) {
       console.warn('Şikayet göndermek için giriş gerekli.');

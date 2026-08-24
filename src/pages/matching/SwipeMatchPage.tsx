@@ -220,7 +220,7 @@ export const SwipeMatchPage: React.FC = () => {
   const passOpacity = Math.min(1, Math.max(0, -dragOffset.x / SWIPE_THRESHOLD));
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
       <div className="px-4 pt-3 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <button

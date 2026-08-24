@@ -167,20 +167,32 @@ security definer
 set search_path to 'public'
 as $$
 declare
-  target_user uuid := coalesce(new.reviewed_user_id, old.reviewed_user_id);
+  target_user uuid;
   avg_rating numeric;
 begin
+  -- DELETE'te NEW atanmamıştır; bu yüzden hangi kaydın okunacağı TG_OP'a
+  -- göre seçilir (doğrudan coalesce(new, old) yazmak hata verir).
+  if (tg_op = 'DELETE') then
+    target_user := old.reviewed_user_id;
+  else
+    target_user := new.reviewed_user_id;
+  end if;
+
   select avg(rating) into avg_rating
   from public.reviews
   where reviewed_user_id = target_user;
 
   insert into public.trust_profiles (user_id, trust_score)
-  values (target_user, coalesce(avg_rating, 5))
+  values (target_user, round(coalesce(avg_rating, 5), 2))
   on conflict (user_id) do update
     set trust_score = round(coalesce(avg_rating, 5), 2),
         updated_at = now();
 
-  return coalesce(new, old);
+  if (tg_op = 'DELETE') then
+    return old;
+  end if;
+
+  return new;
 end;
 $$;
 

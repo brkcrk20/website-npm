@@ -47,14 +47,14 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col justify-between p-6 max-w-md mx-auto">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col justify-between p-6 max-w-md mx-auto">
       {/* Top Bar */}
       <div>
         <div className="flex items-center justify-between mb-8">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors"
+            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center hover:bg-stone-100 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -63,7 +63,7 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
         </div>
 
         <div className="space-y-2 mb-8">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 font-display tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-stone-100 font-display tracking-tight">
             Telefon ile Kayıt / Giriş
           </h1>
           <p className="text-sm text-stone-500">
@@ -74,13 +74,13 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-2">
               Telefon Numarası
             </label>
             <div className="relative flex items-center">
-              <div className="absolute left-3.5 flex items-center gap-1.5 text-stone-500 font-medium text-sm border-r border-stone-200 pr-2.5">
+              <div className="absolute left-3.5 flex items-center gap-1.5 text-stone-500 font-medium text-sm border-r border-stone-200 dark:border-stone-800 pr-2.5">
                 <span className="text-base">🇹🇷</span>
-                <span className="font-semibold text-stone-800">TR +90</span>
+                <span className="font-semibold text-stone-800 dark:text-stone-200">TR +90</span>
               </div>
               <input
                 type="tel"
@@ -89,7 +89,7 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
                 placeholder="5XX XXX XX XX"
                 maxLength={13}
                 autoFocus
-                className="w-full pl-28 pr-4 py-4 rounded-2xl bg-white border-2 border-stone-200 focus:border-emerald-600 focus:outline-hidden text-base font-semibold text-stone-900 tracking-wide transition-all shadow-xs"
+                className="w-full pl-28 pr-4 py-4 rounded-2xl bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-base font-semibold text-stone-900 dark:text-stone-100 tracking-wide transition-all shadow-xs"
               />
             </div>
             <span className="text-[11px] text-stone-400 mt-1.5 block">
@@ -119,8 +119,8 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
 
       {/* Footer info */}
       <div className="pt-6 text-center text-xs text-stone-400">
-        Devam ederek Swaloop <span className="underline text-stone-600">Kullanım Koşulları</span> ve{' '}
-        <span className="underline text-stone-600">Gizlilik Politikası</span>'nı kabul etmiş olursun.
+        Devam ederek Swaloop <span className="underline text-stone-600 dark:text-stone-400">Kullanım Koşulları</span> ve{' '}
+        <span className="underline text-stone-600 dark:text-stone-400">Gizlilik Politikası</span>'nı kabul etmiş olursun.
       </div>
     </div>
   );

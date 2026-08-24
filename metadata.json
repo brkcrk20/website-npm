@@ -1,6 +1,6 @@
 {
   "name": "Swaloop",
-  "description": "Satma. Takas et. Yeniden kullan. Sürdürülebilir sosyal takas ve çevresel etki (SVS) platformu.",
+  "description": "Takas uygulaması. Satma, takas et, yeniden kullan. Kullanmadığın eşyaları fotoğrafla, karşılığında aradığını bul.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

@@ -71,7 +71,7 @@ export const DiscoverPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-6 text-stone-900 dark:text-stone-100">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-6 text-stone-900 dark:text-stone-100">
       <div className="px-4 pt-3 space-y-4">
         <form onSubmit={handleSearchSubmit} className="relative">
           <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

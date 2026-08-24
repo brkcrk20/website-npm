@@ -66,7 +66,7 @@ export const OnboardingPage: React.FC = () => {
   const StepIcon = current.icon;
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white flex flex-col justify-between p-6 max-w-md mx-auto relative overflow-hidden">
+    <div className="min-h-full bg-stone-950 text-white flex flex-col justify-between p-6 max-w-md mx-auto relative overflow-hidden">
       {/* Top Header & Skip */}
       <div className="flex items-center justify-between z-10">
         <SwaloopLogo size="sm" variant="white" />

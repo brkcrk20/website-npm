@@ -21,7 +21,8 @@ export const SwaloopLogo: React.FC<SwaloopLogoProps> = ({
   };
 
   const isWhite = variant === 'white';
-  const textColor = isWhite ? 'text-white' : 'text-emerald-950';
+  // Koyu temada logo yazısı arka planla aynı renge düşüp görünmez oluyordu.
+  const textColor = isWhite ? 'text-white' : 'text-emerald-950 dark:text-emerald-50';
 
   return (
     <div className={`inline-flex flex-col ${className}`}>
@@ -46,7 +47,7 @@ export const SwaloopLogo: React.FC<SwaloopLogoProps> = ({
       {showSlogan && (
         <span
           className={`text-xs font-medium tracking-wide mt-0.5 ${
-            isWhite ? 'text-emerald-100/90' : 'text-stone-600'
+            isWhite ? 'text-emerald-100/90' : 'text-stone-600 dark:text-stone-400'
           }`}
         >
           Satma. Takas et. Yeniden kullan.

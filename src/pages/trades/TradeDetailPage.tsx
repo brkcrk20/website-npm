@@ -67,7 +67,7 @@ export const TradeDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex items-center justify-center">
+      <div className="min-h-full bg-stone-50 dark:bg-stone-950 p-6 flex items-center justify-center">
         <p className="text-sm text-stone-500">Takas yükleniyor...</p>
       </div>
     );
@@ -75,8 +75,8 @@ export const TradeDetailPage: React.FC = () => {
 
   if (!trade) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
-        <h2 className="text-base font-bold text-stone-800 mb-2">Takas bulunamadı</h2>
+      <div className="min-h-full bg-stone-50 dark:bg-stone-950 p-6 flex flex-col items-center justify-center text-center">
+        <h2 className="text-base font-bold text-stone-800 dark:text-stone-200 mb-2">Takas bulunamadı</h2>
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
@@ -163,7 +163,7 @@ export const TradeDetailPage: React.FC = () => {
   const isReviewedByMe = isInitiator ? trade.isReviewedByInitiator : trade.isReviewedByReceiver;
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-28 text-stone-900 dark:text-stone-100">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
         {/* Top Header */}
         <div className="flex items-center justify-between">
@@ -171,13 +171,13 @@ export const TradeDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/takaslarim')}
-              className="p-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-stone-900">Takas Süreci</h1>
+                <h1 className="text-base font-bold text-stone-900 dark:text-stone-100">Takas Süreci</h1>
                 {trade.status === 'locked' && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                     <Lock className="w-3 h-3" />
@@ -200,16 +200,16 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* Counterpart Profile Card */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-3.5 flex items-center justify-between">
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src={otherUser.avatarUrl}
               alt={otherUser.fullName}
-              className="w-12 h-12 rounded-full object-cover border border-stone-200"
+              className="w-12 h-12 rounded-full object-cover border border-stone-200 dark:border-stone-800"
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-stone-900">{otherUser.fullName}</span>
+                <span className="text-xs font-bold text-stone-900 dark:text-stone-100">{otherUser.fullName}</span>
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
                   {otherUser.trustProfile.score.toFixed(1)}
@@ -233,70 +233,70 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* 6-Step Visual Timeline Component */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-3">
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4">
+          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider mb-3">
             6 Adımlı Takas Akışı
           </h2>
           <Timeline timeline={trade.timeline} currentStatus={trade.status} />
         </div>
 
         {/* Side-by-side Product Comparison */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Takaslanan Ürünler</h2>
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-3">
+          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Takaslanan Ürünler</h2>
 
           <div className="grid grid-cols-2 gap-3 relative items-stretch">
             {/* Left: My Item */}
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
+            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
                   {isInitiator ? 'Senin Verdiğin' : 'Senin Alacağın'}
                 </span>
-                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 mb-2">
+                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 dark:bg-stone-800 mb-2">
                   <img
                     src={myItem?.images[0]}
                     alt={myItem?.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{myItem?.title}</h3>
+                <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">{myItem?.title}</h3>
                 <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
                   +{myItem?.estimatedImpact.co2eKg} kg CO₂e
                 </span>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
                 Durum:{' '}
-                <span className="font-semibold text-stone-700">
+                <span className="font-semibold text-stone-700 dark:text-stone-300">
                   {myItem ? (CONDITION_LABELS[myItem.condition] ?? myItem.condition) : '—'}
                 </span>
               </div>
             </div>
 
             {/* Center Swap Arrow */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-stone-900 border border-stone-300 shadow-sm flex items-center justify-center">
               <ArrowLeftRight className="w-4 h-4 text-emerald-800" />
             </div>
 
             {/* Right: Other Item */}
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
+            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
                   {isInitiator ? 'Senin Alacağın' : 'Senin Verdiğin'}
                 </span>
-                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 mb-2">
+                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 dark:bg-stone-800 mb-2">
                   <img
                     src={otherItem?.images[0]}
                     alt={otherItem?.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{otherItem?.title}</h3>
+                <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">{otherItem?.title}</h3>
                 <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
                   +{otherItem?.estimatedImpact.co2eKg} kg CO₂e
                 </span>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
                 Durum:{' '}
-                <span className="font-semibold text-stone-700">
+                <span className="font-semibold text-stone-700 dark:text-stone-300">
                   {otherItem ? (CONDITION_LABELS[otherItem.condition] ?? otherItem.condition) : '—'}
                 </span>
               </div>
@@ -305,7 +305,7 @@ export const TradeDetailPage: React.FC = () => {
 
           {/* Trade Note if any */}
           {trade.note && (
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700">
+            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-xs text-stone-700 dark:text-stone-300">
               <span className="font-bold text-stone-500 block text-[10px] uppercase mb-0.5">Teklif Notu:</span>
               "{trade.note}"
             </div>
@@ -350,9 +350,9 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* Meeting & Delivery Protocol Details */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-2.5">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
-          <div className="flex items-start gap-2.5 text-xs text-stone-700">
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-2.5">
+          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
+          <div className="flex items-start gap-2.5 text-xs text-stone-700 dark:text-stone-300">
             <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Buluşma / Teslim Yeri:</span>
@@ -362,7 +362,7 @@ export const TradeDetailPage: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="flex items-start gap-2.5 text-xs text-stone-700">
+          <div className="flex items-start gap-2.5 text-xs text-stone-700 dark:text-stone-300">
             <Calendar className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Planlanan Tarih:</span>
@@ -374,18 +374,18 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* Action Panel for Current Trade Status */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Sıradaki Eylem</h2>
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-3">
+          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Sıradaki Eylem</h2>
 
           {/* If waiting for receiver response */}
           {trade.status === 'offer_sent' && isReceiver && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">Bu takas teklifini kabul etmek istiyor musunuz?</p>
+              <p className="text-xs text-stone-600 dark:text-stone-400">Bu takas teklifini kabul etmek istiyor musunuz?</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={handleReject}
-                  className="py-2.5 px-4 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+                  className="py-2.5 px-4 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
                 >
                   Reddet
                 </button>
@@ -409,7 +409,7 @@ export const TradeDetailPage: React.FC = () => {
           {/* Locked state: Need delivery planning */}
           {trade.status === 'locked' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-stone-600 dark:text-stone-400">
                 Ürünler kilitlendi! Karşı tarafla sohbet üzerinden buluşma saati ayarlayın veya teslimatı başlatın.
               </p>
               <button
@@ -425,7 +425,7 @@ export const TradeDetailPage: React.FC = () => {
           {/* Delivery Planned state: In transit */}
           {trade.status === 'delivery_planned' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-stone-600 dark:text-stone-400">
                 Buluşma veya kargo teslimatı gerçekleştiğinde aşağıdaki butona basarak ürünü teslim aldığınızı onaylayın.
               </p>
               <button
@@ -442,7 +442,7 @@ export const TradeDetailPage: React.FC = () => {
           {/* Verified state: Complete trade */}
           {trade.status === 'verified' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-stone-600 dark:text-stone-400">
                 Teslimat doğrulaması yapıldı. Takas sürecini tamamlayıp SVS puanınızı hesabınıza ekleyin.
               </p>
               <button
@@ -485,12 +485,12 @@ export const TradeDetailPage: React.FC = () => {
       {/* Review Modal */}
       {showReviewModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-2">
                 <Star className="w-6 h-6 fill-amber-500 text-amber-500" />
               </div>
-              <h3 className="text-sm font-bold text-stone-900">Takas Değerlendirmesi</h3>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">Takas Değerlendirmesi</h3>
               <p className="text-xs text-stone-500">{otherUser.fullName} ile olan deneyiminizi puanlayın</p>
             </div>
 
@@ -513,7 +513,7 @@ export const TradeDetailPage: React.FC = () => {
             </div>
 
             {/* Alt puanlar — önceden sabit "5/5" yazıyordu, artık gerçekten seçiliyor */}
-            <div className="space-y-2 text-xs bg-stone-50 p-3 rounded-xl">
+            <div className="space-y-2 text-xs bg-stone-50 dark:bg-stone-950 p-3 rounded-xl">
               {(
                 [
                   { key: 'itemAccuracy', label: 'Ürün açıklamaya uygunluk' },
@@ -522,7 +522,7 @@ export const TradeDetailPage: React.FC = () => {
                 ] as const
               ).map((row) => (
                 <div key={row.key} className="flex justify-between items-center gap-2">
-                  <span className="text-stone-600">{row.label}</span>
+                  <span className="text-stone-600 dark:text-stone-400">{row.label}</span>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((value) => (
                       <button
@@ -553,14 +553,14 @@ export const TradeDetailPage: React.FC = () => {
               onChange={(e) => setReviewComment(e.target.value)}
               placeholder="Yorumunuz (İsteğe bağlı)..."
               rows={2}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:bg-white focus:border-emerald-700"
+              className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-xs outline-hidden focus:bg-white focus:border-emerald-700"
             />
 
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-stone-200 text-stone-700 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs"
               >
                 Vazgeç
               </button>

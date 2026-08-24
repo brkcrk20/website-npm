@@ -130,7 +130,7 @@ export const ProfilePage: React.FC = () => {
   const activeListingCount = myListings.filter((l) => l.status === 'active').length;
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100 transition-colors">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100 transition-colors">
       <div className="px-4 pt-4 space-y-4">
         {/* Kimlik kartı */}
         <section className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200/90 dark:border-stone-800 p-4 shadow-xs">

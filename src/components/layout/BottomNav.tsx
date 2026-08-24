@@ -65,7 +65,7 @@ export const BottomNav: React.FC = () => {
   ];
 
   return (
-    <nav className="sticky bottom-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 py-1 px-2 shadow-[0_-2px_12px_rgba(0,0,0,0.04)] safe-area-bottom">
+    <nav className="shrink-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 py-1 px-2 shadow-[0_-2px_12px_rgba(0,0,0,0.04)] safe-area-bottom">
       <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const active = item.isActive(location.pathname);

@@ -7,14 +7,14 @@ export const AboutSwaloopPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-28 text-stone-900 dark:text-stone-100">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-4 space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors"
+            className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -36,44 +36,44 @@ export const AboutSwaloopPage: React.FC = () => {
 
         {/* 4 Pillars of Swaloop */}
         <div className="space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Temel İlkelerimiz</h2>
+          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Temel İlkelerimiz</h2>
 
-          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 space-y-1.5 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 space-y-1.5 shadow-xs">
             <div className="flex items-center gap-2">
               <HeartHandshake className="w-5 h-5 text-emerald-800" />
-              <h3 className="text-sm font-bold text-stone-900">1. Kesinlikle Para Yok</h3>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">1. Kesinlikle Para Yok</h3>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
               Platformda hiçbir para transferi veya gizli ücret yoktur. Eşyalar birbirlerinin değerini karşılar; böylece enflasyon veya fiyat spekülasyonu olmadan adil takas gerçekleşir.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 space-y-1.5 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 space-y-1.5 shadow-xs">
             <div className="flex items-center gap-2">
               <Leaf className="w-5 h-5 text-teal-800" />
-              <h3 className="text-sm font-bold text-stone-900">2. SVS (Sürdürülebilirlik Değer Sistemi)</h3>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">2. SVS (Sürdürülebilirlik Değer Sistemi)</h3>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
               Her takas, sıfırdan ürün üretilmesini engelleyerek CO₂e, sanal su ve enerji tasarrufu sağlar. Bu etki doğrulanmış LCA modelleriyle profilinize rozet ve puan olarak yansır.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 space-y-1.5 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 space-y-1.5 shadow-xs">
             <div className="flex items-center gap-2">
               <Repeat className="w-5 h-5 text-emerald-700" />
-              <h3 className="text-sm font-bold text-stone-900">3. Çoklu Döngü Takasları</h3>
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">3. Çoklu Döngü Takasları</h3>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
               İki kişinin ürünleri doğrudan uyuşmasa bile, yapay zeka destekli döngü algoritması 3 veya daha fazla kullanıcıyı dairesel olarak (A→B→C→A) eşleştirir.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white border border-stone-200/90 space-y-1.5 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200/90 space-y-1.5 shadow-xs">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-stone-900" />
-              <h3 className="text-sm font-bold text-stone-900">4. Güvenli Takas & Buluşma Noktaları</h3>
+              <ShieldCheck className="w-5 h-5 text-stone-900 dark:text-stone-100" />
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">4. Güvenli Takas & Buluşma Noktaları</h3>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
               6 adımlı kilit sistemiyle ürünler güvenceye alınır. Metro çıkışları, AVM'ler ve kamuya açık güvenli noktalarda teslimat önerilir.
             </p>
           </div>

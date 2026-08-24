@@ -61,7 +61,7 @@ export const MakeOfferPage: React.FC = () => {
 
   if (isLoadingTarget) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+      <div className="min-h-full bg-stone-50 dark:bg-stone-950 flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin" />
       </div>
     );
@@ -69,8 +69,8 @@ export const MakeOfferPage: React.FC = () => {
 
   if (!targetListing) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
-        <p className="text-sm font-bold text-stone-700 mb-3">Takas yapılacak ürün bulunamadı.</p>
+      <div className="min-h-full bg-stone-50 dark:bg-stone-950 p-6 flex flex-col items-center justify-center text-center">
+        <p className="text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">Takas yapılacak ürün bulunamadı.</p>
         <button
           type="button"
           onClick={() => navigate('/kesfet')}
@@ -151,49 +151,49 @@ export const MakeOfferPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-24 text-stone-900 dark:text-stone-100">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
         {/* Top bar */}
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-stone-900">Takas Teklifi Oluştur</h1>
+            <h1 className="text-lg font-bold text-stone-900 dark:text-stone-100">Takas Teklifi Oluştur</h1>
             <p className="text-xs text-stone-500">Parasal işlem yok • Saf sürdürülebilir takas</p>
           </div>
         </div>
 
         {/* Target Item Summary Card */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-3.5 flex items-center gap-3">
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-3.5 flex items-center gap-3">
           <img
             src={targetListing.images[0]}
             alt={targetListing.title}
-            className="w-16 h-16 rounded-xl object-cover border border-stone-200 shrink-0"
+            className="w-16 h-16 rounded-xl object-cover border border-stone-200 dark:border-stone-800 shrink-0"
           />
           <div className="flex-1 min-w-0">
             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">İstediğin Ürün</span>
-            <h3 className="text-xs font-bold text-stone-900 truncate">{targetListing.title}</h3>
+            <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">{targetListing.title}</h3>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[11px] text-stone-600 truncate">Sahibi: {targetListing.user.fullName}</span>
+              <span className="text-[11px] text-stone-600 dark:text-stone-400 truncate">Sahibi: {targetListing.user.fullName}</span>
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">
                 ★ {targetListing.user.trustScore}
               </span>
             </div>
             <p className="text-[10px] text-stone-500 truncate mt-0.5">
-              Aradığı: <span className="font-semibold text-stone-700">{targetListing.lookingFor}</span>
+              Aradığı: <span className="font-semibold text-stone-700 dark:text-stone-300">{targetListing.lookingFor}</span>
             </p>
           </div>
         </div>
 
         {/* Select My Items to Offer */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+            <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">
               Karşılığında Vereceğin Ürün(ler)
             </h2>
             <button
@@ -217,12 +217,12 @@ export const MakeOfferPage: React.FC = () => {
                     className={`p-2.5 rounded-xl border flex items-center gap-2.5 transition-all cursor-pointer ${
                       isSelected
                         ? 'border-emerald-700 bg-emerald-50/50 shadow-xs'
-                        : 'border-stone-200 hover:border-stone-300 bg-white'
+                        : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 bg-white dark:bg-stone-900'
                     }`}
                   >
                     <div
                       className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${
-                        isSelected ? 'bg-emerald-800 border-emerald-800 text-white' : 'border-stone-300 bg-white'
+                        isSelected ? 'bg-emerald-800 border-emerald-800 text-white' : 'border-stone-300 bg-white dark:bg-stone-900'
                       }`}
                     >
                       {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -230,10 +230,10 @@ export const MakeOfferPage: React.FC = () => {
                     <img
                       src={item.images[0]}
                       alt={item.title}
-                      className="w-12 h-12 rounded-lg object-cover border border-stone-200 shrink-0"
+                      className="w-12 h-12 rounded-lg object-cover border border-stone-200 dark:border-stone-800 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-stone-800 truncate">{item.title}</h4>
+                      <h4 className="text-xs font-bold text-stone-800 dark:text-stone-200 truncate">{item.title}</h4>
                       <span className="text-[10px] text-emerald-700 font-semibold">
                         +{item.estimatedImpact.co2eKg} kg CO₂e
                       </span>
@@ -301,8 +301,8 @@ export const MakeOfferPage: React.FC = () => {
         </div>
 
         {/* Delivery Method Selection */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Teslimat & Buluşma Tercihi</h2>
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-3">
+          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Teslimat & Buluşma Tercihi</h2>
 
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -311,7 +311,7 @@ export const MakeOfferPage: React.FC = () => {
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center ${
                 deliveryMethod === 'safe_point'
                   ? 'border-emerald-700 bg-emerald-50 text-emerald-950 font-bold shadow-xs'
-                  : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50'
               }`}
             >
               <ShieldCheck className="w-5 h-5 mb-1 text-emerald-700" />
@@ -325,7 +325,7 @@ export const MakeOfferPage: React.FC = () => {
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center ${
                 deliveryMethod === 'in_person'
                   ? 'border-emerald-700 bg-emerald-50 text-emerald-950 font-bold shadow-xs'
-                  : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50'
               }`}
             >
               <MapPin className="w-5 h-5 mb-1 text-teal-700" />
@@ -339,10 +339,10 @@ export const MakeOfferPage: React.FC = () => {
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center ${
                 deliveryMethod === 'cargo'
                   ? 'border-emerald-700 bg-emerald-50 text-emerald-950 font-bold shadow-xs'
-                  : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50'
               }`}
             >
-              <Truck className="w-5 h-5 mb-1 text-stone-600" />
+              <Truck className="w-5 h-5 mb-1 text-stone-600 dark:text-stone-400" />
               <span className="text-xs">Kargo / Dolap</span>
               <span className="text-[9px] text-stone-400 font-normal">Anlaşmalı</span>
             </button>
@@ -351,7 +351,7 @@ export const MakeOfferPage: React.FC = () => {
           {/* Buluşma yeri ve tarihi — teklif notuna eklenir */}
           {deliveryMethod !== 'cargo' && (
             <div className="space-y-2 pt-1">
-              <label htmlFor="meeting-location" className="text-xs font-semibold text-stone-700">
+              <label htmlFor="meeting-location" className="text-xs font-semibold text-stone-700 dark:text-stone-300">
                 Önerilen buluşma noktası
               </label>
               <input
@@ -359,14 +359,14 @@ export const MakeOfferPage: React.FC = () => {
                 type="text"
                 value={meetingLocation}
                 onChange={(e) => setMeetingLocation(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden"
+                className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden"
                 placeholder="Örn: metro çıkışı, meydan, AVM girişi"
               />
             </div>
           )}
 
           <div className="space-y-2">
-            <label htmlFor="scheduled-date" className="text-xs font-semibold text-stone-700">
+            <label htmlFor="scheduled-date" className="text-xs font-semibold text-stone-700 dark:text-stone-300">
               Önerilen tarih (isteğe bağlı)
             </label>
             <input
@@ -374,17 +374,17 @@ export const MakeOfferPage: React.FC = () => {
               type="date"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden"
+              className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-stone-700">Kullanıcıya Notunuz (İsteğe bağlı)</label>
+            <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">Kullanıcıya Notunuz (İsteğe bağlı)</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden resize-none"
+              className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-xs focus:bg-white focus:border-emerald-700 outline-hidden resize-none"
               placeholder="Merhaba, ürününle ilgileniyorum. Temiz kullandığım ürünümle takas teklif ediyorum..."
             />
           </div>

@@ -39,8 +39,6 @@ create table if not exists public.listings (
   status text not null default 'active',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
-  -- looking_for / delivery_options / tags / view_count / favorite_count
-  -- kolonları 20260818120000_add_listing_fields.sql migration'ında ekleniyor.
 );
 
 create table if not exists public.listing_images (
@@ -190,3 +188,22 @@ drop trigger if exists trg_create_trust_profile on public.profiles;
 create trigger trg_create_trust_profile
   after insert on public.profiles
   for each row execute function public.create_trust_profile();
+
+-- ── 20260818120000 ile aynı ek kolonlar ve tetikleyici ───────────────────
+-- O dosyanın zaman damgası bu dosyadan önce geldiği için, sıfırdan kurulan
+-- bir ortamda tablolar henüz yokken çalışıyor ve atlanıyor (bkz. oradaki
+-- SIRALAMA NOTU). Şema sıfırdan kurulduğunda da eksiksiz olsun diye aynı
+-- tanımlar burada tekrarlanıyor; hepsi idempotent olduğu için canlı
+-- veritabanına tekrar uygulanması zararsızdır.
+
+alter table public.listings
+  add column if not exists looking_for text not null default '',
+  add column if not exists delivery_options text[] not null default array['in_person'],
+  add column if not exists tags text[] not null default '{}',
+  add column if not exists view_count integer not null default 0,
+  add column if not exists favorite_count integer not null default 0;
+
+drop trigger if exists trg_sync_listing_favorite_count on public.favorites;
+create trigger trg_sync_listing_favorite_count
+  after insert or delete on public.favorites
+  for each row execute function public.sync_listing_favorite_count();

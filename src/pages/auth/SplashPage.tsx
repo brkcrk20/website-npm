@@ -43,7 +43,7 @@ export const SplashPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white flex flex-col justify-between p-6 sm:p-8 max-w-md mx-auto relative overflow-hidden">
+    <div className="min-h-full bg-stone-950 text-white flex flex-col justify-between p-6 sm:p-8 max-w-md mx-auto relative overflow-hidden">
       {/* Subtle organic background ambient glow */}
       <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-emerald-700/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-amber-600/15 blur-3xl pointer-events-none" />

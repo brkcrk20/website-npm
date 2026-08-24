@@ -149,8 +149,8 @@ export const ProductDetailPage: React.FC = () => {
   const isTradable = listing.status === 'active';
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 pb-28 text-stone-900 dark:text-stone-100">
-      <div className="sticky top-[52px] z-30 bg-stone-50/90 dark:bg-stone-950/90 backdrop-blur-md px-4 py-2.5">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 flex flex-col text-stone-900 dark:text-stone-100">
+      <div className="sticky top-0 z-30 bg-stone-50/90 dark:bg-stone-950/90 backdrop-blur-md px-4 py-2.5">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -198,7 +198,7 @@ export const ProductDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-4 space-y-4">
+      <div className="px-4 pb-4 space-y-4 flex-1">
         {/* Galeri */}
         <div className="space-y-2">
           <div className="relative aspect-4/3 w-full rounded-3xl overflow-hidden bg-stone-200 dark:bg-stone-800">
@@ -345,7 +345,7 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Alt eylem çubuğu */}
       {!isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 p-3 safe-area-bottom">
+        <div className="sticky bottom-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 p-3">
           <div className="flex items-center gap-2.5">
             <button
               type="button"
@@ -371,7 +371,7 @@ export const ProductDetailPage: React.FC = () => {
       )}
 
       {isOwner && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 max-w-lg mx-auto bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 p-3 safe-area-bottom">
+        <div className="sticky bottom-0 z-30 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 p-3">
           <button
             type="button"
             onClick={() => navigate(`/ilan/${listing.id}/duzenle`)}

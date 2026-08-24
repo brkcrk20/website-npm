@@ -5,6 +5,8 @@ import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { PageLoader } from './components/layout/PageLoader';
+import { SetupNotice } from './components/layout/SetupNotice';
+import { isSupabaseConfigured } from './lib/supabase';
 
 /*
  * Rotalar bilinçli olarak sade tutuldu: uygulama tek bir işe odaklanıyor —
@@ -134,14 +136,22 @@ const AppRoutes: React.FC = () => (
 );
 
 export default function App() {
+  // Ortam değişkenleri yoksa uygulama yerine kurulum yönergesi gösterilir.
+  if (!isSupabaseConfigured) return <SetupNotice />;
+
   return (
     <AppProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans antialiased selection:bg-emerald-200 selection:text-emerald-900 transition-colors duration-200">
-          <div className="min-h-screen flex flex-col max-w-lg mx-auto bg-stone-50 dark:bg-stone-950 shadow-xl relative border-x border-stone-200/60 dark:border-stone-800/80">
+        {/*
+         * Mobil uygulama kabuğu: yükseklik ekranla sınırlı, yalnızca orta
+         * bölge kayar. Böylece üst çubuk ve alt gezinme her zaman yerinde
+         * durur, sayfa geçişlerinde zıplama olmaz.
+         */}
+        <div className="h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans antialiased selection:bg-emerald-200 selection:text-emerald-900">
+          <div className="h-full flex flex-col max-w-lg mx-auto bg-stone-50 dark:bg-stone-950 shadow-xl relative border-x border-stone-200/60 dark:border-stone-800/80 overflow-hidden">
             <Header />
 
-            <main className="flex-1">
+            <main className="flex-1 overflow-y-auto overscroll-contain">
               <AppRoutes />
             </main>
 

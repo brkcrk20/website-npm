@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, NotificationItem, UserPoints, UserProfile } from '../types';
 import { authService } from '../services/authService';
 import { listingService } from '../services/listingService';
@@ -61,6 +61,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentUser, setCurrentUser] = useState<UserProfile>(authService.getCurrentUser());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Oturum olaylarında gereksiz tekrar sorgu atmamak için güncel kullanıcı id'si.
+  const currentUserIdRef = useRef(currentUser.id);
+  currentUserIdRef.current = currentUser.id;
 
   const [activity, setActivity] = useState<UserActivity>(EMPTY_ACTIVITY);
   const [points, setPoints] = useState<UserPoints>(EMPTY_POINTS);
@@ -154,16 +158,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setCurrentUser(GUEST_USER);
         setIsAuthenticated(false);
         return;
       }
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        refreshUserData();
-      }
+      if (event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return;
+
+      // Açılıştaki ilk oturum olayı, yukarıdaki refreshUserData() ile aynı
+      // kullanıcıyı getirir; aynı kullanıcı için ikinci kez sorgu atma.
+      const sessionUserId = session?.user?.id;
+      if (sessionUserId && sessionUserId !== currentUserIdRef.current) refreshUserData();
     });
 
     return () => {

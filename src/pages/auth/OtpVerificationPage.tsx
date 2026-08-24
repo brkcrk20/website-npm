@@ -94,14 +94,14 @@ export const OtpVerificationPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col justify-between p-6 max-w-md mx-auto">
+    <div className="min-h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col justify-between p-6 max-w-md mx-auto">
       {/* Top Bar */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors"
+            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center hover:bg-stone-100 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -111,11 +111,11 @@ export const OtpVerificationPage: React.FC = () => {
         </div>
 
         <div className="space-y-2 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 font-display tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-stone-100 font-display tracking-tight">
             Doğrulama Kodu
           </h1>
           <p className="text-sm text-stone-500">
-            <span className="font-semibold text-stone-800">{phone}</span> numarasına gönderilen 6 haneli SMS kodunu gir.
+            <span className="font-semibold text-stone-800 dark:text-stone-200">{phone}</span> numarasına gönderilen 6 haneli SMS kodunu gir.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export const OtpVerificationPage: React.FC = () => {
               className={`w-12 h-14 sm:w-14 sm:h-16 rounded-2xl flex items-center justify-center text-xl font-extrabold font-display border-2 transition-all shadow-xs ${
                 digit
                   ? 'border-emerald-600 bg-emerald-50/50 text-emerald-950 scale-105'
-                  : 'border-stone-200 bg-white text-stone-400'
+                  : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-400'
               }`}
             >
               {digit || '•'}
@@ -164,7 +164,7 @@ export const OtpVerificationPage: React.FC = () => {
                   key={i}
                   type="button"
                   onClick={() => handleKeypadPress('backspace')}
-                  className="h-14 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 flex items-center justify-center text-stone-700 transition-colors cursor-pointer"
+                  className="h-14 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 active:bg-stone-300 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors cursor-pointer"
                 >
                   <Delete className="w-6 h-6" />
                 </button>
@@ -175,7 +175,7 @@ export const OtpVerificationPage: React.FC = () => {
                 key={i}
                 type="button"
                 onClick={() => handleKeypadPress(key)}
-                className="h-14 rounded-2xl bg-white hover:bg-stone-100 active:bg-emerald-50 border border-stone-200 shadow-xs flex items-center justify-center text-xl font-bold text-stone-800 transition-all active:scale-95 cursor-pointer font-display"
+                className="h-14 rounded-2xl bg-white dark:bg-stone-900 hover:bg-stone-100 active:bg-emerald-50 border border-stone-200 dark:border-stone-800 shadow-xs flex items-center justify-center text-xl font-bold text-stone-800 dark:text-stone-200 transition-all active:scale-95 cursor-pointer font-display"
               >
                 {key}
               </button>

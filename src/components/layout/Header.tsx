@@ -25,7 +25,7 @@ export const Header: React.FC = () => {
   const locationLabel = [currentUser.district, currentUser.city].filter(Boolean).join(', ');
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-3 py-2 transition-colors">
+    <header className="shrink-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-3 py-2 transition-colors">
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
