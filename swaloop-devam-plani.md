@@ -1,7 +1,8 @@
 # Swaloop — Devam Planı
 
-Bu dosya proje.zip'in içinde tutulur; yeni bir oturumda bu dosya + güncel
-proje.zip ile devam edilir.
+Bu dosya deponun kendisinde tutulur; yeni bir oturumda bu dosya + deponun
+güncel `main` dalı ile devam edilir. (Eskiden bir `proje.zip` kopyası da
+tutuluyordu; canlı kodla ayrışıp kafa karıştırdığı için kaldırıldı.)
 
 ## Bu turda yapılanlar (ürün/sistem tasarım raporu turu)
 

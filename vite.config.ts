@@ -49,10 +49,7 @@ export default defineConfig(() => {
     },
     test: {
       environment: 'node',
-      // `proje/` klasörü, kullanıcıya gönderilen proje.zip'in açılmış bir
-      // KOPYASIDIR; aynı testleri ikinci kez (ve eski haliyle) çalıştırıp
-      // gürültü üretiyordu. Tek doğruluk kaynağı `src/`.
-      exclude: ['node_modules/**', 'dist/**', 'build/**', 'proje/**'],
+      exclude: ['node_modules/**', 'dist/**', 'build/**'],
       // src/lib/supabase.ts, bu iki değişken yoksa import anında hata
       // fırlatıyor; testlerde gerçek bir Supabase projesine bağlanılmadığı
       // için (istemci hep mock'lanıyor) yer tutucu değerler yeterli.
