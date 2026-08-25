@@ -31,9 +31,15 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
 
     setIsSubmitting(true);
     const check = await authService.checkPhoneRegistered(phone);
+<<<<<<< HEAD
 
     if (check.exists) {
       setIsSubmitting(false);
+=======
+    setIsSubmitting(false);
+
+    if (check.exists) {
+>>>>>>> aa112bc (Son güncellemeler)
       showToast(
         'Bu Numara Zaten Kayıtlı',
         'Bu telefon numarasına ait bir hesap bulunmaktadır. Lütfen giriş yapınız.',
@@ -43,6 +49,7 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
       return;
     }
 
+<<<<<<< HEAD
     // Kontrol yapılamadıysa (RPC hatası) kayıt durdurulmuyor — numara zaten
     // kayıtlıysa OTP adımı bunu kendisi yakalar. Ama sebep sessizce
     // yutulmuyor: sonraki adımda bir hata çıkarsa kullanıcı bunun bağlantılı
@@ -59,6 +66,11 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
 
     if (!otpResult.success) {
       showToast('Kod Gönderilemedi', otpResult.error ?? 'SMS gönderiminde bir hata oluştu.', 'error');
+=======
+    const otpResult = await authService.sendOtp(phone);
+    if (!otpResult.success) {
+      showToast('Kod Gönderilemedi', otpResult.error || 'SMS gönderiminde bir hata oluştu.', 'error');
+>>>>>>> aa112bc (Son güncellemeler)
       return;
     }
 
@@ -87,6 +99,7 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
     setIsSubmitting(false);
 
     if (!result.success) {
+<<<<<<< HEAD
       showToast('Giriş Başarısız', result.error ?? 'Telefon numarası veya şifre hatalı.', 'error');
       return;
     }
@@ -98,6 +111,9 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
     if (result.needsProfile) {
       showToast('Profilini Tamamla', 'Kaydın yarım kalmış, kaldığın yerden devam edelim.', 'info');
       navigate('/profil-olustur', { state: { phone } });
+=======
+      showToast('Giriş Başarısız', result.error || 'Telefon numarası veya şifre hatalı.', 'error');
+>>>>>>> aa112bc (Son güncellemeler)
       return;
     }
 

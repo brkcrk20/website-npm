@@ -3,13 +3,17 @@ import { CURRENT_USER } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImageToWebp } from '../utils/imageToWebp';
+<<<<<<< HEAD
 import { blockService } from './blockService';
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 
 const AUTH_STORAGE_KEY = 'swaloop_auth_user';
 const ONBOARDING_COMPLETED_KEY = 'swaloop_onboarding_done';
 const AVATARS_BUCKET = 'avatars';
 
 /**
+<<<<<<< HEAD
  * `profiles` tablosundan çekilen kolonlar — `select('*')` YERİNE.
  *
  * GÜVENLİK: `phone` ve `email` artık istemci rollerinde (anon/authenticated)
@@ -54,6 +58,8 @@ async function withSessionContact(user: UserProfile): Promise<UserProfile> {
 }
 
 /**
+=======
+>>>>>>> aa112bc (Son güncellemeler)
  * Kullanıcının seçtiği gerçek profil fotoğrafını Supabase Storage'a
  * ({auth.uid()}/avatar-{random}.webp yoluna) yükler ve public URL'ini
  * döndürür. `uploadListingImages` ile aynı desen — bkz.
@@ -104,6 +110,7 @@ async function uploadAvatar(file: File): Promise<string | null> {
 
   return publicUrl;
 }
+<<<<<<< HEAD
 
 /**
  * `createProfile` sonucu.
@@ -119,6 +126,8 @@ export interface CreateProfileResult {
   error?: string;
   warning?: string;
 }
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 
 export interface PhoneCheckResult {
   exists: boolean;
@@ -281,6 +290,7 @@ function trustLevelFromScore(
   return 'Başlangıç';
 }
 
+<<<<<<< HEAD
 /**
  * Ham `profiles` satırını UserProfile'a çevirir.
  *
@@ -302,6 +312,9 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
     row = { id: '', full_name: 'Swaloop Kullanıcısı' };
   }
 
+=======
+export function mapProfile(row: any, trust?: any | null): UserProfile {
+>>>>>>> aa112bc (Son güncellemeler)
   const completedTrades = trust?.completed_trades ?? 0;
   const cancelledTrades = trust?.cancelled_trades ?? 0;
   const totalTrades = completedTrades + cancelledTrades;
@@ -546,7 +559,11 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profile.id);
+<<<<<<< HEAD
     const user = await withSessionContact(mapProfile(profile, trust));
+=======
+    const user = mapProfile(profile, trust);
+>>>>>>> aa112bc (Son güncellemeler)
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,
@@ -573,12 +590,15 @@ export const authService = {
   ): Promise<{
     success: boolean;
     requiresOtp: boolean;
+<<<<<<< HEAD
     /**
      * Şifre doğru, oturum açıldı ama `profiles` satırı yok: kullanıcı
      * kaydını yarıda bırakmış. Oturum bilerek AÇIK bırakılır; çağıran
      * taraf kullanıcıyı `/profil-olustur` adımına göndermelidir.
      */
     needsProfile?: boolean;
+=======
+>>>>>>> aa112bc (Son güncellemeler)
     user?: UserProfile;
     error?: string;
   }> {
@@ -595,23 +615,37 @@ export const authService = {
       return {
         success: false,
         requiresOtp: false,
+<<<<<<< HEAD
         error: describeAuthError(error, 'Telefon numarası veya şifre hatalı.'),
+=======
+        error: error?.message || 'Telefon numarası veya şifre hatalı.',
+>>>>>>> aa112bc (Son güncellemeler)
       };
     }
 
     const { data: profileRow, error: profileError } = await supabase
       .from('profiles')
+<<<<<<< HEAD
       .select(PROFILE_COLUMNS)
       .eq('id', data.user.id)
       .maybeSingle();
 
     if (profileError) {
       console.error('Profil okunamadı:', profileError);
+=======
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profileRow) {
+      console.error('Profil bulunamadı:', profileError);
+>>>>>>> aa112bc (Son güncellemeler)
       await supabase.auth.signOut();
 
       return {
         success: false,
         requiresOtp: false,
+<<<<<<< HEAD
         error: describeAuthError(profileError, 'Kullanıcı profili okunamadı.'),
       };
     }
@@ -630,6 +664,9 @@ export const authService = {
         success: true,
         requiresOtp: false,
         needsProfile: true,
+=======
+        error: 'Kullanıcı profili bulunamadı.',
+>>>>>>> aa112bc (Son güncellemeler)
       };
     }
 
@@ -644,7 +681,11 @@ export const authService = {
         return {
           success: false,
           requiresOtp: true,
+<<<<<<< HEAD
           error: otpResult.error ?? 'SMS kodu gönderilemedi.',
+=======
+          error: otpResult.error || 'SMS kodu gönderilemedi.',
+>>>>>>> aa112bc (Son güncellemeler)
         };
       }
 
@@ -655,7 +696,11 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profileRow.id);
+<<<<<<< HEAD
     const user = await withSessionContact(mapProfile(profileRow, trust));
+=======
+    const user = mapProfile(profileRow, trust);
+>>>>>>> aa112bc (Son güncellemeler)
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
@@ -689,7 +734,11 @@ export const authService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', authData.user.id)
+<<<<<<< HEAD
       .select(PROFILE_COLUMNS)
+=======
+      .select('*')
+>>>>>>> aa112bc (Son güncellemeler)
       .single();
 
     if (error || !data) {
@@ -698,7 +747,11 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(data.id);
+<<<<<<< HEAD
     const user = await withSessionContact(mapProfile(data, trust));
+=======
+    const user = mapProfile(data, trust);
+>>>>>>> aa112bc (Son güncellemeler)
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
@@ -736,6 +789,7 @@ export const authService = {
     }
 
     const userId = authData.user.id;
+<<<<<<< HEAD
 
     // Numaranın doğruluk kaynağı OTURUM, form değil. `data.phone` router
     // state'inden geliyor ve o state sayfa yenilenince kayboluyor; çağıran
@@ -769,6 +823,23 @@ export const authService = {
       return {
         error: describeAuthError(passwordError, 'Şifre ayarlanamadı.'),
       };
+=======
+    const phone = normalizePhone(data.phone);
+    const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+
+    // Telefon+OTP ile açılan oturuma artık bir şifre ve e-posta tanımlıyoruz;
+    // böylece kullanıcı sonraki girişlerde telefon + şifre ile
+    // (her seferinde SMS beklemeden) oturum açabilir.
+    const { error: updateAuthError } = await supabase.auth.updateUser({
+      password: data.password,
+      email: data.email,
+    });
+
+    if (updateAuthError) {
+      console.error('Şifre/e-posta ayarlanamadı:', updateAuthError);
+
+      return undefined;
+>>>>>>> aa112bc (Son güncellemeler)
     }
 
     const { data: profile, error } = await supabase
@@ -805,6 +876,7 @@ export const authService = {
       };
     }
 
+<<<<<<< HEAD
     // Profil satırı yazıldı; buradan sonrası artık kaydı geri almaz.
     const { error: emailError } = await supabase.auth.updateUser({
       email: data.email.trim(),
@@ -813,6 +885,15 @@ export const authService = {
     if (emailError) {
       console.error('E-posta hesaba eklenemedi:', emailError);
     }
+=======
+    const trust = await getTrustProfileRow(profile.id);
+    const newUser = mapProfile(profile, trust);
+
+    localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify(newUser)
+    );
+>>>>>>> aa112bc (Son güncellemeler)
 
     const trust = await getTrustProfileRow(profile.id);
 
@@ -861,7 +942,11 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profile.id);
+<<<<<<< HEAD
     const user = await withSessionContact(mapProfile(profile, trust));
+=======
+    const user = mapProfile(profile, trust);
+>>>>>>> aa112bc (Son güncellemeler)
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,
@@ -877,6 +962,7 @@ export const authService = {
    * verisiyle çalışıyordu, gerçek Supabase profiline hiç bağlı değildi.
    */
   async getPublicProfile(userId: string): Promise<UserProfile | null> {
+<<<<<<< HEAD
     // GÜVENLİK: burada `select('*')` KULLANILMAMALI — bkz. PROFILE_COLUMNS.
     // `phone`/`email` kolonlarında istemci rollerinin SELECT hakkı yok
     // (20260828000000); `*` sorguyu tümden reddettirir. Genel profil
@@ -885,6 +971,17 @@ export const authService = {
     const { data: profile, error } = await supabase
       .from('profiles')
       .select(PROFILE_PUBLIC_COLUMNS)
+=======
+    // GÜVENLİK: burada `select('*')` KULLANILMAMALI. `profiles` üzerindeki
+    // RLS politikası satır bazlıdır (`profiles_select_all ... using (true)`)
+    // ve Postgres'te kolon bazlı RLS yoktur — `*` ile sorgulandığında
+    // başka bir kullanıcının telefon numarası ve e-postası istemciye
+    // iniyordu. Genel profil kartında bunların hiçbiri gösterilmiyor.
+    // mapProfile eksik alanlar için zaten boş değere düşüyor.
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, first_name, last_name, avatar_url, bio, city, district, username, created_at, interests, wanted_categories')
+>>>>>>> aa112bc (Son güncellemeler)
       .eq('id', userId)
       .maybeSingle();
 
@@ -1012,7 +1109,11 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(data.id);
+<<<<<<< HEAD
     const user = await withSessionContact(mapProfile(data, trust));
+=======
+    const user = mapProfile(data, trust);
+>>>>>>> aa112bc (Son güncellemeler)
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,

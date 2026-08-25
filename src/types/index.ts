@@ -100,10 +100,14 @@ export interface Listing {
   location: {
     city: string;
     district: string;
+<<<<<<< HEAD
     // İsteğe bağlı: yalnızca hem ilanın hem de kullanıcının koordinatı
     // biliniyorsa hesaplanır (bkz. listingService.enrichListings). Bilinmiyorsa
     // arayüzde mesafe HİÇ gösterilmez — 0 km diye bir varsayılan yoktur.
     distanceKm?: number;
+=======
+    distanceKm: number;
+>>>>>>> aa112bc (Son güncellemeler)
     safeMeetingPoint?: string;
     lat?: number;
     lng?: number;
@@ -113,9 +117,13 @@ export interface Listing {
   // lookingFor'un YERİNE geçmez, onu tamamlar (bkz. rapor md. 20).
   lookingForCategories: CategoryId[];
   deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
+<<<<<<< HEAD
   // DB karşılığı: `listings_status_check` (20260829000000). 'expired' yalnızca
   // süre işi tarafından yazılır, kullanıcı elle bu duruma geçemez.
   status: 'active' | 'in_trade' | 'traded' | 'paused' | 'expired' | 'removed';
+=======
+  status: 'active' | 'in_trade' | 'traded' | 'paused' | 'removed';
+>>>>>>> aa112bc (Son güncellemeler)
   createdAt: string;
   updatedAt: string;
   // İlanın yayında kalacağı son an (md. 119). Her ilan 30 günle başlar,
@@ -205,6 +213,7 @@ export interface TradeOffer {
   updatedAt: string;
   counterOfferFromId?: string;
   timeline: TradeEvent[];
+<<<<<<< HEAD
   /**
    * "Karşılıklı Onay" adımı (5). Takas ancak İKİ taraf da teslimatı
    * onayladıktan sonra ilerler — kural veritabanında
@@ -212,6 +221,8 @@ export interface TradeOffer {
    */
   isConfirmedByInitiator?: boolean;
   isConfirmedByReceiver?: boolean;
+=======
+>>>>>>> aa112bc (Son güncellemeler)
   isReviewedByInitiator?: boolean;
   isReviewedByReceiver?: boolean;
 }
@@ -371,8 +382,11 @@ export type NotificationType =
   | 'need_matched'
   | 'message'
   | 'review_request'
+<<<<<<< HEAD
   | 'listing_expiring'
   | 'listing_expired'
+=======
+>>>>>>> aa112bc (Son güncellemeler)
   | 'loop'
   | 'badge'
   | 'system';

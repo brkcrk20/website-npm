@@ -1,5 +1,6 @@
 # Swaloop — depo kuralları
 
+<<<<<<< HEAD
 ## Değişiklikler otomatik uygulanır
 
 Kullanıcı bu konuda kalıcı yetki verdi: **bir iş bittiğinde onay
@@ -57,6 +58,12 @@ commit'i gösterir.
 **Tüm iş `main` üzerinden yürür.** Bir dalda çalışıldıysa, iş biter bitmez
 `main`'in ucuna ileri sarılır ve kullanıcının dalı da aynı noktaya
 getirilir.
+=======
+## Tek hat: `main`
+
+**Tüm iş `main` üzerinden yürür.** Bir dalda çalışıldıysa, iş biter bitmez
+`main`'e merge edilir ve dal `main` ile aynı noktaya getirilir.
+>>>>>>> aa112bc (Son güncellemeler)
 
 Bunun sebebi somut bir olay: `claude/takas-app-development-56eqh1` dalı ile
 `main`, `bc7fd93` commit'inde ayrıldı ve fark edilmeden 1,5 gün paralel
@@ -86,6 +93,7 @@ Değişiklik `main`'e ulaşmadıysa iş bitmemiştir. Kullanıcı kendi
 editöründe yalnızca kendi checkout'undaki dalı görür; başka bir dala
 push edilen commit onun ekranında **görünmez**.
 
+<<<<<<< HEAD
 ### Kullanıcının kendi makinesinde
 
 Depoyu ilk kurarken bir kez:
@@ -100,6 +108,8 @@ Eşitle" düğmesi `fatal: Need to specify how to reconcile divergent
 branches` ile düşer ve commit atılamaz hâle gelir. Bu ayar yerel commit'leri
 uzaktakinin üstüne dizerek düğmeyi çalışır tutar.
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 ## Deponun adı
 
 Depo GitHub'da **`brkcrk20/Swaloop-App`**. Eski adı `website-npm`'di ve

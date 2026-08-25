@@ -242,6 +242,7 @@ function mapListing(row: any): Listing {
       district: row.district ?? '',
       lat: row.latitude ?? 0,
       lng: row.longitude ?? 0,
+<<<<<<< HEAD
       // "Mesafe ya gerçektir ya da yoktur" (README). Önceden burada sabit 0
       // dönülüyordu: hiçbir sorgu `distance_km` üretmediği için HER ilan
       // "0 km uzakta" görünüyor, mesafe filtreleri de (SwipeMatchPage,
@@ -250,6 +251,9 @@ function mapListing(row: any): Listing {
       // (bkz. enrichListings → viewerCoords), aksi hâlde undefined kalıyor
       // ve arayüz mesafeyi hiç göstermiyor.
       distanceKm: typeof row.distance_km === 'number' ? row.distance_km : undefined,
+=======
+      distanceKm: row.distance_km ?? 0,
+>>>>>>> aa112bc (Son güncellemeler)
     },
 
     lookingFor: row.looking_for ?? '',
@@ -270,11 +274,14 @@ function mapListing(row: any): Listing {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 
+<<<<<<< HEAD
     // 20260829000000 canlıya uygulanana kadar bu kolonlar sorgudan hiç
     // gelmez; o durumda alan `undefined` kalır ve arayüz süreyi göstermez.
     expiresAt: row.expires_at ?? undefined,
     renewedAt: row.renewed_at ?? undefined,
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
     viewCount: row.view_count ?? 0,
     favoriteCount: row.favorite_count ?? 0,
     isFavorite: row.is_favorite ?? false,
@@ -291,6 +298,7 @@ function mapListing(row: any): Listing {
  * takasın ya da geçmişin içindeki ilanlar gizlenirse takas ekranı boş
  * görünür ve kullanıcı ne olduğunu anlamaz.
  */
+<<<<<<< HEAD
 /**
  * Süresi dolmuş ilanları keşif/arama sonuçlarından düşürür (rapor md. 119).
  *
@@ -315,6 +323,8 @@ export function withoutExpired(rows: any[], now: number = Date.now()): any[] {
   });
 }
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
   if (!rows.length) return rows;
 
@@ -327,6 +337,7 @@ async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
   return rows.filter((row) => !blocked.has(row.owner_id));
 }
 
+<<<<<<< HEAD
 /**
  * İki koordinat arasındaki kuş uçuşu mesafe (km) — haversine.
  * Dış bir servise/pakete ihtiyaç duymaz; ilan listeleri için yeterince
@@ -367,6 +378,8 @@ export function getViewerCoords(): { lat: number; lng: number } | null {
   return viewerCoords;
 }
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 export async function enrichListings(rows: any[]): Promise<Listing[]> {
   if (!rows.length) return [];
 
@@ -421,18 +434,22 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
     }
   }
 
+<<<<<<< HEAD
   // Favoriler tek sorguda topluca çekiliyor. Önceden `is_favorite` hiçbir
   // sorguda doldurulmuyordu: kullanıcı bir ilanı favorilere eklese bile
   // sayfayı yenileyince kalp boş görünüyordu, hatta /favoriler ekranındaki
   // ilanlarda bile favori işareti çıkmıyordu.
   const favoriteIds = await getFavoriteListingIds(rows.map((row) => row.id));
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
   return rows.map((row) => ({
     ...row,
     category_slug:
       categoryMap.get(row.category_id) ?? row.category_id,
     owner_trust_score: trustScoreMap.get(row.owner_id) ?? 5,
     owner_is_verified: verifiedMap.get(row.owner_id) ?? false,
+<<<<<<< HEAD
     is_favorite: favoriteIds.has(row.id),
     distance_km:
       viewerCoords && typeof row.latitude === 'number' && typeof row.longitude === 'number'
@@ -473,6 +490,9 @@ export interface DeleteListingResult {
   outcome: 'deleted' | 'archived' | 'failed';
   /** Yalnızca 'failed' durumunda dolu: reddin kullanıcıya gösterilecek nedeni. */
   message?: string;
+=======
+  })).map(mapListing);
+>>>>>>> aa112bc (Son güncellemeler)
 }
 
 export const listingService = {
@@ -489,7 +509,11 @@ export const listingService = {
       return [];
     }
 
+<<<<<<< HEAD
     return enrichListings(withoutExpired(await withoutBlockedOwners(data ?? [])));
+=======
+    return enrichListings(await withoutBlockedOwners(data ?? []));
+>>>>>>> aa112bc (Son güncellemeler)
   },
 
   async getListingById(
@@ -538,7 +562,6 @@ export const listingService = {
       .from('listings')
       .select(LISTING_SELECT)
       .eq('owner_id', userId)
-      .neq('status', 'removed')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -762,6 +785,7 @@ export const listingService = {
     return listing;
   },
 
+<<<<<<< HEAD
   /**
    * İlanı kaldırır.
    *
@@ -796,11 +820,29 @@ export const listingService = {
         outcome: 'failed',
         message: error.message || 'İlan kaldırılırken bir sorun oluştu.',
       };
+=======
+  async deleteListing(
+    id: string
+  ): Promise<boolean> {
+    const { error } = await supabase
+      .from('listings')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error(
+        'İlan silinemedi:',
+        error
+      );
+
+      return false;
+>>>>>>> aa112bc (Son güncellemeler)
     }
 
     return { outcome: (data as 'deleted' | 'archived') ?? 'deleted' };
   },
 
+<<<<<<< HEAD
   /**
    * İlanın yayın süresini bugünden itibaren uzatır; süresi dolmuş bir ilanı
    * yeniden yayına alır (rapor md. 119).
@@ -848,6 +890,15 @@ export const listingService = {
       data: userData,
     } = await supabase.auth.getUser();
 
+=======
+  async toggleFavorite(
+    id: string
+  ): Promise<boolean> {
+    const {
+      data: userData,
+    } = await supabase.auth.getUser();
+
+>>>>>>> aa112bc (Son güncellemeler)
     const userId =
       userData.user?.id;
 
@@ -856,7 +907,11 @@ export const listingService = {
         'Favori işlemi için giriş gerekli.'
       );
 
+<<<<<<< HEAD
       return null;
+=======
+      return false;
+>>>>>>> aa112bc (Son güncellemeler)
     }
 
     const {
@@ -881,7 +936,11 @@ export const listingService = {
           error
         );
 
+<<<<<<< HEAD
         return null;
+=======
+        return false;
+>>>>>>> aa112bc (Son güncellemeler)
       }
 
       return false;
@@ -901,7 +960,11 @@ export const listingService = {
         error
       );
 
+<<<<<<< HEAD
       return null;
+=======
+      return false;
+>>>>>>> aa112bc (Son güncellemeler)
     }
 
     return true;
@@ -1028,13 +1091,18 @@ export const listingService = {
 
     let listings =
       await enrichListings(
+<<<<<<< HEAD
         withoutExpired(await withoutBlockedOwners(data ?? []))
+=======
+        await withoutBlockedOwners(data ?? [])
+>>>>>>> aa112bc (Son güncellemeler)
       );
 
     if (
       maxDistance !== undefined &&
       maxDistance > 0
     ) {
+<<<<<<< HEAD
       // Mesafesi BİLİNMEYEN ilanlar elenmez (README: "konum izni
       // verilmemişse mesafe filtresi, konumu bilinmeyen ilanları elemez").
       listings =
@@ -1042,11 +1110,20 @@ export const listingService = {
           (listing) =>
             listing.location.distanceKm === undefined ||
             listing.location.distanceKm <= maxDistance
+=======
+      listings =
+        listings.filter(
+          (listing) =>
+            listing.location
+              .distanceKm <=
+            maxDistance
+>>>>>>> aa112bc (Son güncellemeler)
         );
     }
 
     return listings;
   },
+<<<<<<< HEAD
 
   /**
    * İlan görüntülenme sayacını artırır.
@@ -1072,4 +1149,6 @@ export const listingService = {
       console.warn('Görüntülenme sayacı artırılamadı:', error);
     }
   },
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 };

@@ -154,6 +154,7 @@ function buildDeliveryDetails(
   };
 }
 
+<<<<<<< HEAD
 /** Adım 5 açıklaması: kimin onayladığı, kimin beklendiği. */
 function describeConfirmations(
   tradeRow: TradeRow | null,
@@ -189,6 +190,25 @@ function hydrateOffer(
 
   const offeredListings = pickListings(TRADE_ITEM_ROLE.OFFERED);
   const requestedListings = pickListings(TRADE_ITEM_ROLE.REQUESTED);
+=======
+async function hydrateOffer(
+  offerRow: TradeOfferRow,
+  tradeRow: TradeRow | null,
+  events: TradeEventRow[]
+): Promise<TradeOffer> {
+  const initiator = mapProfile(offerRow.sender);
+  const receiver = mapProfile(offerRow.receiver);
+
+  const offeredItemRows = (offerRow.items ?? []).filter((i) => i.role === TRADE_ITEM_ROLE.OFFERED);
+  const requestedItemRows = (offerRow.items ?? []).filter((i) => i.role === TRADE_ITEM_ROLE.REQUESTED);
+
+  const offeredListings = await enrichListings(
+    offeredItemRows.map((i) => i.listing).filter(Boolean)
+  );
+  const requestedListings = await enrichListings(
+    requestedItemRows.map((i) => i.listing).filter(Boolean)
+  );
+>>>>>>> aa112bc (Son güncellemeler)
 
   // Frontend durumu: teklif reddedilmediyse ve henüz `trades` satırı yoksa
   // teklifin kendi durumu (offer_sent / counter_offered) geçerli; `trades`
@@ -280,11 +300,15 @@ function hydrateOffer(
       actorId: 'both',
       actorName: 'Her İki Taraf',
       status:
+<<<<<<< HEAD
         status === 'verified' || status === 'completed'
           ? 'completed'
           : tradeRow?.sender_confirmed_at || tradeRow?.receiver_confirmed_at
           ? 'in_progress'
           : 'pending',
+=======
+        status === 'verified' || status === 'completed' ? 'completed' : 'pending',
+>>>>>>> aa112bc (Son güncellemeler)
     },
     {
       id: `${offerRow.id}-step6`,
@@ -337,10 +361,13 @@ function hydrateOffer(
     updatedAt: offerRow.updated_at,
     counterOfferFromId: offerRow.parent_offer_id ?? undefined,
     timeline,
+<<<<<<< HEAD
     // Teslimat onayları (rapor: "Karşılıklı Onay" adımı). Arayüz bunlara
     // bakıp "onayın kaydedildi, karşı taraf bekleniyor" diyebiliyor.
     isConfirmedByInitiator: !!tradeRow?.sender_confirmed_at,
     isConfirmedByReceiver: !!tradeRow?.receiver_confirmed_at,
+=======
+>>>>>>> aa112bc (Son güncellemeler)
     // DB tarafında review'ların hangi teklife ait olduğunu görmek için ayrı
     // bir sorgu gerekiyor; bu iki alan getTradeById içinde ayrıca dolduruluyor.
     isReviewedByInitiator: undefined,
@@ -362,6 +389,7 @@ async function fetchTradeRowByOfferId(offerId: string): Promise<TradeRow | null>
   return data as TradeRow | null;
 }
 
+<<<<<<< HEAD
 /**
  * Bir teklif listesini TAM olarak, teklif sayısından BAĞIMSIZ sabit sayıda
  * istekle hidratlar.
@@ -456,6 +484,48 @@ async function hydrateOffers(offerRows: TradeOfferRow[]): Promise<TradeOffer[]> 
 async function fullyHydrate(offerRow: TradeOfferRow): Promise<TradeOffer> {
   const [offer] = await hydrateOffers([offerRow]);
   return offer;
+=======
+async function fetchEventsForTrade(tradeId: string | undefined): Promise<TradeEventRow[]> {
+  if (!tradeId) return [];
+  const { data, error } = await supabase
+    .from('trade_events')
+    .select('*')
+    .eq('trade_id', tradeId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Trade eventleri alınamadı:', error);
+    return [];
+  }
+  return (data ?? []) as TradeEventRow[];
+}
+
+async function attachReviewFlags(
+  offer: TradeOffer,
+  tradeId: string | undefined
+): Promise<TradeOffer> {
+  if (!tradeId) return offer;
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('reviewer_id')
+    .eq('trade_id', tradeId);
+
+  if (error || !data) return offer;
+
+  return {
+    ...offer,
+    isReviewedByInitiator: data.some((r) => r.reviewer_id === offer.initiatorId),
+    isReviewedByReceiver: data.some((r) => r.reviewer_id === offer.receiverId),
+  };
+}
+
+async function fullyHydrate(offerRow: TradeOfferRow): Promise<TradeOffer> {
+  const tradeRow = await fetchTradeRowByOfferId(offerRow.id);
+  const events = await fetchEventsForTrade(tradeRow?.id);
+  const offer = await hydrateOffer(offerRow, tradeRow, events);
+  return attachReviewFlags(offer, tradeRow?.id);
+>>>>>>> aa112bc (Son güncellemeler)
 }
 
 export const tradeService = {
@@ -473,7 +543,11 @@ export const tradeService = {
       return [];
     }
 
+<<<<<<< HEAD
     return hydrateOffers(data as unknown as TradeOfferRow[]);
+=======
+    return Promise.all(data.map((row: any) => fullyHydrate(row)));
+>>>>>>> aa112bc (Son güncellemeler)
   },
 
   async getTradeById(id: string): Promise<TradeOffer | undefined> {
@@ -503,7 +577,11 @@ export const tradeService = {
       return [];
     }
 
+<<<<<<< HEAD
     return hydrateOffers(data as unknown as TradeOfferRow[]);
+=======
+    return Promise.all(data.map((row: any) => fullyHydrate(row)));
+>>>>>>> aa112bc (Son güncellemeler)
   },
 
   async getUserOutgoingTrades(userId: string): Promise<TradeOffer[]> {
@@ -518,7 +596,11 @@ export const tradeService = {
       return [];
     }
 
+<<<<<<< HEAD
     return hydrateOffers(data as unknown as TradeOfferRow[]);
+=======
+    return Promise.all(data.map((row: any) => fullyHydrate(row)));
+>>>>>>> aa112bc (Son güncellemeler)
   },
 
   async createTradeOffer(data: {
@@ -535,6 +617,7 @@ export const tradeService = {
     };
     // Sohbete düşen kartın etiketi için: karşı teklif mi, ilk teklif mi?
     isCounterOffer?: boolean;
+<<<<<<< HEAD
     // Karşı teklifte, yanıtlanan orijinal teklifin id'si. INSERT'in KENDİSİNDE
     // yazılmak zorunda: `notify_on_new_offer()` tetikleyicisi bildirim türünü
     // (`trade_offer` / `counter_offer`) `new.parent_offer_id`'ye bakarak
@@ -552,6 +635,12 @@ export const tradeService = {
       sender_id: data.initiator.id,
       receiver_id: data.receiver.id,
       parent_offer_id: data.parentOfferId ?? null,
+=======
+  }): Promise<TradeOffer | undefined> {
+    const insertPayload: TablesInsert<'trade_offers'> = {
+      sender_id: data.initiator.id,
+      receiver_id: data.receiver.id,
+>>>>>>> aa112bc (Son güncellemeler)
       // DB check constraint (trade_offers_status_check) sadece
       // 'pending' | 'accepted' | 'rejected' | 'countered' | 'cancelled' |
       // 'expired' değerlerine izin veriyor. UI'daki zengin durumlar
@@ -628,6 +717,7 @@ export const tradeService = {
     return this.getTradeById(offerRow.id);
   },
 
+<<<<<<< HEAD
   /**
    * Teklifi kabul eder.
    *
@@ -649,12 +739,65 @@ export const tradeService = {
     const { error } = await supabase.rpc('accept_trade_offer', {
       p_offer_id: tradeId,
     });
+=======
+  async acceptOffer(tradeId: string): Promise<TradeOffer | undefined> {
+    const { data: offerRow, error: offerError } = await supabase
+      .from('trade_offers')
+      .select('*')
+      .eq('id', tradeId)
+      .maybeSingle();
+>>>>>>> aa112bc (Son güncellemeler)
 
     if (error) {
       console.error('Teklif kabul edilemedi:', error);
       return undefined;
     }
 
+<<<<<<< HEAD
+=======
+    const { error: updateError } = await supabase
+      .from('trade_offers')
+      .update({ status: 'accepted' })
+      .eq('id', tradeId);
+
+    if (updateError) {
+      console.error('Teklif durumu güncellenemedi:', updateError);
+      return undefined;
+    }
+
+    const tradeInsert: TablesInsert<'trades'> = {
+      offer_id: offerRow.id,
+      sender_id: offerRow.sender_id,
+      receiver_id: offerRow.receiver_id,
+      status: 'locked',
+      // Rapor 1.3 fix: teklif oluşturulurken trade_offers'a kaydedilen
+      // teslimat tercihi burada trades'e taşınıyor, böylece kabul
+      // edildikten sonra da kaybolmuyor.
+      delivery_method: offerRow.delivery_method,
+      delivery_scheduled_at: offerRow.delivery_scheduled_at,
+      delivery_location_name: offerRow.delivery_location_name,
+      delivery_notes: offerRow.delivery_notes,
+    };
+
+    const { data: tradeRow, error: tradeError } = await supabase
+      .from('trades')
+      .insert(tradeInsert)
+      .select()
+      .single();
+
+    if (tradeError || !tradeRow) {
+      console.error('Trade kaydı oluşturulamadı:', tradeError);
+      return undefined;
+    }
+
+    await supabase.from('trade_events').insert({
+      trade_id: tradeRow.id,
+      actor_id: offerRow.receiver_id,
+      event_type: 'offer_accepted',
+      note: 'Teklif kabul edildi, ürünler kilitlendi.',
+    } as TablesInsert<'trade_events'>);
+
+>>>>>>> aa112bc (Son güncellemeler)
     return this.getTradeById(tradeId);
   },
 
@@ -752,6 +895,14 @@ export const tradeService = {
   ): Promise<TradeOffer | undefined> {
     const orig = await this.getTradeById(originalTradeId);
     if (!orig) return undefined;
+<<<<<<< HEAD
+=======
+
+    await supabase
+      .from('trade_offers')
+      .update({ status: 'countered' })
+      .eq('id', originalTradeId);
+>>>>>>> aa112bc (Son güncellemeler)
 
     // Karşı teklif ÖNCE oluşturulur. Eskiden orijinal teklif hemen
     // 'countered' yapılıyordu; karşı teklif oluşturulamazsa (ağ hatası,
@@ -765,7 +916,10 @@ export const tradeService = {
       requestedListings: newRequestedListings,
       deliveryMethod: newDeliveryMethod,
       isCounterOffer: true,
+<<<<<<< HEAD
       parentOfferId: originalTradeId,
+=======
+>>>>>>> aa112bc (Son güncellemeler)
       // Orijinal teklifte kararlaştırılan tarih/buluşma yeri karşı teklifte
       // kaybolmasın; karşı teklif veren yalnızca yöntemi değiştirebiliyor.
       deliveryDetails: orig.deliveryDetails,
@@ -776,16 +930,22 @@ export const tradeService = {
 
     const { error: markError } = await supabase
       .from('trade_offers')
+<<<<<<< HEAD
       .update({ status: 'countered' })
       .eq('id', originalTradeId);
 
     if (markError) {
       console.error('Orijinal teklif "karşı teklif verildi" olarak işaretlenemedi:', markError);
     }
+=======
+      .update({ parent_offer_id: originalTradeId })
+      .eq('id', counterOffer.id);
+>>>>>>> aa112bc (Son güncellemeler)
 
     return this.getTradeById(counterOffer.id);
   },
 
+<<<<<<< HEAD
   /**
    * Adım 5 ("Karşılıklı Onay"): çağıran tarafın teslimat onayını kaydeder.
    *
@@ -866,6 +1026,15 @@ export const tradeService = {
       completed: 5,
     };
 
+=======
+  async advanceTradeStep(tradeId: string, targetStep: 4 | 5 | 6): Promise<TradeOffer | undefined> {
+    const tradeRow = await fetchTradeRowByOfferId(tradeId);
+    if (!tradeRow) {
+      console.error('advanceTradeStep: bu teklife bağlı bir trade kaydı yok.');
+      return undefined;
+    }
+
+>>>>>>> aa112bc (Son güncellemeler)
     let newStatus: string;
     let eventType: string;
     const update: TablesUpdate<'trades'> = {};
@@ -873,18 +1042,32 @@ export const tradeService = {
     if (targetStep === 4) {
       newStatus = 'delivery_planned';
       eventType = 'delivery_planned';
+<<<<<<< HEAD
+=======
+    } else if (targetStep === 5) {
+      // trades_status_check DB constraint'i 'verified' değerini kabul
+      // etmiyor (izinli: locked/delivery_planned/in_transit/received/
+      // completed/disputed/cancelled) — DB'ye 'received' yazılır, UI
+      // tarafı bunu hydrateOffer() içinde 'verified' olarak gösterir.
+      newStatus = 'received';
+      eventType = 'verified';
+>>>>>>> aa112bc (Son güncellemeler)
     } else {
       newStatus = 'completed';
       eventType = 'completed';
       update.completed_at = new Date().toISOString();
     }
 
+<<<<<<< HEAD
     if ((rank[newStatus] ?? 0) <= (rank[tradeRow.status] ?? 0)) {
       console.error(
         `advanceTradeStep: takas adımı geriye alınamaz (${tradeRow.status} -> ${newStatus}).`
       );
       return this.getTradeById(tradeId);
     }
+=======
+    update.status = newStatus;
+>>>>>>> aa112bc (Son güncellemeler)
 
     update.status = newStatus;
 
@@ -919,6 +1102,7 @@ export const tradeService = {
       return undefined;
     }
 
+<<<<<<< HEAD
     // DB tarafında da zorunlu (reviews_insert_trade_party politikası +
     // reviews_not_self_check / reviews_one_per_reviewer_key kısıtları), ama
     // istemcide de kontrol ediliyor ki kullanıcı ham bir RLS hatası yerine
@@ -943,15 +1127,20 @@ export const tradeService = {
       return undefined;
     }
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
     const insertPayload: TablesInsert<'reviews'> = {
       trade_id: tradeRow.id,
       reviewer_id: review.authorId,
       reviewed_user_id: review.targetUserId,
       rating: review.overallRating,
+<<<<<<< HEAD
       // Eskiden bu puan sessizce atılıyordu: DB'de karşılığı olan bir kolon
       // yoktu ve okurken yerine genel puan gösteriliyordu, yani kullanıcının
       // verdiği "güvenilirlik" notu hiçbir yere ulaşmıyordu.
       trustworthiness_rating: review.categories.trustworthiness,
+=======
+>>>>>>> aa112bc (Son güncellemeler)
       communication_rating: review.categories.communication,
       item_accuracy_rating: review.categories.itemAccuracy,
       delivery_rating: review.categories.delivery,
@@ -978,7 +1167,14 @@ export const tradeService = {
       targetUserId: review.targetUserId,
       overallRating: data.rating,
       categories: {
+<<<<<<< HEAD
         trustworthiness: data.trustworthiness_rating ?? data.rating,
+=======
+        // DB'de ayrı bir "güvenilirlik" (trustworthiness) kolonu yok;
+        // genel puan (rating) ile aynı değer kullanılıyor. Gerekirse
+        // reviews tablosuna trustworthiness_rating kolonu eklenmeli.
+        trustworthiness: data.rating,
+>>>>>>> aa112bc (Son güncellemeler)
         communication: data.communication_rating ?? review.categories.communication,
         itemAccuracy: data.item_accuracy_rating ?? review.categories.itemAccuracy,
         delivery: data.delivery_rating ?? review.categories.delivery,
@@ -1013,7 +1209,11 @@ async getReviewsForUser(userId: string): Promise<Review[]> {
       targetUserId: row.reviewed_user_id,
       overallRating: row.rating,
       categories: {
+<<<<<<< HEAD
         trustworthiness: row.trustworthiness_rating ?? row.rating,
+=======
+        trustworthiness: row.rating,
+>>>>>>> aa112bc (Son güncellemeler)
         communication: row.communication_rating ?? row.rating,
         itemAccuracy: row.item_accuracy_rating ?? row.rating,
         delivery: row.delivery_rating ?? row.rating,

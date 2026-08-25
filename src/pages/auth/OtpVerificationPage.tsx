@@ -11,6 +11,7 @@ export const OtpVerificationPage: React.FC = () => {
 
   const state =
     (location.state as { phone?: string; isExisting?: boolean; passwordVerified?: boolean }) || {};
+<<<<<<< HEAD
   // Numara YALNIZCA bir önceki adımdan gelir. Önceden burada sabit bir demo
   // numarası (+90 532 890 12 34) varsayılan olarak duruyordu: sayfa
   // yenilendiğinde ya da /dogrulama adresine doğrudan girildiğinde router
@@ -18,6 +19,9 @@ export const OtpVerificationPage: React.FC = () => {
   // kullanıcı ekranda kendi numarasını görmediği hâlde sürekli "Hatalı Kod"
   // alıyordu. Numara yoksa artık en baştan başlanıyor.
   const phone = state.phone ?? '';
+=======
+  const phone = state.phone || '+90 532 890 12 34';
+>>>>>>> aa112bc (Son güncellemeler)
   const isExisting = state.isExisting || false;
   const passwordVerified = state.passwordVerified || false;
 
@@ -77,7 +81,12 @@ export const OtpVerificationPage: React.FC = () => {
         if (res.user) setCurrentUser(res.user);
         navigate('/kesfet');
       }
+<<<<<<< HEAD
       return;
+=======
+    } else {
+      showToast('Hatalı Kod', 'Lütfen SMS ile gelen 6 haneli kodu kontrol ediniz (Demo: 246810).', 'error');
+>>>>>>> aa112bc (Son güncellemeler)
     }
 
     // Supabase'in gerçek sebebi gösteriliyor: kodun süresi dolmuş olabilir,
@@ -91,6 +100,18 @@ export const OtpVerificationPage: React.FC = () => {
   if (!phone) {
     return <Navigate to="/giris" replace />;
   }
+
+  const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'demo', '0', 'backspace'];
+  const KEY_LETTERS: Record<string, string> = {
+    '2': 'ABC',
+    '3': 'DEF',
+    '4': 'GHI',
+    '5': 'JKL',
+    '6': 'MNO',
+    '7': 'PQRS',
+    '8': 'TUV',
+    '9': 'WXYZ',
+  };
 
   const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'demo', '0', 'backspace'];
   const KEY_LETTERS: Record<string, string> = {
@@ -149,6 +170,7 @@ export const OtpVerificationPage: React.FC = () => {
             <button
               type="button"
               onClick={async () => {
+<<<<<<< HEAD
                 const res = await authService.sendOtp(phone);
 
                 if (!res.success) {
@@ -156,6 +178,9 @@ export const OtpVerificationPage: React.FC = () => {
                   return;
                 }
 
+=======
+                await authService.sendOtp(phone);
+>>>>>>> aa112bc (Son güncellemeler)
                 setTimer(56);
                 showToast('Kod tekrar gönderildi', undefined, 'info');
               }}

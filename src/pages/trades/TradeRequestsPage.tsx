@@ -359,9 +359,13 @@ export const TradeRequestsPage: React.FC = () => {
                       %{match.matchPercentage} Takas Uyumu
                     </span>
                     <span className="text-xs text-stone-400">
+<<<<<<< HEAD
                       {match.targetListing.location.district}
                       {match.targetListing.location.distanceKm !== undefined &&
                         ` (${match.targetListing.location.distanceKm} km)`}
+=======
+                      {match.targetListing.location.district} ({match.targetListing.location.distanceKm} km)
+>>>>>>> aa112bc (Son güncellemeler)
                     </span>
                   </div>
 

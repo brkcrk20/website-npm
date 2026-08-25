@@ -34,6 +34,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     event.stopPropagation();
 
     const next = await listingService.toggleFavorite(listing.id);
+<<<<<<< HEAD
 
     // null = işlem yapılamadı (giriş yok / hata). Eskiden bu durum da `false`
     // dönüyordu ve kalp sessizce boşalıp "favorilerden çıkarıldı" deniyordu.
@@ -46,6 +47,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       return;
     }
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
     setIsFavorite(next);
     showToast(
       next ? 'Favorilere eklendi' : 'Favorilerden çıkarıldı',

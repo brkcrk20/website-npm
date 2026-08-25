@@ -366,7 +366,10 @@ Rapordaki 130-136. maddelerin kod tabanına uyarlanmış hâli. ✅ = bugün var
 | Güven skoru | ✅ | gerçek formül, `20260819120000` |
 | Değerlendirme | ✅ | 4 boyutlu (md. 41) |
 | Takas süreci + kilitleme | ✅ | bu tur düzeltildi |
+<<<<<<< HEAD
 | **İlan süresi** | ✅ | 30 gün + yenileme, `20260829000000` (md. 119) |
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 | Takas iptali + neden seçimi | ✅ | `cancelTrade()` + neden modalı |
 | Şikayet / engelleme | ✅ | `reports` gerçekten yazılıyor + `blocked_users` (md. 106) |
 
@@ -393,6 +396,7 @@ bir ürün yaratmak olur.
 
 ## 6. Sıradaki adımlar (öncelik sırasıyla)
 
+<<<<<<< HEAD
 1. ~~**İlan süresi / "hâlâ takasa açık mı?"** (md. 119)~~ — **yapıldı**
    (`20260829000000_listing_expiry.sql`). Her ilan 30 gün yayında kalıyor,
    bitmeden 3 gün önce sahibine bildirim gidiyor, süre dolunca ilan siliniyor
@@ -404,6 +408,12 @@ bir ürün yaratmak olur.
    kurulması ZORUNLU: teklifteki gibi "kabul anında yine kontrol edilir"
    güvencesi yok, iş çalışmazsa hiçbir ilan düşmez
    (bkz. `supabase/README.md`).
+=======
+1. **İlan süresi / "hâlâ takasa açık mı?"** (md. 119). İlanlar sonsuza kadar
+   aktif kalıyor; `trade_offers.expires_at` deseni ilanlara da uygulanmalı.
+2. **Teklif kapatmanın zamanlanması.** `expire_stale_trade_offers()` hazır
+   ama pg_cron kapalı olduğu için elle çağrılıyor.
+>>>>>>> aa112bc (Son güncellemeler)
 3. **Kullanıcı takip** (md. 43/86): "bu kişinin yeni ilanlarından haberdar
    ol". Bildirim altyapısı hazır, sadece `follows` tablosu + trigger gerekir.
 4. **Kategoriye özel alanlar** (md. 111): telefon → marka/model/depolama,

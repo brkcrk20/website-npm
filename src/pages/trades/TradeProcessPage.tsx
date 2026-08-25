@@ -72,6 +72,7 @@ export const TradeProcessPage: React.FC = () => {
         showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
       }
     } else if (currentStep === 4) {
+<<<<<<< HEAD
       // Adım 5 karşılıklı: onayın kaydediliyor, takas ancak karşı taraf da
       // onayladığında ilerliyor (bkz. tradeService.confirmReceipt).
       const result = await tradeService.confirmReceipt(trade.id);
@@ -85,6 +86,13 @@ export const TradeProcessPage: React.FC = () => {
         }
       } else {
         showToast('Onay kaydedilemedi', 'Lütfen tekrar dene.', 'error');
+=======
+      const updated = await tradeService.advanceTradeStep(trade.id, 5);
+      setIsAdvancing(false);
+      if (updated) {
+        setTrade(updated);
+        showToast('Teslimat Gerçekleşti', 'Ürün teslim alındı, lütfen onaylayınız.', 'info');
+>>>>>>> aa112bc (Son güncellemeler)
       }
     } else if (currentStep === 5) {
       const updated = await tradeService.advanceTradeStep(trade.id, 6);

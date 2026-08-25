@@ -187,9 +187,13 @@ export const CreateListingPage: React.FC = () => {
       location: {
         city: currentUser.city,
         district: currentUser.district,
+<<<<<<< HEAD
         // Mesafe ilanın bir özelliği değil, bakan kişiye göre hesaplanan
         // türetilmiş bir değerdir; ilan oluştururken yazılmaz.
         distanceKm: undefined,
+=======
+        distanceKm: 0.8,
+>>>>>>> aa112bc (Son güncellemeler)
       },
       user: {
         id: currentUser.id,

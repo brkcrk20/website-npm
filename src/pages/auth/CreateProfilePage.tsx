@@ -127,7 +127,11 @@ export const CreateProfilePage: React.FC = () => {
     }
 
     setIsSubmitting(true);
+<<<<<<< HEAD
     const result = await authService.createProfile({
+=======
+    const newUser = await authService.createProfile({
+>>>>>>> aa112bc (Son güncellemeler)
       phone,
       firstName,
       lastName,
@@ -143,6 +147,7 @@ export const CreateProfilePage: React.FC = () => {
     });
     setIsSubmitting(false);
 
+<<<<<<< HEAD
     if (!result.user) {
       // Supabase'in söylediği gerçek sebep gösteriliyor. Önceden her hata
       // "Profil oluşturulamadı. Lütfen tekrar deneyin." cümlesine düşüyordu;
@@ -151,17 +156,27 @@ export const CreateProfilePage: React.FC = () => {
       showToast(
         'Profil Oluşturulamadı',
         result.error ?? 'Bilinmeyen bir hata oluştu. Lütfen tekrar deneyin.',
+=======
+    if (!newUser) {
+      showToast(
+        'Hata',
+        'Profil oluşturulamadı. Lütfen tekrar deneyin.',
+>>>>>>> aa112bc (Son güncellemeler)
         'error'
       );
       return;
     }
 
+<<<<<<< HEAD
     setCurrentUser(result.user);
 
     if (result.warning) {
       showToast('E-posta Eklenemedi', result.warning, 'warning');
     }
 
+=======
+    setCurrentUser(newUser);
+>>>>>>> aa112bc (Son güncellemeler)
     showToast('Profil Oluşturuldu! 🎉', 'Swaloop dünyasına hoş geldin.', 'success');
     navigate('/kesfet');
   };

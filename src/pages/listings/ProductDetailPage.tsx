@@ -13,7 +13,10 @@ import {
   Package,
   ShieldCheck,
   ChevronRight,
+<<<<<<< HEAD
   Clock,
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 } from 'lucide-react';
 import { listingService } from '../../services/listingService';
 import { messageService } from '../../services/messageService';
@@ -21,7 +24,10 @@ import { needService } from '../../services/needService';
 import { reportService, REPORT_REASONS, ReportReason } from '../../services/reportService';
 import { Listing } from '../../types';
 import { CATEGORIES } from '../../constants';
+<<<<<<< HEAD
 import { expiryLabel, isExpiringSoon } from '../../utils/listingExpiry';
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 import { useApp } from '../../context/AppContext';
 
 // 10. İLAN DETAY
@@ -74,11 +80,14 @@ export const ProductDetailPage: React.FC = () => {
 
       if (data) {
         needService.getSeekersForListing(data).then((seekers) => setSeekerCount(seekers.length));
+<<<<<<< HEAD
         // Görüntülenme sayacı: kolon baştan beri vardı ve aşağıda
         // gösteriliyordu ama hiçbir yerden artırılmıyordu, bu yüzden her
         // ilan hep "0 görüntülenme" idi. İlan sahibinin kendi görüntülemesi
         // sunucu tarafında elenir.
         listingService.incrementViewCount(data.id);
+=======
+>>>>>>> aa112bc (Son güncellemeler)
       } else {
         setSeekerCount(0);
       }
@@ -120,6 +129,7 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleFavoriteToggle = async () => {
     const next = await listingService.toggleFavorite(listing.id);
+<<<<<<< HEAD
 
     // null = işlem yapılamadı (giriş yok / hata); sessizce "çıkarıldı"
     // göstermek yerine gerçek durumu söylüyoruz.
@@ -146,6 +156,26 @@ export const ProductDetailPage: React.FC = () => {
     showToast('Bağlantı kopyalandı', 'İlan linki panoya kopyalandı.', 'success');
   };
 
+=======
+    setIsFavorite(next);
+    showToast(next ? 'Favorilere eklendi' : 'Favorilerden çıkarıldı', listing.title, 'info');
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: listing.title,
+        text: `Swaloop'ta takas ilanı: ${listing.title}`,
+        url: window.location.href,
+      });
+      return;
+    }
+
+    navigator.clipboard.writeText(window.location.href);
+    showToast('Bağlantı kopyalandı', 'İlan linki panoya kopyalandı.', 'success');
+  };
+
+>>>>>>> aa112bc (Son güncellemeler)
   const goToImage = (delta: number) => {
     setActiveImageIndex((prev) => {
       const total = listing.images.length || 1;
@@ -279,6 +309,7 @@ export const ProductDetailPage: React.FC = () => {
             {[listing.location.district, listing.location.city].filter(Boolean).join(', ')}
             {listing.location.distanceKm > 0 && ` · ${listing.location.distanceKm} km`}
           </p>
+<<<<<<< HEAD
 
           {/* "Hâlâ takasa açık mı?" (md. 119). Teklif göndermeden önce
               görülmesi gereken bilgi: ilan birkaç gün içinde düşecekse
@@ -312,6 +343,30 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         </div>
 
+=======
+        </div>
+
+        {/* Karşılığında ne arıyor */}
+        <div className="sw-card p-4 mt-4 bg-brand-soft border-brand-line">
+          <div className="flex items-start gap-2.5">
+            <ArrowLeftRight className="w-4 h-4 text-brand-dark shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-brand-dark">Karşılığında arıyor</p>
+              <p className="text-sm text-ink mt-1">{listing.lookingFor || 'Belirtilmemiş'}</p>
+              {listing.lookingForCategories.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {listing.lookingForCategories.map((catId) => (
+                    <span key={catId} className="sw-badge bg-white">
+                      {CATEGORIES.find((c) => c.id === catId)?.name ?? catId}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+>>>>>>> aa112bc (Son güncellemeler)
         {/* Bu ürünü arayanlar (md. 77) */}
         {seekerCount > 0 && (
           <button

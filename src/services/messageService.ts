@@ -67,7 +67,11 @@ type MessageRow = {
 // 20260827000000); böylece konuşma listesi için ayrıca "son mesajı getir"
 // sorgusu atmak gerekmiyor.
 const CONVERSATION_SELECT =
+<<<<<<< HEAD
   `*, participant_one:profiles!conversations_participant_one_id_fkey(${PROFILE_COLUMNS}), participant_two:profiles!conversations_participant_two_id_fkey(${PROFILE_COLUMNS}), last_message:messages!conversations_last_message_id_fkey(*, sender:profiles(${PROFILE_COLUMNS}))`;
+=======
+  `*, participant_one:profiles!conversations_participant_one_id_fkey(${PROFILE_COLUMNS}), participant_two:profiles!conversations_participant_two_id_fkey(${PROFILE_COLUMNS})`;
+>>>>>>> aa112bc (Son güncellemeler)
 
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -99,6 +103,24 @@ function buildConversation(
   const otherRow = row.participant_one_id === currentUserId ? row.participant_two : row.participant_one;
   const participant: UserProfile = mapProfile(otherRow);
 
+<<<<<<< HEAD
+=======
+  const { data: lastMsgRow } = await supabase
+    .from('messages')
+    .select(`*, sender:profiles(${PROFILE_COLUMNS})`)
+    .eq('conversation_id', row.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { count: unreadCount } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('conversation_id', row.id)
+    .eq('is_read', false)
+    .neq('sender_id', currentUserId);
+
+>>>>>>> aa112bc (Son güncellemeler)
   const fallbackLastMessage: Message = {
     id: `placeholder-${row.id}`,
     conversationId: row.id,

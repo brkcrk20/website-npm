@@ -2,7 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { UserProfile, Listing, TradeOffer, NotificationItem } from '../types';
 import { authService } from '../services/authService';
 import { supabase } from '../lib/supabase';
+<<<<<<< HEAD
 import { listingService, setViewerCoords } from '../services/listingService';
+=======
+import { listingService } from '../services/listingService';
+>>>>>>> aa112bc (Son güncellemeler)
 import { tradeService } from '../services/tradeService';
 import { notificationService } from '../services/notificationService';
 import { Language, TranslationKey, getTranslation } from '../utils/translations';
@@ -17,6 +21,7 @@ interface ToastMessage {
 interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile>>;
+<<<<<<< HEAD
   // lat/lon isteğe bağlıdır ve yalnızca konum GERÇEKTEN çözümlendiğinde
   // (GPS ya da adres araması) dolar. İlan mesafeleri buna göre hesaplanır;
   // koordinat yoksa hiçbir ilanda mesafe gösterilmez.
@@ -36,6 +41,10 @@ interface AppContextType {
     lat?: number;
     lon?: number;
   }) => void;
+=======
+  currentLocation: { city: string; district: string; neighbourhood?: string; label?: string };
+  setCurrentLocation: (loc: { city: string; district: string; neighbourhood?: string; label?: string }) => void;
+>>>>>>> aa112bc (Son güncellemeler)
   notifications: NotificationItem[];
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
@@ -61,6 +70,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile>(authService.getCurrentUser());
+<<<<<<< HEAD
   const [currentLocation, setCurrentLocation] = useState<{
     city: string;
     district: string;
@@ -69,6 +79,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     lat?: number;
     lon?: number;
   }>({ city: 'İstanbul', district: '' });
+=======
+  const [currentLocation, setCurrentLocation] = useState({ city: 'İstanbul', district: '' });
+>>>>>>> aa112bc (Son güncellemeler)
   // Bildirimler artık gerçek: `notifications` tablosundan geliyor, satırları
   // DB trigger'ları üretiyor (rapor md. 44-45). Önceden sabit bir mock
   // listeydi ve hiçbir olaydan tetiklenmiyordu.
@@ -198,6 +211,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Çıkış Yapıldı', 'Hesabınızdan güvenli bir şekilde çıkış yapıldı.', 'info');
   };
 
+<<<<<<< HEAD
   // İlan mesafeleri, seçili konumun koordinatı biliniyorsa hesaplanır.
   // Koordinat yoksa `setViewerCoords(null)` ile mesafe tamamen kapatılır —
   // uydurma bir "0 km" göstermektense mesafeyi hiç göstermemek doğru
@@ -210,6 +224,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, [currentLocation.lat, currentLocation.lon]);
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
   const t = (key: TranslationKey): string => {
     return getTranslation(key, language);
   };

@@ -8,15 +8,23 @@ import type { NotificationType, TradeCancellationReason } from '../../types';
 // "violates check constraint" ile çöker. Bu testler o sözleşmeyi bağlar
 // (tradeService.roleContract testiyle aynı desen).
 
+<<<<<<< HEAD
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../../supabase/migrations');
 
 function migrationSql(): string {
   const file = fs
     .readdirSync(MIGRATIONS_DIR)
+=======
+function migrationSql(): string {
+  const dir = path.resolve(__dirname, '../../../supabase/migrations');
+  const file = fs
+    .readdirSync(dir)
+>>>>>>> aa112bc (Son güncellemeler)
     .find((f) => f.includes('notifications_and_trade_cancellation'));
 
   expect(file, 'bildirim migration dosyası bulunamadı').toBeTruthy();
 
+<<<<<<< HEAD
   return fs.readFileSync(path.join(MIGRATIONS_DIR, file as string), 'utf-8');
 }
 
@@ -60,11 +68,24 @@ function notificationTypeValues(): string[] {
       ?.map((v) => v.replace(/'/g, ''))
       .sort() ?? []
   );
+=======
+  return fs.readFileSync(path.join(dir, file as string), 'utf-8');
+>>>>>>> aa112bc (Son güncellemeler)
 }
 
 describe('notifications.type: kod <-> DB sözleşmesi', () => {
   it('NotificationType union ile DB CHECK constraint birebir aynıdır', () => {
+<<<<<<< HEAD
     const values = notificationTypeValues();
+=======
+    const sql = migrationSql();
+    const block = sql.slice(sql.indexOf('type text not null check (type in ('));
+    const values = block
+      .slice(0, block.indexOf('))'))
+      .match(/'([a-z_]+)'/g)
+      ?.map((v) => v.replace(/'/g, ''))
+      .sort();
+>>>>>>> aa112bc (Son güncellemeler)
 
     // TypeScript union'ı derleme zamanında silindiği için burada elle
     // yazılıyor; yeni bir tip eklenirse bu satır da güncellenmeli ve
@@ -72,8 +93,11 @@ describe('notifications.type: kod <-> DB sözleşmesi', () => {
     const codeValues: NotificationType[] = [
       'badge',
       'counter_offer',
+<<<<<<< HEAD
       'listing_expired',
       'listing_expiring',
+=======
+>>>>>>> aa112bc (Son güncellemeler)
       'loop',
       'message',
       'need_matched',

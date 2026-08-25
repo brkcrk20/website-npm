@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
+<<<<<<< HEAD
 import fs from 'node:fs';
 import path from 'node:path';
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 
 // Rapor 1.3 fix'in regresyon testi:
 // MakeOfferPage'de seçilen deliveryMethod/deliveryDetails,
@@ -70,6 +73,7 @@ describe('teklif teslimat bilgisi: oluşturma -> kabul zinciri', () => {
     vi.doUnmock('../../lib/supabase');
   });
 
+<<<<<<< HEAD
   it('acceptOffer, kabul islemini accept_trade_offer() RPC\'sine devreder', async () => {
     vi.resetModules();
     const capturedRpcCalls: Array<{ fn: string; args: any }> = [];
@@ -91,6 +95,60 @@ describe('teklif teslimat bilgisi: oluşturma -> kabul zinciri', () => {
               }),
             };
           }
+=======
+  it('acceptOffer, trade_offers\'daki teslimat bilgisini trades satırına taşır (kaybolmaz)', async () => {
+    vi.resetModules();
+    const capturedTradeInsert: any[] = [];
+
+    const fakeOfferRow = {
+      id: 'offer-1',
+      sender_id: 'user-a',
+      receiver_id: 'user-b',
+      status: 'offer_sent',
+      message: null,
+      parent_offer_id: null,
+      delivery_method: 'cargo',
+      delivery_scheduled_at: '2026-09-01T00:00:00.000Z',
+      delivery_location_name: 'Kadıköy PTT',
+      delivery_notes: 'Kırılacak eşya, dikkatli paketleyin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    vi.doMock('../../lib/supabase', () => {
+      const supabase = {
+        from(table: string) {
+          if (table === 'trade_offers') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: fakeOfferRow, error: null }),
+                }),
+              }),
+              update: () => ({
+                eq: async () => ({ error: null }),
+              }),
+            };
+          }
+          if (table === 'trades') {
+            return {
+              insert: (row: any) => {
+                capturedTradeInsert.push(row);
+                return {
+                  select: () => ({
+                    single: async () => ({
+                      data: { id: 'trade-1', ...row, started_at: new Date().toISOString(), completed_at: null },
+                      error: null,
+                    }),
+                  }),
+                };
+              },
+            };
+          }
+          if (table === 'trade_events') {
+            return { insert: async () => ({ error: null }) };
+          }
+>>>>>>> aa112bc (Son güncellemeler)
           throw new Error(`Beklenmeyen tablo: ${table}`);
         },
       };
@@ -99,6 +157,7 @@ describe('teklif teslimat bilgisi: oluşturma -> kabul zinciri', () => {
 
     const { tradeService } = await import('../tradeService');
 
+<<<<<<< HEAD
     await tradeService.acceptOffer('offer-1');
 
     expect(capturedRpcCalls).toEqual([
@@ -141,4 +200,21 @@ describe('teklif teslimat bilgisi: oluşturma -> kabul zinciri', () => {
       expect(insertBlock).toContain(`v_offer.${column}`);
     }
   });
+=======
+    // acceptOffer, trades insert'inden sonra getTradeById ile tekrar
+    // hydrate etmeye çalışır; bu test yalnızca trades insert payload'ını
+    // doğruladığı için o kısmın hata vermesi (fetch edememesi) beklenen
+    // ve zararsız bir durumdur.
+    await tradeService.acceptOffer('offer-1').catch(() => undefined);
+
+    expect(capturedTradeInsert).toHaveLength(1);
+    const insertedTrade = capturedTradeInsert[0];
+    expect(insertedTrade.delivery_method).toBe('cargo');
+    expect(insertedTrade.delivery_location_name).toBe('Kadıköy PTT');
+    expect(insertedTrade.delivery_notes).toBe('Kırılacak eşya, dikkatli paketleyin');
+    expect(insertedTrade.delivery_scheduled_at).toBe('2026-09-01T00:00:00.000Z');
+
+    vi.doUnmock('../../lib/supabase');
+  });
+>>>>>>> aa112bc (Son güncellemeler)
 });

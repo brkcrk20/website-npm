@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
 import { ArrowLeft, Plus, Package, RotateCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
@@ -12,14 +13,30 @@ import { expiryLabel, isExpiringSoon } from '../../utils/listingExpiry';
 // metinle belirtiliyor (md. 98).
 
 type Tab = 'active' | 'in_trade' | 'traded' | 'expired';
+=======
+import { ArrowLeft, Plus, Package } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { listingService } from '../../services/listingService';
+import { Listing } from '../../types';
+
+// 18. İLANLARIM
+//
+// Sekmeler: Aktif · Takasta · Tamamlanan. Durum renkle DEĞİL, metinle
+// belirtiliyor (md. 98).
+
+type Tab = 'active' | 'in_trade' | 'traded';
+>>>>>>> aa112bc (Son güncellemeler)
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'active', label: 'Aktif' },
   { id: 'in_trade', label: 'Takasta' },
   { id: 'traded', label: 'Tamamlanan' },
+<<<<<<< HEAD
   // Süresi dolan ilan silinmez, buraya düşer ve tek dokunuşla geri alınır
   // (rapor md. 119).
   { id: 'expired', label: 'Süresi dolan' },
+=======
+>>>>>>> aa112bc (Son güncellemeler)
 ];
 
 export const MyListingsPage: React.FC = () => {
@@ -44,6 +61,7 @@ export const MyListingsPage: React.FC = () => {
   const filtered = listings.filter((listing) => listing.status === tab);
 
   const handleDelete = async (listing: Listing) => {
+<<<<<<< HEAD
     const result = await listingService.deleteListing(listing.id);
 
     // Reddin nedeni (ör. "devam eden bir takasta olan ilan kaldırılamaz")
@@ -79,6 +97,16 @@ export const MyListingsPage: React.FC = () => {
       ).toLocaleDateString('tr-TR')} tarihine uzatıldı.`,
       'success'
     );
+=======
+    const ok = await listingService.deleteListing(listing.id);
+
+    if (!ok) {
+      showToast('İlan kaldırılamadı', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
+    showToast('İlan kaldırıldı', listing.title, 'info');
+>>>>>>> aa112bc (Son güncellemeler)
     load();
   };
 
@@ -131,18 +159,26 @@ export const MyListingsPage: React.FC = () => {
               <Package className="w-6 h-6" />
             </span>
             <h2 className="text-base text-ink mt-4">
+<<<<<<< HEAD
               {tab === 'active'
                 ? 'Aktif ilanın yok'
                 : tab === 'expired'
                   ? 'Süresi dolan ilanın yok'
                   : 'Burada bir şey yok'}
+=======
+              {tab === 'active' ? 'Aktif ilanın yok' : 'Burada bir şey yok'}
+>>>>>>> aa112bc (Son güncellemeler)
             </h2>
             <p className="text-xs text-ink-soft mt-1.5 max-w-xs mx-auto">
               {tab === 'active'
                 ? 'Kullanmadığın bir şeyi ilana çıkar; birinin aradığı şey olabilir.'
+<<<<<<< HEAD
                 : tab === 'expired'
                   ? 'İlanlar 30 gün yayında kalır. Süresi dolanlar burada birikir, tek dokunuşla geri alırsın.'
                   : 'Takasların ilerledikçe ilanların bu sekmelere düşecek.'}
+=======
+                : 'Takasların ilerledikçe ilanların bu sekmelere düşecek.'}
+>>>>>>> aa112bc (Son güncellemeler)
             </p>
             {tab === 'active' && (
               <button
@@ -174,6 +210,7 @@ export const MyListingsPage: React.FC = () => {
                     </span>
                     <span className="block text-xs text-ink-soft truncate mt-0.5">
                       ● {TABS.find((t) => t.id === listing.status)?.label ?? listing.status}
+<<<<<<< HEAD
                       {/* Süre etiketi: `expiresAt` bilinmiyorsa (kolon henüz
                           canlıda yoksa) expiryLabel boş metin döner ve
                           burada hiçbir şey yazılmaz. */}
@@ -183,10 +220,13 @@ export const MyListingsPage: React.FC = () => {
                           {expiryLabel(listing)}
                         </span>
                       )}
+=======
+>>>>>>> aa112bc (Son güncellemeler)
                     </span>
                   </span>
                 </button>
 
+<<<<<<< HEAD
                 {(listing.status === 'expired' || isExpiringSoon(listing)) && (
                   <button
                     type="button"
@@ -198,6 +238,8 @@ export const MyListingsPage: React.FC = () => {
                   </button>
                 )}
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
                 {listing.status === 'active' && (
                   <>
                     <button

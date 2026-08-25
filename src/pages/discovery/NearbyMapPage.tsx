@@ -13,15 +13,23 @@ import {
   Info,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+<<<<<<< HEAD
 import { getCurrentCoords } from '../../services/geoLocationService';
 
 export const NearbyMapPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentLocation, setCurrentLocation } = useApp();
+=======
+
+export const NearbyMapPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { currentLocation } = useApp();
+>>>>>>> aa112bc (Son güncellemeler)
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<string | null>(null);
   const [activeRadius, setActiveRadius] = useState<number>(5);
 
+<<<<<<< HEAD
   // "Yakınımdakiler" ekranı mesafenin tek anlamlı olduğu yer; konumu burada
   // bir kez isteyip AppContext'e yazıyoruz. enrichListings mesafeyi buradan
   // okur — izin verilmezse mesafe hiç gösterilmez, liste yine çalışır.
@@ -58,6 +66,11 @@ export const NearbyMapPage: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation.lat, currentLocation.lon]);
+=======
+  useEffect(() => {
+    listingService.getAllListings().then(setAllListings);
+  }, []);
+>>>>>>> aa112bc (Son güncellemeler)
 
   const safeMeetingSpots = [
     {
@@ -273,9 +286,13 @@ export const NearbyMapPage: React.FC = () => {
                       {listing.title}
                     </p>
                     <span className="text-[11px] text-stone-400 block">
+<<<<<<< HEAD
                       {listing.location.district}
                       {listing.location.distanceKm !== undefined &&
                         ` • ${listing.location.distanceKm} km uzakta`}
+=======
+                      {listing.location.district} • {listing.location.distanceKm} km uzakta
+>>>>>>> aa112bc (Son güncellemeler)
                     </span>
                   </div>
                 </div>

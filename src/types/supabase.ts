@@ -302,7 +302,10 @@ export type Database = {
           looking_for_categories: string[]
           model: string | null
           owner_id: string
+<<<<<<< HEAD
           renewed_at: string | null
+=======
+>>>>>>> aa112bc (Son güncellemeler)
           slug: string
           status: string
           tags: string[]
@@ -331,7 +334,10 @@ export type Database = {
           looking_for_categories?: string[]
           model?: string | null
           owner_id: string
+<<<<<<< HEAD
           renewed_at?: string | null
+=======
+>>>>>>> aa112bc (Son güncellemeler)
           slug?: string
           status?: string
           tags?: string[]
@@ -360,7 +366,10 @@ export type Database = {
           looking_for_categories?: string[]
           model?: string | null
           owner_id?: string
+<<<<<<< HEAD
           renewed_at?: string | null
+=======
+>>>>>>> aa112bc (Son güncellemeler)
           slug?: string
           status?: string
           tags?: string[]
@@ -1313,6 +1322,7 @@ export type Database = {
       phone_exists: {
         Args: { check_phone: string }
         Returns: boolean
+<<<<<<< HEAD
       }
       // 20260827000000_backend_integrity_fixes.sql ile eklendi.
       accept_trade_offer: {
@@ -1322,6 +1332,8 @@ export type Database = {
       increment_listing_view: {
         Args: { p_listing_id: string }
         Returns: undefined
+=======
+>>>>>>> aa112bc (Son güncellemeler)
       }
       expire_stale_trade_offers: {
         Args: Record<string, never>

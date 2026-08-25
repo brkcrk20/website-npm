@@ -175,6 +175,7 @@ export const adminService = {
         .gte('created_at', startOfLastMonth)
         .lt('created_at', startOfThisMonth),
       supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+<<<<<<< HEAD
       // "Aktif takas" = henüz sonuçlanmamış takas. Önceden `neq('completed')`
       // kullanılıyordu; bu, iptal edilmiş ve anlaşmazlıktaki takasları da
       // "devam ediyor" gibi sayıyordu.
@@ -182,6 +183,9 @@ export const adminService = {
         .from('trades')
         .select('id', { count: 'exact', head: true })
         .in('status', ['locked', 'delivery_planned', 'in_transit', 'received']),
+=======
+      supabase.from('trades').select('id', { count: 'exact', head: true }).neq('status', 'completed'),
+>>>>>>> aa112bc (Son güncellemeler)
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
       supabase
         .from('trades')
@@ -194,6 +198,7 @@ export const adminService = {
         .eq('status', 'completed')
         .gte('completed_at', startOfLastMonth)
         .lt('completed_at', startOfThisMonth),
+<<<<<<< HEAD
       // DÜZELTİLDİ: `status = 'active'` diye bir döngü durumu hiç yok.
       // loopService yalnızca matching/locked/in_delivery/completed/cancelled
       // yazıyor ('active' yalnızca eski şemanın default'uydu, artık o da
@@ -202,6 +207,9 @@ export const adminService = {
         .from('loops')
         .select('id', { count: 'exact', head: true })
         .in('status', ['matching', 'locked', 'in_delivery']),
+=======
+      supabase.from('loops').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+>>>>>>> aa112bc (Son güncellemeler)
       supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 
@@ -404,6 +412,7 @@ export const adminService = {
     return true;
   },
 
+<<<<<<< HEAD
   /**
    * İlan moderasyonu.
    *
@@ -419,23 +428,30 @@ export const adminService = {
    * güncellenen satır GERÇEKTEN geri okunuyor — 0 satır dönerse işlem
    * başarısız sayılıyor ve denetim kaydı yazılmıyor.
    */
+=======
+>>>>>>> aa112bc (Son güncellemeler)
   async moderateListing(listingId: string, action: 'approve' | 'remove', reason?: string): Promise<boolean> {
     if (action !== 'remove') return true;
 
     const admin = await getCurrentAdmin();
     if (!admin) return false;
 
+<<<<<<< HEAD
     const { data, error } = await supabase
       .from('listings')
       .update({ status: 'removed' })
       .eq('id', listingId)
       .select('id');
+=======
+    const { error } = await supabase.from('listings').update({ status: 'removed' }).eq('id', listingId);
+>>>>>>> aa112bc (Son güncellemeler)
 
     if (error) {
       console.error('İlan kaldırılamadı:', error);
       return false;
     }
 
+<<<<<<< HEAD
     if (!data || data.length === 0) {
       console.error(
         'İlan kaldırılamadı: hiçbir satır güncellenmedi. İlan silinmiş olabilir ya da ' +
@@ -444,6 +460,8 @@ export const adminService = {
       return false;
     }
 
+=======
+>>>>>>> aa112bc (Son güncellemeler)
     await this.addAuditLog('İlan Kaldırıldı', `İlan #${listingId}`, reason || 'Moderasyon kararı');
 
     return true;

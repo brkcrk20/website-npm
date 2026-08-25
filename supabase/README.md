@@ -11,6 +11,7 @@ npx supabase login                      # tarayıcıda token alır
 npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Settings → General
 ```
 
+<<<<<<< HEAD
 ## Durum
 
 `20260825000000`'e kadar olan migration'ların tamamı canlı projeye uygulandı.
@@ -70,6 +71,14 @@ değerlendirmelerin ve kendine yazılmış değerlendirmelerin silinmesi; kümen
 dışına düşmüş `status` değerlerinin normalize edilmesi). Bunlar kısıtları
 eklemeden önce zorunlu, ama ne sildiğini görmek isterseniz karşılık gelen
 `select` sorgularını önce elle çalıştırın.
+=======
+## Durum: tüm migration'lar uygulandı
+
+`supabase/migrations/` altındaki migration'ların tamamı canlı projeye
+uygulandı. Son ikisi (`20260824000000_drop_co2_impact_tracking.sql` ve
+`20260825000000_phone_privacy_and_message_integrity.sql`) CLI çalışmadığı
+için **Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
+>>>>>>> aa112bc (Son güncellemeler)
 
 > **ÖNEMLİ — migration geçmişi senkron değil.** Studio'dan elle çalıştırılan
 > SQL, `supabase_migrations.schema_migrations` tablosuna kayıt DÜŞMEZ. Yani
@@ -141,6 +150,7 @@ Sonucu inceledikten sonra düzeltin:
 update public.listings set status = 'active' where id in ( ... );
 ```
 
+<<<<<<< HEAD
 ## Süresi geçen teklifleri otomatik kapatma
 
 `20260828000000` bunu kendisi kurmayı deniyor: pg_cron mevcutsa
@@ -163,11 +173,18 @@ select cron.schedule(
 ```
 
 Tek seferlik elle çalıştırma:
+=======
+## İsteğe bağlı: süresi geçen teklifleri otomatik kapatma
+
+`expire_stale_trade_offers()` fonksiyonu hazır ama zamanlanmış çalışmıyor.
+Elle:
+>>>>>>> aa112bc (Son güncellemeler)
 
 ```sql
 select public.expire_stale_trade_offers();
 ```
 
+<<<<<<< HEAD
 `20260829000000` aynı deseni ilanlar için kuruyor: `swaloop-expire-listings`
 saatte bir (`7 * * * *`) `public.expire_stale_listings()` çağırıyor.
 
@@ -188,6 +205,17 @@ select cron.schedule(
 edilemez (`enforce_trade_offer_transition`) — ama teklif listede sonsuza kadar
 "bekliyor" görünür.
 
+=======
+pg_cron etkinleştirilirse (Supabase Studio → Database → Extensions):
+
+```sql
+select cron.schedule(
+  'expire-offers', '*/15 * * * *',
+  $$select public.expire_stale_trade_offers()$$
+);
+```
+
+>>>>>>> aa112bc (Son güncellemeler)
 ## Frontend ortam değişkenleri
 
 `.env` (repoda yok, gitignore'lu):

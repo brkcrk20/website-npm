@@ -92,7 +92,11 @@ export const EditListingPage: React.FC = () => {
         district: district.trim(),
         // distanceKm hesaplanan bir alan (kullanıcının konumuna göre); ilan
         // düzenlerken değişmez, mevcut değeri korunur.
+<<<<<<< HEAD
         distanceKm: listing?.location.distanceKm,
+=======
+        distanceKm: listing?.location.distanceKm ?? 0,
+>>>>>>> aa112bc (Son güncellemeler)
         lat: listing?.location.lat,
         lng: listing?.location.lng,
       },
@@ -123,6 +127,7 @@ export const EditListingPage: React.FC = () => {
     }
 
     refreshUserData();
+<<<<<<< HEAD
     showToast(
       'İlan kaldırıldı',
       result.outcome === 'archived'
@@ -130,6 +135,9 @@ export const EditListingPage: React.FC = () => {
         : listing.title,
       'info'
     );
+=======
+    showToast('İlan silindi', listing.title, 'info');
+>>>>>>> aa112bc (Son güncellemeler)
     navigate('/profil', { replace: true });
   };
 
