@@ -1,5 +1,29 @@
 # Swaloop — depo kuralları
 
+## Değişiklikler otomatik uygulanır
+
+Kullanıcı bu konuda kalıcı yetki verdi: **bir iş bittiğinde onay
+beklenmez, doğrudan uygulanır.** Değişiklik bir dalda ya da açık bir PR'da
+bekletilmez — depoda durup hayata geçmemiş iş, yapılmamış iştir.
+
+Her iş için sıra şudur:
+
+1. Değişiklik yapılır.
+2. `npm run lint`, `npm test`, `npm run build` üçü de çalıştırılır.
+   **Otomatik uygulamak, doğrulamadan uygulamak demek değildir** — üçü de
+   temiz değilse iş uygulanmaz.
+3. `main`'e uygulanır (PR açılır ve hemen merge edilir, kayıt kalsın diye).
+4. `claude/takas-app-development-56eqh1` dalı `main` ile aynı commit'e
+   ileri sarılır.
+
+4. adım isteğe bağlı değil. Kullanıcının checkout'u o dalda; iki ref aynı
+commit'te tutulmazsa kullanıcı yapılan işi kendi editöründe göremez ve
+hatların yeniden ayrışması başlar (aşağıdaki olaya bakın). İş, ancak `main`
+ile o dal aynı commit'i gösterdiğinde bitmiş sayılır.
+
+Sonuç bildirilirken hangi commit'e uygulandığı ve doğrulama çıktısı
+(lint / test / build) birlikte söylenir.
+
 ## Tek hat: `main`
 
 **Tüm iş `main` üzerinden yürür.** Bir dalda çalışıldıysa, iş biter bitmez
