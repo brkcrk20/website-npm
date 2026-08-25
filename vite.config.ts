@@ -33,6 +33,13 @@ export default defineConfig(() => {
     },
 
     server: {
+      host: '0.0.0.0',
+      // Port artık sabit değil: `PORT` ortam değişkeni ile değiştirilebilir
+      // (ör. `PORT=4000 npm run dev`). Değişken yoksa eski davranış korunur
+      // ve 3000 kullanılır. strictPort kapalı olduğu için seçilen port
+      // meşgulse Vite bir sonraki boş porta geçer.
+      port: Number(process.env.PORT) || 3000,
+      strictPort: false,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
