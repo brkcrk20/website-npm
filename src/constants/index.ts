@@ -1,4 +1,23 @@
-import { Category, CategoryId, Badge, PaperclipStage } from '../types';
+import { Category, CategoryId, Badge, PaperclipStage, ListingCondition } from '../types';
+
+// Ürün kondisyonu etiketleri. Tek kaynak: hem ilan oluşturma hem ilan
+// düzenleme aynı listeyi kullanır — iki yerde ayrı ayrı yazılırsa biri
+// güncellenip diğeri unutulduğunda aynı ilan iki ekranda farklı görünür.
+export const CONDITION_OPTIONS: {
+  id: ListingCondition;
+  title: string;
+  desc: string;
+}[] = [
+  { id: 'zero', title: 'Sıfır', desc: 'Kutusu açılmamış, kullanılmamış' },
+  { id: 'like_new', title: 'Sıfır Gibi', desc: 'Kusursuz, çiziksiz durumda' },
+  { id: 'very_good', title: 'Çok İyi', desc: 'Çok az kullanılmış, temiz' },
+  { id: 'good', title: 'İyi', desc: 'Normal kullanım izleri mevcut' },
+  { id: 'acceptable', title: 'Makul', desc: 'Çalışır durumda, yıpranmış' },
+];
+
+export const CONDITION_LABELS = Object.fromEntries(
+  CONDITION_OPTIONS.map((c) => [c.id, c.title])
+) as Record<ListingCondition, string>;
 
 // NOT: Bu liste artık canlı Supabase `categories` tablosuyla birebir
 // eşleşiyor (id = DB slug, name = Türkçe görünen isim). Detaylar için

@@ -142,13 +142,22 @@ export const MyListingsPage: React.FC = () => {
                 </button>
 
                 {listing.status === 'active' && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(listing)}
-                    className="text-xs font-semibold text-ink-soft hover:text-danger px-3 py-2 cursor-pointer"
-                  >
-                    Kaldır
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/ilan/${listing.id}/duzenle`)}
+                      className="text-xs font-semibold text-ink-soft hover:text-ink px-3 py-2 cursor-pointer"
+                    >
+                      Düzenle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(listing)}
+                      className="text-xs font-semibold text-ink-soft hover:text-danger px-3 py-2 cursor-pointer"
+                    >
+                      Kaldır
+                    </button>
+                  </>
                 )}
               </li>
             ))}

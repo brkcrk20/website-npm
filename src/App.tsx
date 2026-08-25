@@ -27,6 +27,7 @@ const NeedsPage = lazy(() => import('./pages/needs/NeedsPage').then((m) => ({ de
 // Listings Pages
 const ProductDetailPage = lazy(() => import('./pages/listings/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
 const CreateListingPage = lazy(() => import('./pages/listings/CreateListingPage').then((m) => ({ default: m.CreateListingPage })));
+const EditListingPage = lazy(() => import('./pages/listings/EditListingPage').then((m) => ({ default: m.EditListingPage })));
 
 // Trade Pages
 const TradeOffersPage = lazy(() => import('./pages/trades/TradeOffersPage').then((m) => ({ default: m.TradeOffersPage })));
@@ -117,6 +118,7 @@ export default function App() {
                 {/* Listings */}
                 <Route path="/ilan/:id" element={<ProductDetailPage />} />
                 <Route path="/ilan-ver" element={<RequireAuth><CreateListingPage /></RequireAuth>} />
+                <Route path="/ilan/:id/duzenle" element={<RequireAuth><EditListingPage /></RequireAuth>} />
 
                 {/* Trades */}
                 <Route path="/takaslarim" element={<RequireAuth><TradeOffersPage /></RequireAuth>} />

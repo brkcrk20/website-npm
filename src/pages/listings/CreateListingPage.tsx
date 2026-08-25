@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingService, uploadListingImages } from '../../services/listingService';
 import { supabase } from '../../lib/supabase';
-import { CATEGORIES } from '../../constants';
+import { CATEGORIES, CONDITION_OPTIONS } from '../../constants';
 import { CategoryId, ProductCondition } from '../../types';
 import { useApp } from '../../context/AppContext';
 import {
@@ -407,13 +407,7 @@ export const CreateListingPage: React.FC = () => {
               </label>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { id: 'zero', title: 'Sıfır', desc: 'Kutusu açılmamış, kullanılmamış' },
-                  { id: 'like_new', title: 'Sıfır Gibi', desc: 'Kusursuz, çiziksiz durumda' },
-                  { id: 'very_good', title: 'Çok İyi', desc: 'Çok az kullanılmış, temiz' },
-                  { id: 'good', title: 'İyi', desc: 'Normal kullanım izleri mevcut' },
-                  { id: 'acceptable', title: 'Makul', desc: 'Çalışır durumda, yıpranmış' },
-                ].map((c) => (
+                {CONDITION_OPTIONS.map((c) => (
                   <div
                     key={c.id}
                     onClick={() => setCondition(c.id as ProductCondition)}
