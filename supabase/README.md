@@ -11,6 +11,35 @@ npx supabase login                      # tarayıcıda token alır
 npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Settings → General
 ```
 
+## Durum: tüm migration'lar uygulandı
+
+`supabase/migrations/` altındaki migration'ların tamamı canlı projeye
+uygulandı. Son ikisi (`20260824000000_drop_co2_impact_tracking.sql` ve
+`20260825000000_phone_privacy_and_message_integrity.sql`) CLI çalışmadığı
+için **Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
+
+> **ÖNEMLİ — migration geçmişi senkron değil.** Studio'dan elle çalıştırılan
+> SQL, `supabase_migrations.schema_migrations` tablosuna kayıt DÜŞMEZ. Yani
+> CLI hâlâ bu dosyaları "uygulanmamış" sanıyor ve bir sonraki `db push`
+> hepsini yeniden çalıştırmayı dener. Çoğu ifade idempotent
+> (`if not exists`, `create or replace`, `drop policy if exists`) ama
+> `alter table ... drop column` gibi olanlar değil. CLI tekrar çalışır hale
+> gelince önce geçmişi düzeltin:
+>
+> ```bash
+> # 1. Yerel dosyalar ile canlı geçmiş arasındaki farkı gör
+> npx supabase migration list --linked
+>
+> # 2. "Remote" sütunu boş görünen HER dosyayı uygulanmış olarak işaretle.
+> #    Versiyon = dosya adının başındaki zaman damgası. Hepsi tek çağrıda:
+> npx supabase migration repair --linked --status applied \
+>   $(ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1)
+> ```
+>
+> `repair` yalnızca geçmiş tablosunu düzeltir, hiçbir SQL çalıştırmaz — şemaya
+> dokunmaz. Bunu yaptıktan sonra `db push` yalnızca gerçekten yeni olan
+> dosyaları çalıştırır.
+
 ## Değişiklikleri uygulama
 
 ```bash
@@ -20,18 +49,20 @@ npx supabase db push
 Komut, `supabase/migrations/` altındaki dosyalardan canlıda **henüz
 uygulanmamış** olanları sırayla çalıştırır.
 
-## Bu dalda uygulanmayı bekleyen migration'lar
+## Şema değişince: tipleri yeniden üretme
 
-| Dosya | Ne yapıyor |
-| --- | --- |
-| `20260820000000_needs_system_and_trade_locking.sql` | `needs` tablosu (İhtiyaç sistemi), `listings.looking_for_categories`, `profiles.interests` / `wanted_categories`, teklif ömrü (`trade_offers.expires_at`), **ilan kilitleme düzeltmesi** |
-| `20260820100000_notifications_and_trade_cancellation.sql` | `notifications` tablosu + bildirim trigger'ları ("Aradığın bulundu" dahil), takas iptal nedeni |
-| `20260820200000_blocking_and_message_notification_fix.sql` | `blocked_users` (engelleme) + RLS, sohbet kartlarının bildirim üretmemesi |
+```bash
+npx supabase gen types typescript --linked > /tmp/supabase.ts \
+  && mv /tmp/supabase.ts src/types/supabase.ts
+```
 
-Üçü de boş bir PostgreSQL 16 üzerinde uçtan uca çalıştırılıp davranışları
-doğrulandı (ayrıntı: `swaloop-urun-sistem-tasarimi.md` §4.2, §4.5, §4.10).
-Doğrulanamayan tek şey RLS'in gerçek `auth.uid()` oturumundaki davranışı —
-onu canlıda deneyin.
+Çıktıyı doğrudan `> src/types/supabase.ts` şeklinde yönlendirmeyin: shell
+dosyayı komut çalışmadan ÖNCE sıfırlar, komut hata verirse geriye boş bir
+dosya kalır ve proje derlenmez. Önce geçici dosyaya yazıp sonra taşıyın.
+
+`src/types/supabase.ts` şu an elle canlı şemaya göre düzeltilmiş durumda
+(bkz. dosyadaki Functions bloğunun üstündeki not). CLI tekrar çalışınca
+yeniden üretilmeli.
 
 ## Uyguladıktan sonra: tek seferlik backfill
 
