@@ -6,8 +6,8 @@ import { authService } from '../../services/authService';
 // 2-4. ONBOARDING
 //
 // Özellik listesi değil, hikâye (md. 10): üç ekran, her biri tek bir fikir.
-// Önceki sürümde dört ekran vardı ve ikisi SVS/Loop gibi ürünün ikincil
-// katmanlarını anlatıyordu — kullanıcı daha ne olduğunu anlamadan.
+// Önceki sürümde dört ekran vardı ve ikisi ürünün ikincil katmanlarını
+// anlatıyordu — kullanıcı daha ne olduğunu anlamadan.
 
 const ILLUSTRATION_BG = '#e8f5ee';
 
