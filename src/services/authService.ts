@@ -275,11 +275,15 @@ export const authService = {
   ): Promise<PhoneCheckResult> {
     const phone = normalizePhone(formattedPhone);
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('phone', phone)
-      .maybeSingle();
+    // GÜVENLİK: bu kontrol önceden `profiles` tablosuna doğrudan bir SELECT
+    // atıyordu. `profiles_select_all` politikası `using (true)` olduğu için,
+    // anon anahtara sahip herkes bu uç noktayı numara numara deneyerek hangi
+    // telefonların kayıtlı olduğunu çıkarabiliyordu. Yalnızca boolean
+    // döndüren phone_exists() RPC'sine taşındı (bkz. migration
+    // 20260825000000_phone_privacy_and_message_integrity.sql).
+    const { data, error } = await supabase.rpc('phone_exists', {
+      check_phone: phone,
+    });
 
     if (error) {
       console.error('Telefon kontrolü başarısız:', error);
@@ -291,8 +295,8 @@ export const authService = {
     }
 
     return {
-      exists: !!data,
-      message: data
+      exists: data === true,
+      message: data === true
         ? 'Bu telefon numarasına ait aktif bir Swaloop hesabı zaten bulunmaktadır. Lütfen giriş yapınız.'
         : 'Telefon numarası kullanılabilir.',
     };
@@ -621,9 +625,15 @@ export const authService = {
    * verisiyle çalışıyordu, gerçek Supabase profiline hiç bağlı değildi.
    */
   async getPublicProfile(userId: string): Promise<UserProfile | null> {
+    // GÜVENLİK: burada `select('*')` KULLANILMAMALI. `profiles` üzerindeki
+    // RLS politikası satır bazlıdır (`profiles_select_all ... using (true)`)
+    // ve Postgres'te kolon bazlı RLS yoktur — `*` ile sorgulandığında
+    // başka bir kullanıcının telefon numarası ve e-postası istemciye
+    // iniyordu. Genel profil kartında bunların hiçbiri gösterilmiyor.
+    // mapProfile eksik alanlar için zaten boş değere düşüyor.
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, full_name, first_name, last_name, avatar_url, bio, city, district, username, created_at, interests, wanted_categories')
       .eq('id', userId)
       .maybeSingle();
 

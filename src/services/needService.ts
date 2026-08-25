@@ -3,6 +3,17 @@ import { supabase } from '../lib/supabase';
 import { enrichListings } from './listingService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
 
+/**
+ * Profil join'lerinde çekilen kolonlar.
+ *
+ * GÜVENLİK: `profiles(*)` kullanılmamalı — `profiles` üzerindeki RLS
+ * politikası satır bazlıdır (`using (true)`), Postgres'te kolon bazlı RLS
+ * yoktur. `*` ile sorgulandığında karşı tarafın `phone` alanı da istemciye
+ * iniyordu. Ekranda kullanılmıyor; join açık kolon listesine sabitlendi.
+ */
+const PROFILE_COLUMNS = 'id, full_name, avatar_url, city, district';
+
+
 // ─────────────────────────────────────────────────────────────────────────
 // İHTİYAÇ ("Need") SERVİSİ
 //
@@ -300,7 +311,7 @@ export const needService = {
 
     let query = supabase
       .from('listings')
-      .select('*, user:profiles(*), images:listing_images(storage_path)')
+      .select(`*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path)`)
       .eq('status', 'active')
       .neq('owner_id', userId)
       .order('created_at', { ascending: false })

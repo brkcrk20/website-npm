@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile, Listing, TradeOffer, NotificationItem } from '../types';
 import { authService } from '../services/authService';
+import { supabase } from '../lib/supabase';
 import { listingService } from '../services/listingService';
 import { tradeService } from '../services/tradeService';
 import { notificationService } from '../services/notificationService';
@@ -66,6 +67,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     checkUserSession();
+
+    // Açılıştaki tek seferlik kontrol yetmiyor: oturum başka bir sekmede
+    // kapatıldığında, token yenilenemediğinde ya da oturum sunucu tarafında
+    // iptal edildiğinde uygulama, önbellekteki kullanıcıyı göstermeye devam
+    // ediyordu. Rota koruması (RequireAuth) bunu ilk gezinmede yakalıyor
+    // ama açık duran ekran eski kullanıcıyla kalıyordu. Artık oturum
+    // değişimleri anında yansıyor.
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(authService.getCurrentUser());
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        checkUserSession();
+      }
+    });
+
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {

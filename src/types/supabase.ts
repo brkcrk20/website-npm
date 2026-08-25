@@ -1321,7 +1321,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      // NOT: bu blok normalde `supabase gen types typescript` ile üretilir.
+      // phone_exists, 20260825000000_phone_privacy_and_message_integrity.sql
+      // migration'ıyla eklendi; migration canlıya alınıp tipler yeniden
+      // üretilene kadar elle tutuluyor.
+      phone_exists: {
+        Args: { check_phone: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

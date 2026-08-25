@@ -15,6 +15,47 @@ const DEFAULT_IMAGE =
 const LISTING_IMAGES_BUCKET = 'listing-images';
 
 /**
+ * İlan sorgularında ilan sahibinin profilinden çekilen kolonlar.
+ *
+ * GÜVENLİK: Buraya `profiles(*)` YAZILMAMALI. `profiles` üzerindeki RLS
+ * politikası satır bazlıdır (`profiles_select_all ... using (true)`),
+ * Postgres'te kolon bazlı RLS yoktur — yani `*` ile sorgulandığında her
+ * ilan sahibinin `phone` (ve e-posta, tercih vb.) alanı istemciye kadar
+ * iniyordu. Ekranda bunların hiçbiri gösterilmiyor; join'i açık kolon
+ * listesine sabitleyerek veri hiç dışarı çıkmıyor.
+ */
+const LISTING_OWNER_COLUMNS = 'id, full_name, avatar_url, city, district';
+
+const LISTING_SELECT =
+  `*, user:profiles(${LISTING_OWNER_COLUMNS}), images:listing_images(storage_path)`;
+
+/**
+ * Kullanıcının arama metnini PostgREST `or()` filtresine gömülebilir hale
+ * getirir.
+ *
+ * GÜVENLİK: `or()` argümanı parametreli bir sorgu değil, ham bir filtre
+ * ifadesidir. Metin doğrudan gömüldüğünde `,` yeni bir koşul, `(` `)` ise
+ * iç içe and/or grubu başlatır — yani `foo,status.eq.sold` gibi bir arama
+ * sorgunun kendi `status = 'active'` kısıtının yanına koşul ekleyebiliyordu.
+ * `"` ve `\` ise PostgREST'in değer içindeki tırnak/kaçış karakterleri.
+ * Bunların tamamı atılıyor.
+ *
+ * Ayrıca `%`, `_` ve `*` ilike jokerleridir; kaçırmak yerine atılıyorlar
+ * (kaçış karakterinin `or()` ifadesi içinde nasıl yorumlanacağı PostgREST
+ * sürümüne bağlı — atmak hem güvenli hem öngörülebilir).
+ *
+ * `.` bilerek korunuyor: PostgREST her koşulu yalnızca ilk iki noktadan
+ * ayırır, gerisi değerin parçasıdır. Yani "3.5mm" gibi aramalar çalışmaya
+ * devam ediyor.
+ */
+export function sanitizeSearchQuery(query: string): string {
+  return query
+    .replace(/[,()"\\%_*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Kullanıcının seçtiği gerçek fotoğrafları Supabase Storage'a yükler ve
  * herkese açık (public) URL'lerini döndürür. Bucket ve RLS politikaları
  * için bkz. supabase/migrations/20260818150000_create_listing_images_storage_bucket.sql
@@ -141,7 +182,7 @@ const DEFAULT_AVATAR =
 function mapListing(row: any): Listing {
   const categoryId = row.category_slug ?? row.category_id;
 
-  // row.user, Supabase join'inden (`user:profiles(*)`) gelen HAM profil
+  // row.user, Supabase join'inden (bkz. LISTING_SELECT) gelen HAM profil
   // satırıdır (snake_case: full_name, avatar_url...) — Listing['user']
   // tipinin beklediği camelCase şekille birebir aynı DEĞİLDİR. Önceden
   // bu ham satır doğrudan atanıyordu ve `trustScore` alanı hiç var
@@ -156,7 +197,11 @@ function mapListing(row: any): Listing {
         trustScore: row.owner_trust_score ?? 5,
         city: row.user.city ?? '',
         district: row.user.district ?? '',
-        isVerified: true,
+        // Önceden sabit `true` idi: doğrulanmamış her ilan sahibi de
+        // "doğrulanmış üye" rozetiyle görünüyordu. Artık gerçek
+        // trust_profiles.verification_level değerinden geliyor
+        // (enrichListings'te topluca çekiliyor).
+        isVerified: row.owner_is_verified ?? false,
       }
     : {
         id: row.owner_id,
@@ -281,17 +326,22 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
   ];
 
   let trustScoreMap = new Map<string, number>();
+  const verifiedMap = new Map<string, boolean>();
 
   if (ownerIds.length) {
     const { data: trustRows } = await supabase
       .from('trust_profiles')
-      .select('user_id, trust_score')
+      .select('user_id, trust_score, verification_level')
       .in('user_id', ownerIds);
 
     for (const t of trustRows ?? []) {
-      if (t.user_id != null && t.trust_score != null) {
+      if (t.user_id == null) continue;
+
+      if (t.trust_score != null) {
         trustScoreMap.set(t.user_id, t.trust_score);
       }
+
+      verifiedMap.set(t.user_id, t.verification_level === 'id_verified');
     }
   }
 
@@ -300,6 +350,7 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
     category_slug:
       categoryMap.get(row.category_id) ?? row.category_id,
     owner_trust_score: trustScoreMap.get(row.owner_id) ?? 5,
+    owner_is_verified: verifiedMap.get(row.owner_id) ?? false,
   })).map(mapListing);
 }
 
@@ -308,7 +359,7 @@ export const listingService = {
     // BURASI GÜNCELLENDİ: İlanla birlikte profil ve fotoğrafları da çekiyoruz
     const { data, error } = await supabase
       .from('listings')
-      .select('*, user:profiles(*), images:listing_images(storage_path)')
+      .select(LISTING_SELECT)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
@@ -332,7 +383,7 @@ export const listingService = {
 
     const query = supabase
       .from('listings')
-      .select('*, user:profiles(*), images:listing_images(storage_path)')
+      .select(LISTING_SELECT)
       .eq(uuidRegex.test(idOrSlug) ? 'id' : 'slug', idOrSlug);
 
     const { data, error } = await query.maybeSingle();
@@ -361,7 +412,7 @@ export const listingService = {
 
     const { data, error } = await supabase
       .from('listings')
-      .select('*, user:profiles(*), images:listing_images(storage_path)')
+      .select(LISTING_SELECT)
       .eq('owner_id', userId)
       .order('created_at', { ascending: false });
 
@@ -710,7 +761,7 @@ export const listingService = {
       error: listingsError,
     } = await supabase
       .from('listings')
-      .select('*, user:profiles(*), images:listing_images(storage_path)') // BURASI DA GÜNCELLENDİ
+      .select(LISTING_SELECT) // BURASI DA GÜNCELLENDİ
       .in('id', ids);
 
     if (
@@ -734,14 +785,13 @@ export const listingService = {
     // BURASI GÜNCELLENDİ
     let request = supabase
       .from('listings')
-      .select('*, user:profiles(*), images:listing_images(storage_path)')
+      .select(LISTING_SELECT)
       .eq('status', 'active')
       .order('created_at', {
         ascending: false,
       });
 
-    const cleanQuery =
-      query.trim();
+    const cleanQuery = sanitizeSearchQuery(query);
 
     if (cleanQuery) {
       request = request.or(

@@ -13,6 +13,17 @@ import { enrichListings } from './listingService';
 import { messageService } from './messageService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
 
+/**
+ * Profil join'lerinde çekilen kolonlar.
+ *
+ * GÜVENLİK: `profiles(*)` kullanılmamalı — `profiles` üzerindeki RLS
+ * politikası satır bazlıdır (`using (true)`), Postgres'te kolon bazlı RLS
+ * yoktur. `*` ile sorgulandığında karşı tarafın `phone` alanı da istemciye
+ * iniyordu. Ekranda kullanılmıyor; join açık kolon listesine sabitlendi.
+ */
+const PROFILE_COLUMNS = 'id, full_name, avatar_url, city, district';
+
+
 // ─────────────────────────────────────────────────────────────────────────
 // NOT: Bu dosya artık mockData yerine gerçek Supabase sorguları kullanıyor.
 //
@@ -101,7 +112,7 @@ type TradeEventRow = {
 };
 
 const OFFER_SELECT =
-  '*, sender:profiles!trade_offers_sender_id_fkey(*), receiver:profiles!trade_offers_receiver_id_fkey(*), items:trade_offer_items(*, listing:listings(*, user:profiles(*), images:listing_images(storage_path)))';
+  `*, sender:profiles!trade_offers_sender_id_fkey(${PROFILE_COLUMNS}), receiver:profiles!trade_offers_receiver_id_fkey(${PROFILE_COLUMNS}), items:trade_offer_items(*, listing:listings(*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path)))`;
 
 /** Sohbete düşen takas kartının metni: "PS5 ↔ Kamera" (rapor md. 33). */
 function buildTradeSummary(offered: Listing[], requested: Listing[]): string {
@@ -803,7 +814,7 @@ async getReviewsForUser(userId: string): Promise<Review[]> {
 
     const { data, error } = await supabase
       .from('reviews')
-      .select('*, reviewer:profiles!reviews_reviewer_id_fkey(*)')
+      .select(`*, reviewer:profiles!reviews_reviewer_id_fkey(${PROFILE_COLUMNS})`)
       .eq('reviewed_user_id', userId)
       .order('created_at', { ascending: false });
 

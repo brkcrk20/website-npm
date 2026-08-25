@@ -8,6 +8,17 @@ import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import type { TablesInsert } from '../types/supabase';
 
+/**
+ * Profil join'lerinde çekilen kolonlar.
+ *
+ * GÜVENLİK: `profiles(*)` kullanılmamalı — `profiles` üzerindeki RLS
+ * politikası satır bazlıdır (`using (true)`), Postgres'te kolon bazlı RLS
+ * yoktur. `*` ile sorgulandığında karşı tarafın `phone` alanı da istemciye
+ * iniyordu. Ekranda kullanılmıyor; join açık kolon listesine sabitlendi.
+ */
+const PROFILE_COLUMNS = 'id, full_name, avatar_url, city, district';
+
+
 // ─────────────────────────────────────────────────────────────────────────
 // NOT: Sadece "gönderiler" (posts) kısmı gerçek Supabase'e bağlandı (bkz.
 // swaloop-devam-plani.md §11). Etkinlikler (`eventsStore`, ayrıca
@@ -60,7 +71,7 @@ export const communityService = {
   async getPosts(currentUserId?: string): Promise<CommunityPost[]> {
     const { data, error } = await supabase
       .from('community_posts')
-      .select('*, author:profiles(*), post_likes(user_id)')
+      .select(`*, author:profiles(${PROFILE_COLUMNS}), post_likes(user_id)`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -90,7 +101,7 @@ export const communityService = {
     const { data, error } = await supabase
       .from('community_posts')
       .insert(insert)
-      .select('*, author:profiles(*), post_likes(user_id)')
+      .select(`*, author:profiles(${PROFILE_COLUMNS}), post_likes(user_id)`)
       .single();
 
     if (error || !data) {
@@ -125,7 +136,7 @@ export const communityService = {
 
     const { data, error: fetchError } = await supabase
       .from('community_posts')
-      .select('*, author:profiles(*), post_likes(user_id)')
+      .select(`*, author:profiles(${PROFILE_COLUMNS}), post_likes(user_id)`)
       .eq('id', postId)
       .maybeSingle();
 
