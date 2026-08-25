@@ -101,10 +101,6 @@ function minimalUserProfile(row: any): Dispute['initiator'] {
       totalTrades: 0,
       activeListings: 0,
       completedLoops: 0,
-      totalCo2Prevented: 0,
-      totalWaterSaved: 0,
-      totalEnergySaved: 0,
-      totalRawMaterialsSaved: 0,
       totalItemsReused: 0,
       responseRatePercent: 0,
       avgResponseTimeMinutes: 0,
@@ -170,7 +166,6 @@ export const adminService = {
       completedTradesLastMonth,
       activeLoops,
       pendingReports,
-      impactTotals,
     ] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', startOfThisMonth),
@@ -195,7 +190,6 @@ export const adminService = {
         .lt('completed_at', startOfThisMonth),
       supabase.from('loops').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('impact_records').select('co2e_kg, water_liters, energy_kwh'),
     ]);
 
     // "Aktif kullanıcı" için ayrı bir last_seen/last_active_at kolonu yok.
@@ -212,9 +206,6 @@ export const adminService = {
     (recentListingOwners.data ?? []).forEach((r: any) => activeUserIds.add(r.owner_id));
     (recentOfferSenders.data ?? []).forEach((r: any) => activeUserIds.add(r.sender_id));
 
-    const co2Total = (impactTotals.data ?? []).reduce((sum: number, r: any) => sum + (r.co2e_kg ?? 0), 0);
-    const waterTotal = (impactTotals.data ?? []).reduce((sum: number, r: any) => sum + (r.water_liters ?? 0), 0);
-    const energyTotal = (impactTotals.data ?? []).reduce((sum: number, r: any) => sum + (r.energy_kwh ?? 0), 0);
 
     const userGrowthPercent = growthPercent(usersThisMonth.count ?? 0, usersLastMonth.count ?? 0);
     const tradeGrowthPercent = growthPercent(completedTradesThisMonth.count ?? 0, completedTradesLastMonth.count ?? 0);
@@ -226,9 +217,6 @@ export const adminService = {
       activeTrades: activeTrades.count ?? 0,
       completedTrades: completedTrades.count ?? 0,
       activeLoops: activeLoops.count ?? 0,
-      totalSvsImpactCo2Kg: Math.round(co2Total * 10) / 10,
-      totalWaterSavedL: Math.round(waterTotal),
-      totalEnergyKwh: Math.round(energyTotal * 10) / 10,
       pendingReports: pendingReports.count ?? 0,
       userGrowthPercent,
       tradeGrowthPercent,

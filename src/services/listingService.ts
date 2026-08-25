@@ -4,7 +4,6 @@ import {
   ListingCondition,
 } from '../types';
 
-import { impactService } from './impactService';
 import { supabase } from '../lib/supabase';
 import { blockService } from './blockService';
 import type { TablesUpdate } from '../types/supabase';
@@ -142,12 +141,6 @@ const DEFAULT_AVATAR =
 function mapListing(row: any): Listing {
   const categoryId = row.category_slug ?? row.category_id;
 
-  const estimatedImpact =
-    impactService.calculateListingImpact(
-      categoryId as CategoryId,
-      row.condition as ListingCondition
-    );
-
   // row.user, Supabase join'inden (`user:profiles(*)`) gelen HAM profil
   // satırıdır (snake_case: full_name, avatar_url...) — Listing['user']
   // tipinin beklediği camelCase şekille birebir aynı DEĞİLDİR. Önceden
@@ -219,8 +212,6 @@ function mapListing(row: any): Listing {
       Array.isArray(row.delivery_options)
         ? row.delivery_options
         : ['in_person'],
-
-    estimatedImpact,
 
     status: row.status ?? 'active',
 

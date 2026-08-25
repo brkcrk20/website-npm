@@ -28,8 +28,6 @@ export interface Category {
   iconName: string;
   color: string;
   itemCount: number;
-  avgCo2Savings: number; // in kg
-  avgWaterSavings: number; // in Liters
 }
 
 export interface UserProfile {
@@ -56,10 +54,6 @@ export interface UserProfile {
     totalTrades: number;
     activeListings: number;
     completedLoops: number;
-    totalCo2Prevented: number; // kg
-    totalWaterSaved: number; // Liters
-    totalEnergySaved: number; // kWh
-    totalRawMaterialsSaved: number; // kg
     totalItemsReused: number;
     responseRatePercent: number;
     avgResponseTimeMinutes: number;
@@ -80,16 +74,6 @@ export interface TrustProfile {
   reportCount: number;
   accountAgeDays: number;
   positiveHighlights: string[];
-}
-
-export interface EnvironmentalImpact {
-  co2eKg: number;
-  waterLiters: number;
-  energyKwh: number;
-  rawMaterialKg: number;
-  wasteReductionKg: number;
-  reuseCount: number;
-  methodologyVersion: string;
 }
 
 export interface Listing {
@@ -126,7 +110,6 @@ export interface Listing {
   // lookingFor'un YERİNE geçmez, onu tamamlar (bkz. rapor md. 20).
   lookingForCategories: CategoryId[];
   deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
-  estimatedImpact: EnvironmentalImpact;
   status: 'active' | 'in_trade' | 'traded' | 'paused' | 'removed';
   createdAt: string;
   updatedAt: string;
@@ -207,7 +190,6 @@ export interface TradeOffer {
   updatedAt: string;
   counterOfferFromId?: string;
   timeline: TradeEvent[];
-  combinedImpact: EnvironmentalImpact;
   isReviewedByInitiator?: boolean;
   isReviewedByReceiver?: boolean;
 }
@@ -282,7 +264,6 @@ export interface Loop {
   totalParticipants: number;
   participants: LoopParticipant[];
   status: 'matching' | 'locked' | 'in_delivery' | 'completed' | 'cancelled';
-  totalImpact: EnvironmentalImpact;
   createdAt: string;
   completedAt?: string;
 }
@@ -295,7 +276,7 @@ export interface Badge {
   // (bkz. src/constants/badges.ts) — küçük rozet setinde bağımlılık eklemeden
   // renkli/tanınabilir simgeler için tercih edildi.
   iconName: string;
-  category: 'trade' | 'eco' | 'community' | 'trust' | 'loop';
+  category: 'trade' | 'community' | 'trust' | 'loop';
   isEarned: boolean;
   earnedDate?: string;
   progressPercent: number;
@@ -308,7 +289,6 @@ export interface PaperclipStage {
   itemTitle: string;
   category: string;
   image: string;
-  estimatedImpact: number; // kg co2e
   dateCompleted?: string;
   isCompleted: boolean;
   isCurrent: boolean;
@@ -320,7 +300,6 @@ export interface MysterySwapItem {
   category: CategoryId;
   hint: string;
   image: string;
-  estimatedCo2e: number;
   ownerName: string;
   ownerTrustScore: number;
   location: string;
@@ -335,7 +314,6 @@ export interface CommunityPost {
   tradeStory?: {
     itemGiven: string;
     itemReceived: string;
-    co2Saved: number;
   };
   likesCount: number;
   commentsCount: number;
@@ -358,7 +336,7 @@ export interface CommunityEvent {
   isAttending?: boolean;
   organizer: string;
   imageUrl: string;
-  category: 'swap_party' | 'eco_workshop' | 'repair_cafe' | 'meetup';
+  category: 'swap_party' | 'repair_cafe' | 'meetup';
 }
 
 // DB karşılığı: `public.notifications.type` CHECK constraint'i
@@ -446,9 +424,6 @@ export interface AdminKPI {
   activeTrades: number;
   completedTrades: number;
   activeLoops: number;
-  totalSvsImpactCo2Kg: number;
-  totalWaterSavedL: number;
-  totalEnergyKwh: number;
   pendingReports: number;
   userGrowthPercent: number;
   tradeGrowthPercent: number;

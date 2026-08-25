@@ -9,15 +9,8 @@ import {
   Sparkles,
   ArrowRight,
   Gift,
-  Paperclip,
   TrendingUp,
   CheckCircle2,
-  Users,
-  ShieldCheck,
-  Leaf,
-  Droplets,
-  Zap,
-  Info,
 } from 'lucide-react';
 
 export const LoopsPage: React.FC = () => {
@@ -203,19 +196,6 @@ export const LoopsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Loop Total Impact */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-900 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Leaf className="w-5 h-5 text-emerald-300" />
-                  <div>
-                    <span className="text-xs font-bold text-emerald-200 block">Döngünün Toplam SVS Tasarrufu</span>
-                    <span className="text-sm font-extrabold text-white">
-                      +{selectedLoop.totalImpact.co2eKg} kg CO₂e • +{selectedLoop.totalImpact.waterLiters} L Su
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {/* Loop Action */}
               <button
                 type="button"
@@ -238,7 +218,7 @@ export const LoopsPage: React.FC = () => {
               <div className="text-xs">
                 <h3 className="font-bold mb-1 text-sm">Gizemli Kutu Takası Nasıl Çalışır?</h3>
                 <p className="leading-relaxed text-amber-900/90">
-                  Ürünün tam modeli gizlidir; yalnızca kategorisi, durum ipucu ve SVS çevresel değeri belirtilir. Sürpriz ve maceracı takasçılar için heyecan verici bir sıfır atık deneyimi!
+                  Ürünün tam modeli gizlidir; yalnızca kategorisi ve durum ipucu belirtilir. Sürpriz ve maceracı takasçılar için heyecan verici bir deneyim!
                 </p>
               </div>
             </div>
@@ -270,8 +250,7 @@ export const LoopsPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
-                    <span className="text-emerald-700 font-bold">+{item.estimatedCo2e} kg CO₂e</span>
+                  <div className="flex items-center justify-end text-xs text-stone-500 pt-2 border-t border-stone-100">
                     <span>{item.location}</span>
                   </div>
 
@@ -369,8 +348,8 @@ export const LoopsPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-emerald-700 font-semibold block">
-                        +{stage.estimatedImpact} kg CO₂e Tasarrufu
+                      <span className="text-[10px] text-stone-500 block">
+                        {stage.category}
                       </span>
                     </div>
 

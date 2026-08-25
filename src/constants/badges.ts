@@ -102,30 +102,6 @@ const BADGE_DEFINITIONS: BadgeDefinition[] = [
       return { current, target: 20 };
     },
   },
-  {
-    id: 'eco-friendly',
-    title: 'Çevre Dostu',
-    description: '50 kg CO₂e etkisine ulaştın.',
-    iconName: '🍃',
-    category: 'eco',
-    evaluate: (u) => ({ current: Math.min(u.stats.totalCo2Prevented, 50), target: 50 }),
-  },
-  {
-    id: 'water-saver',
-    title: 'Su Koruyucusu',
-    description: '10.000 litre sanal su tasarrufuna ulaştın.',
-    iconName: '💧',
-    category: 'eco',
-    evaluate: (u) => ({ current: Math.min(u.stats.totalWaterSaved, 10000), target: 10000 }),
-  },
-  {
-    id: 'zero-waste',
-    title: 'Sıfır Atık Şampiyonu',
-    description: '50 kg hammadde/atık oluşumunu önledin.',
-    iconName: '🌱',
-    category: 'eco',
-    evaluate: (u) => ({ current: Math.min(u.stats.totalRawMaterialsSaved, 50), target: 50 }),
-  },
 ];
 
 export function getUserBadges(user: UserProfile): Badge[] {

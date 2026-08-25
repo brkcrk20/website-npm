@@ -8,7 +8,6 @@ import {
   History,
   ShieldCheck,
   Award,
-  Leaf,
   Settings,
   Share2,
   Edit3,
@@ -53,7 +52,6 @@ export const ProfilePage: React.FC = () => {
     { icon: History, label: 'Takas Geçmişim', path: '/takaslarim' },
     { icon: ShieldCheck, label: 'Güven Puanım', value: trust.score.toFixed(1), path: '/guven-puani' },
     { icon: Award, label: 'Rozetlerim', path: '/rozetlerim' },
-    { icon: Leaf, label: 'Çevresel Etkim', path: '/etkim' },
     { icon: Settings, label: 'Ayarlar', path: '/ayarlar' },
   ];
 

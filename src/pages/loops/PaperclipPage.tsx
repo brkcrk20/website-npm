@@ -13,7 +13,6 @@ import {
   Trophy,
   History,
   TrendingUp,
-  Leaf,
   Plus,
   Edit3,
   Repeat,
@@ -55,7 +54,6 @@ export const PaperclipPage: React.FC = () => {
       category: 'Aksesuar',
       image:
         'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=400&q=80',
-      svsValue: '0.8 kg CO₂e',
       stageLabel: 'Başlangıç eşyası',
       completed: true,
       tradeDate: '12 Nisan 2024',
@@ -68,12 +66,11 @@ export const PaperclipPage: React.FC = () => {
       category: 'Hobi & Yaşam',
       image:
         'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80',
-      svsValue: '2.4 kg CO₂e',
       stageLabel: 'İlk yükseltme',
       completed: true,
       tradeDate: '28 Nisan 2024',
       partner: 'Emre K.',
-      notes: 'Kullanım alanı genişledi, tahmini çevresel etki 2.4 katına çıktı.',
+      notes: 'Kullanım alanı bir üst seviyeye taşındı.',
     },
     {
       level: 3,
@@ -82,7 +79,6 @@ export const PaperclipPage: React.FC = () => {
       image:
         userListings[0]?.images[0] ||
         'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=400&q=80',
-      svsValue: `${userListings[0]?.estimatedImpact?.co2eKg || 5.8} kg CO₂e`,
       stageLabel: 'Şu anki eşyan',
       completed: false,
       isCurrent: true,
@@ -95,7 +91,6 @@ export const PaperclipPage: React.FC = () => {
       category: 'Elektronik',
       image:
         'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80',
-      svsValue: '7.5 kg CO₂e',
       stageLabel: 'Sonraki hedef',
       completed: false,
       isCurrent: false,
@@ -107,7 +102,6 @@ export const PaperclipPage: React.FC = () => {
       category: 'Ulaşım & Teknoloji',
       image:
         'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=400&q=80',
-      svsValue: '18.4 kg CO₂e',
       stageLabel: 'Nihai hedef',
       completed: false,
       isCurrent: false,
@@ -126,7 +120,6 @@ export const PaperclipPage: React.FC = () => {
               title: listing.title,
               category: listing.condition,
               image: listing.images[0],
-              svsValue: `${listing.estimatedImpact?.co2eKg || 6.0} kg CO₂e`,
             }
           : st
       )
@@ -195,20 +188,16 @@ export const PaperclipPage: React.FC = () => {
               Küçük bir eşya ile başla, hayalindeki ürüne ulaş!
             </h2>
             <p className="text-[11px] sm:text-xs text-stone-300 leading-relaxed">
-              Her takas ile elindeki eşyanın kullanım değerini ve çevresel tasarrufunu bir üst
-              seviyeye taşı. Para harcamadan ihtiyaçlarını karşıla.
+              Her takas ile elindeki eşyayı bir üst seviyeye taşı. Para harcamadan ihtiyaçlarını
+              karşıla.
             </p>
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-stone-800 text-center">
+          <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-stone-800 text-center">
             <div className="p-1.5 sm:p-2 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[9.5px] text-stone-400 block">Kazanılan</span>
-              <span className="text-xs sm:text-sm font-black text-emerald-400">5.2x Kat</span>
-            </div>
-            <div className="p-1.5 sm:p-2 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-[9.5px] text-stone-400 block">CO₂e Kazancı</span>
-              <span className="text-xs sm:text-sm font-black text-white">9.0 kg</span>
+              <span className="text-[9.5px] text-stone-400 block">Mevcut Seviye</span>
+              <span className="text-xs sm:text-sm font-black text-emerald-400">3 / 5</span>
             </div>
             <div className="p-1.5 sm:p-2 rounded-xl bg-white/5 border border-white/10">
               <span className="text-[9.5px] text-stone-400 block">Tamamlanan</span>
@@ -318,10 +307,6 @@ export const PaperclipPage: React.FC = () => {
                 <span>Basamak:</span>
                 <span className="font-extrabold text-emerald-800">{currentHeldStage.stageLabel}</span>
               </div>
-              <div className="flex items-center justify-between text-stone-600">
-                <span>Tahmini çevresel etki:</span>
-                <span className="font-bold text-teal-700">{currentHeldStage.svsValue}</span>
-              </div>
               {currentHeldStage.partner && (
                 <div className="flex items-center justify-between text-stone-600">
                   <span>Takas Ortağı:</span>
@@ -425,9 +410,6 @@ export const PaperclipPage: React.FC = () => {
                         </span>
                         <span className="text-[11px] text-stone-500 block truncate">
                           {listing.condition} • {listing.location.district}
-                        </span>
-                        <span className="text-[10px] text-emerald-700 font-bold block">
-                          {listing.estimatedImpact?.co2eKg || 5.5} kg CO₂e
                         </span>
                       </div>
                     </div>

@@ -1,6 +1,5 @@
 import { Loop, LoopParticipant, CategoryId } from '../types';
 import { supabase } from '../lib/supabase';
-import { impactService } from './impactService';
 import { mapProfile } from './authService';
 import { enrichListings } from './listingService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
@@ -108,10 +107,6 @@ async function hydrateLoop(row: LoopRow): Promise<Loop> {
     };
   });
 
-  const totalImpact = impactService.calculateCombinedTradeImpact(
-    participants.map((p) => p.offeringListing.estimatedImpact)
-  );
-
   return {
     id: row.id,
     title: row.title,
@@ -119,7 +114,6 @@ async function hydrateLoop(row: LoopRow): Promise<Loop> {
     totalParticipants: row.max_participants ?? participants.length,
     participants,
     status: normalizeLoopStatus(row.status),
-    totalImpact,
     createdAt: row.created_at,
     completedAt: normalizeLoopStatus(row.status) === 'completed' ? row.updated_at : undefined,
   };

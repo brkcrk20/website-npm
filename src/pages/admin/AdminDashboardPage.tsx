@@ -6,7 +6,6 @@ import { AdminKPI, AdminAuditLog, Report, Dispute } from '../../types';
 import {
   Users,
   Repeat,
-  Leaf,
   ShieldAlert,
   BarChart3,
   Layers,
@@ -91,7 +90,6 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'events', label: 'Etkinlikler', icon: Calendar },
     { id: 'community', label: 'Topluluk', icon: Users },
     { id: 'content', label: 'İçerikler', icon: FileText },
-    { id: 'svs', label: 'SVS & Etki', icon: Leaf },
     { id: 'notifications', label: 'Bildirimler', icon: Bell },
     { id: 'settings', label: 'Ayarlar', icon: Settings },
   ];
@@ -185,7 +183,6 @@ export const AdminDashboardPage: React.FC = () => {
         { id: 'active_users', title: 'Aktif Kullanıcı (30g)', value: kpis.activeUsers.toLocaleString('tr-TR'), change: null, icon: Activity },
         { id: 'completed_trades', title: 'Tamamlanan Takas', value: kpis.completedTrades.toLocaleString('tr-TR'), change: kpis.tradeGrowthPercent, icon: Repeat },
         { id: 'active_loops', title: 'Aktif Loop', value: kpis.activeLoops.toLocaleString('tr-TR'), change: null, icon: Layers },
-        { id: 'svs_impact', title: 'Toplam SVS Etkisi', value: `${kpis.totalSvsImpactCo2Kg.toLocaleString('tr-TR')} kg`, change: null, icon: Leaf },
         { id: 'pending_reports', title: 'Bekleyen Rapor', value: kpis.pendingReports.toLocaleString('tr-TR'), change: null, icon: ShieldAlert },
       ]
     : [];

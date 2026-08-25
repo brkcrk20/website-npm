@@ -191,10 +191,6 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       // trust_profiles.completed_loops, loop_participants tamamlanınca
       // trigger ile artırılıyor (bkz. yukarıdaki migration notu).
       completedLoops: trust?.completed_loops ?? 0,
-      totalCo2Prevented: 0,
-      totalWaterSaved: 0,
-      totalEnergySaved: 0,
-      totalRawMaterialsSaved: 0,
       totalItemsReused: 0,
       responseRatePercent: Math.round((trust?.response_rate ?? 1) * 100),
       avgResponseTimeMinutes: 0,

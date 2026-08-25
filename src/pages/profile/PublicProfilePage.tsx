@@ -10,7 +10,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { Listing, Review, UserProfile } from '../../types';
 import { getUserBadges } from '../../constants/badges';
-import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Leaf, Loader2, Ban, Flag } from 'lucide-react';
+import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Loader2, Ban, Flag } from 'lucide-react';
 
 export const PublicProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -243,14 +243,7 @@ export const PublicProfilePage: React.FC = () => {
             </p>
           )}
 
-          {/* SVS Stats */}
-          <div className="grid grid-cols-3 gap-2 pt-3 mt-3 border-t border-stone-100 text-center">
-            <div className="p-2 rounded-xl bg-stone-50">
-              <span className="text-sm font-bold text-emerald-800">
-                +{user.stats.totalCo2Prevented} kg
-              </span>
-              <span className="text-[10px] text-stone-500 block">CO₂e Engellendi</span>
-            </div>
+          <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-stone-100 text-center">
             <div className="p-2 rounded-xl bg-stone-50">
               <span className="text-sm font-bold text-stone-900">{user.stats.totalTrades}</span>
               <span className="text-[10px] text-stone-500 block">Tamamlanan Takas</span>

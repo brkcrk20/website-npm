@@ -35,7 +35,6 @@ function mapPost(row: any, currentUserId?: string): CommunityPost {
       ? {
           itemGiven: row.trade_item_given ?? '',
           itemReceived: row.trade_item_received ?? '',
-          co2Saved: row.trade_co2_saved ?? 0,
         }
       : undefined;
 
@@ -86,7 +85,6 @@ export const communityService = {
       tags,
       trade_item_given: tradeStory?.itemGiven ?? null,
       trade_item_received: tradeStory?.itemReceived ?? null,
-      trade_co2_saved: tradeStory?.co2Saved ?? null,
     };
 
     const { data, error } = await supabase
