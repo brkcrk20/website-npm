@@ -1,0 +1,17 @@
+# Swaloop
+# İlan sayfaları (/ilan/<slug>) organik trafiğin ana kapısı; taranmasına
+# izin veriliyor. Kişisel ve oturum gerektiren alanlar dışarıda.
+
+User-agent: *
+Allow: /
+Disallow: /profil
+Disallow: /profil/duzenle
+Disallow: /mesajlar
+Disallow: /bildirimler
+Disallow: /takaslarim
+Disallow: /teklif
+Disallow: /karsi-teklif
+Disallow: /takas-sureci
+Disallow: /aradiklarim
+Disallow: /admin
+Disallow: /dispute

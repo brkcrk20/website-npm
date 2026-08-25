@@ -1,6 +1,6 @@
 {
   "name": "Swaloop",
-  "description": "Takas uygulaması. Satma, takas et, yeniden kullan. Kullanmadığın eşyaları fotoğrafla, karşılığında aradığını bul.",
+  "description": "Satma. Takas et. Yeniden kullan. Paranın hiç geçmediği sosyal takas platformu.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

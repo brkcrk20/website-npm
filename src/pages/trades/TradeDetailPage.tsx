@@ -3,19 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
-import { TradeOffer } from '../../types';
+import {
+  TradeOffer,
+  TradeCancellationReason,
+  TRADE_CANCELLATION_REASONS,
+} from '../../types';
 import { Timeline } from '../../components/common/Timeline';
-import { ImpactCard } from '../../components/common/ImpactCard';
-import { SvsExplanationModal } from '../../components/common/SvsExplanationModal';
-import { ReportModal } from '../../components/common/ReportModal';
-import { CONDITION_LABELS } from '../../constants';
 import {
   ArrowLeft,
   MessageSquare,
   ShieldCheck,
-  Leaf,
-  Droplets,
-  Zap,
   MapPin,
   Calendar,
   Truck,
@@ -32,15 +29,16 @@ import {
 export const TradeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentUser, showToast, refreshScorecard } = useApp();
+  const { currentUser, showToast } = useApp();
 
   const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showCounterModal, setShowCounterModal] = useState(false);
-  const [showSvsModal, setShowSvsModal] = useState(false);
-  const [showReport, setShowReport] = useState(false);
-  const [counterNote, setCounterNote] = useState('');
+  // Takastan vazgeçme (rapor md. 31): neden seçilmeden iptal edilemez.
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState<TradeCancellationReason | ''>('');
+  const [cancelNote, setCancelNote] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewCategories, setReviewCategories] = useState({
@@ -67,7 +65,7 @@ export const TradeDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-full bg-stone-50 dark:bg-stone-950 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-stone-50 p-6 flex items-center justify-center">
         <p className="text-sm text-stone-500">Takas yükleniyor...</p>
       </div>
     );
@@ -75,8 +73,8 @@ export const TradeDetailPage: React.FC = () => {
 
   if (!trade) {
     return (
-      <div className="min-h-full bg-stone-50 dark:bg-stone-950 p-6 flex flex-col items-center justify-center text-center">
-        <h2 className="text-base font-bold text-stone-800 dark:text-stone-200 mb-2">Takas bulunamadı</h2>
+      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
+        <h2 className="text-base font-bold text-stone-800 mb-2">Takas bulunamadı</h2>
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
@@ -95,6 +93,11 @@ export const TradeDetailPage: React.FC = () => {
   const myItem = isInitiator ? trade.offeredListings[0] : trade.requestedListings[0];
   const otherItem = isInitiator ? trade.requestedListings[0] : trade.offeredListings[0];
 
+  const CANCELLABLE_STATUSES = ['offer_sent', 'accepted', 'locked', 'delivery_planned', 'shipped'];
+  const canCancel =
+    CANCELLABLE_STATUSES.includes(trade.status) &&
+    (trade.status !== 'offer_sent' || isInitiator);
+
   const handleAccept = async () => {
     const updated = await tradeService.acceptOffer(trade.id);
     if (updated) {
@@ -112,6 +115,25 @@ export const TradeDetailPage: React.FC = () => {
     }
   };
 
+  const handleCancelTrade = async () => {
+    if (!cancelReason) return;
+
+    setIsCancelling(true);
+    const updated = await tradeService.cancelTrade(trade.id, cancelReason, cancelNote);
+    setIsCancelling(false);
+
+    if (!updated) {
+      showToast('Takas iptal edilemedi', 'Lütfen tekrar dene.', 'error');
+      return;
+    }
+
+    setTrade(updated);
+    setShowCancelModal(false);
+    setCancelReason('');
+    setCancelNote('');
+    showToast('Takastan vazgeçildi', 'İlanlar yeniden takasa açıldı.', 'info');
+  };
+
   const handleAdvanceStep = async (step: 4 | 5 | 6) => {
     const updated = await tradeService.advanceTradeStep(trade.id, step);
     if (updated) {
@@ -121,12 +143,7 @@ export const TradeDetailPage: React.FC = () => {
       } else if (step === 5) {
         showToast('Teslimat Onaylandı!', 'Karşı taraf onayladığında takas başarıyla tamamlanacak.', 'success');
       } else if (step === 6) {
-        showToast(
-          'Tebrikler! Takas tamamlandı 🎉',
-          `+${updated.combinedImpact.co2eKg} kg CO₂e tasarruf ve takas puanı hesabına işlendi.`,
-          'success'
-        );
-        refreshScorecard();
+        showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
         setShowReviewModal(true);
       }
     }
@@ -150,20 +167,19 @@ export const TradeDetailPage: React.FC = () => {
       authorAvatar: currentUser.avatarUrl,
       targetUserId: otherUser.id,
       overallRating: rating,
-      categories: { ...reviewCategories, trustworthiness: rating },
-      comment: reviewComment.trim(),
+      categories: reviewCategories,
+      comment: reviewComment || 'Harika ve güvenilir bir takas deneyimi oldu!',
     });
 
-    showToast('Değerlendirmen kaydedildi', 'Karşı tarafın güven puanı güncellendi.', 'success');
+    showToast('Değerlendirmeniz Kaydedildi!', 'Topluluk güven skoruna katkınız için teşekkürler.', 'success');
     setShowReviewModal(false);
-    refreshScorecard();
     loadTrade();
   };
 
   const isReviewedByMe = isInitiator ? trade.isReviewedByInitiator : trade.isReviewedByReceiver;
 
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-28 text-stone-900 dark:text-stone-100">
+    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
         {/* Top Header */}
         <div className="flex items-center justify-between">
@@ -171,13 +187,13 @@ export const TradeDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/takaslarim')}
-              className="p-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-stone-900 dark:text-stone-100">Takas Süreci</h1>
+                <h1 className="text-base font-bold text-stone-900">Takas Süreci</h1>
                 {trade.status === 'locked' && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                     <Lock className="w-3 h-3" />
@@ -191,7 +207,7 @@ export const TradeDetailPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setShowReport(true)}
+            onClick={() => navigate(`/dispute?tradeId=${trade.id}`)}
             className="text-stone-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-colors"
             title="Sorun Bildir"
           >
@@ -200,19 +216,19 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* Counterpart Profile Card */}
-        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-3.5 flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-stone-200/90 p-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src={otherUser.avatarUrl}
               alt={otherUser.fullName}
-              className="w-12 h-12 rounded-full object-cover border border-stone-200 dark:border-stone-800"
+              className="w-12 h-12 rounded-full object-cover border border-stone-200"
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-stone-900 dark:text-stone-100">{otherUser.fullName}</span>
+                <span className="text-xs font-bold text-stone-900">{otherUser.fullName}</span>
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  {otherUser.trustProfile.score.toFixed(1)}
+                  {otherUser.trustProfile?.score ? otherUser.trustProfile.score.toFixed(1) : '4.8'}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
@@ -233,159 +249,105 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* 6-Step Visual Timeline Component */}
-        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4">
-          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider mb-3">
+        <div className="bg-white rounded-2xl border border-stone-200/90 p-4">
+          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-3">
             6 Adımlı Takas Akışı
           </h2>
           <Timeline timeline={trade.timeline} currentStatus={trade.status} />
         </div>
 
         {/* Side-by-side Product Comparison */}
-        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Takaslanan Ürünler</h2>
+        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
+          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Takaslanan Ürünler</h2>
 
           <div className="grid grid-cols-2 gap-3 relative items-stretch">
             {/* Left: My Item */}
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 flex flex-col justify-between">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
                   {isInitiator ? 'Senin Verdiğin' : 'Senin Alacağın'}
                 </span>
-                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 dark:bg-stone-800 mb-2">
+                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 mb-2">
                   <img
                     src={myItem?.images[0]}
                     alt={myItem?.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">{myItem?.title}</h3>
-                <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
-                  +{myItem?.estimatedImpact.co2eKg} kg CO₂e
-                </span>
+                <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{myItem?.title}</h3>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
-                Durum:{' '}
-                <span className="font-semibold text-stone-700 dark:text-stone-300">
-                  {myItem ? (CONDITION_LABELS[myItem.condition] ?? myItem.condition) : '—'}
-                </span>
+                Durum: <span className="font-semibold text-stone-700">{myItem?.condition}</span>
               </div>
             </div>
 
             {/* Center Swap Arrow */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-stone-900 border border-stone-300 shadow-sm flex items-center justify-center">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center">
               <ArrowLeftRight className="w-4 h-4 text-emerald-800" />
             </div>
 
             {/* Right: Other Item */}
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 flex flex-col justify-between">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
                   {isInitiator ? 'Senin Alacağın' : 'Senin Verdiğin'}
                 </span>
-                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 dark:bg-stone-800 mb-2">
+                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 mb-2">
                   <img
                     src={otherItem?.images[0]}
                     alt={otherItem?.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">{otherItem?.title}</h3>
-                <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
-                  +{otherItem?.estimatedImpact.co2eKg} kg CO₂e
-                </span>
+                <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{otherItem?.title}</h3>
               </div>
               <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
-                Durum:{' '}
-                <span className="font-semibold text-stone-700 dark:text-stone-300">
-                  {otherItem ? (CONDITION_LABELS[otherItem.condition] ?? otherItem.condition) : '—'}
-                </span>
+                Durum: <span className="font-semibold text-stone-700">{otherItem?.condition}</span>
               </div>
             </div>
           </div>
 
           {/* Trade Note if any */}
           {trade.note && (
-            <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-xs text-stone-700 dark:text-stone-300">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700">
               <span className="font-bold text-stone-500 block text-[10px] uppercase mb-0.5">Teklif Notu:</span>
               "{trade.note}"
             </div>
           )}
         </div>
 
-        {/* Combined SVS Ecological Impact Card */}
-        <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Leaf className="w-4 h-4 text-emerald-300" />
-              <h3 className="text-xs font-bold text-emerald-200 uppercase tracking-wider">
-                Ortak SVS Çevresel Kazanç
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSvsModal(true)}
-              className="text-[10px] text-emerald-200 underline font-semibold cursor-pointer"
-            >
-              Metodoloji?
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-emerald-200/80 block">Karbon</span>
-              <span className="text-base font-extrabold text-white">+{trade.combinedImpact.co2eKg} kg</span>
-              <span className="text-[9px] text-emerald-300 block">CO₂e Önleme</span>
-            </div>
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-cyan-200/80 block">Sanal Su</span>
-              <span className="text-base font-extrabold text-white">+{trade.combinedImpact.waterLiters} L</span>
-              <span className="text-[9px] text-cyan-300 block">Tasarruf</span>
-            </div>
-            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <span className="text-[10px] text-amber-200/80 block">Enerji</span>
-              <span className="text-base font-extrabold text-white">+{trade.combinedImpact.energyKwh} kWh</span>
-              <span className="text-[9px] text-amber-300 block">Tasarruf</span>
-            </div>
-          </div>
-        </div>
-
         {/* Meeting & Delivery Protocol Details */}
-        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-2.5">
-          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
-          <div className="flex items-start gap-2.5 text-xs text-stone-700 dark:text-stone-300">
+        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-2.5">
+          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
+          <div className="flex items-start gap-2.5 text-xs text-stone-700">
             <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Buluşma / Teslim Yeri:</span>
-              <span>
-                {trade.deliveryDetails?.locationName ||
-                  'Henüz belirlenmedi — sohbetten kararlaştırabilirsiniz.'}
-              </span>
+              <span>{trade.deliveryDetails?.locationName || 'Kadıköy Güvenli Takas Noktası (Metro Çıkışı)'}</span>
             </div>
           </div>
-          <div className="flex items-start gap-2.5 text-xs text-stone-700 dark:text-stone-300">
+          <div className="flex items-start gap-2.5 text-xs text-stone-700">
             <Calendar className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Planlanan Tarih:</span>
-              <span>
-                {trade.deliveryDetails?.scheduledDate || 'Henüz belirlenmedi'}
-              </span>
+              <span>{trade.deliveryDetails?.scheduledDate || 'Belirlenmedi (Sohbet üzerinden kararlaştırılabilir)'}</span>
             </div>
           </div>
         </div>
 
         {/* Action Panel for Current Trade Status */}
-        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 dark:text-stone-100 uppercase tracking-wider">Sıradaki Eylem</h2>
+        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
+          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Sıradaki Eylem</h2>
 
           {/* If waiting for receiver response */}
           {trade.status === 'offer_sent' && isReceiver && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600 dark:text-stone-400">Bu takas teklifini kabul etmek istiyor musunuz?</p>
+              <p className="text-xs text-stone-600">Bu takas teklifini kabul etmek istiyor musunuz?</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={handleReject}
-                  className="py-2.5 px-4 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+                  className="py-2.5 px-4 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
                 >
                   Reddet
                 </button>
@@ -397,6 +359,14 @@ export const TradeDetailPage: React.FC = () => {
                   Teklifi Kabul Et
                 </button>
               </div>
+              {/* Reddet ile Kabul arasındaki üçüncü yol (rapor md. 26) */}
+              <button
+                type="button"
+                onClick={() => navigate(`/karsi-teklif/${trade.id}`)}
+                className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Karşı Teklif Ver
+              </button>
             </div>
           )}
 
@@ -409,7 +379,7 @@ export const TradeDetailPage: React.FC = () => {
           {/* Locked state: Need delivery planning */}
           {trade.status === 'locked' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600 dark:text-stone-400">
+              <p className="text-xs text-stone-600">
                 Ürünler kilitlendi! Karşı tarafla sohbet üzerinden buluşma saati ayarlayın veya teslimatı başlatın.
               </p>
               <button
@@ -425,7 +395,7 @@ export const TradeDetailPage: React.FC = () => {
           {/* Delivery Planned state: In transit */}
           {trade.status === 'delivery_planned' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600 dark:text-stone-400">
+              <p className="text-xs text-stone-600">
                 Buluşma veya kargo teslimatı gerçekleştiğinde aşağıdaki butona basarak ürünü teslim aldığınızı onaylayın.
               </p>
               <button
@@ -442,8 +412,8 @@ export const TradeDetailPage: React.FC = () => {
           {/* Verified state: Complete trade */}
           {trade.status === 'verified' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600 dark:text-stone-400">
-                Teslimat doğrulaması yapıldı. Takas sürecini tamamlayıp SVS puanınızı hesabınıza ekleyin.
+              <p className="text-xs text-stone-600">
+                Teslimat doğrulaması yapıldı. Takas sürecini tamamlayıp profilinize yansıtın.
               </p>
               <button
                 type="button"
@@ -461,7 +431,7 @@ export const TradeDetailPage: React.FC = () => {
             <div className="space-y-2">
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Takas başarıyla tamamlandı! Çevresel kazanç profilinize yansıtıldı.</span>
+                <span>Takas başarıyla tamamlandı! Güven puanınız profilinize yansıtıldı.</span>
               </div>
               {!isReviewedByMe ? (
                 <button
@@ -479,18 +449,92 @@ export const TradeDetailPage: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* Takastan vazgeçme (rapor md. 31). Teklif aşamasında yalnızca
+              teklifi GÖNDEREN görür — alan taraf zaten "Reddet"i kullanır. */}
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              className="w-full py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+            >
+              {trade.status === 'offer_sent' ? 'Teklifi Geri Çek' : 'Takastan Vazgeç'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Review Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900">Takastan vazgeç</h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Neden vazgeçtiğini seçersen karşı taraf için de, bizim için de daha anlaşılır olur.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              {TRADE_CANCELLATION_REASONS.map((reason) => {
+                const selected = cancelReason === reason.id;
+
+                return (
+                  <button
+                    key={reason.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setCancelReason(reason.id)}
+                    className={`w-full p-3 rounded-2xl border-2 text-left text-xs font-semibold transition-colors cursor-pointer ${
+                      selected
+                        ? 'border-emerald-600 bg-emerald-50/60 text-emerald-950'
+                        : 'border-stone-200 text-stone-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    {reason.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <textarea
+              value={cancelNote}
+              onChange={(e) => setCancelNote(e.target.value)}
+              rows={2}
+              maxLength={300}
+              placeholder="Eklemek istediğin bir şey var mı? (opsiyonel)"
+              className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-hidden focus:border-emerald-600 resize-none"
+            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                className="py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Vazgeçme
+              </button>
+              <button
+                type="button"
+                disabled={!cancelReason || isCancelling}
+                onClick={handleCancelTrade}
+                className="py-2.5 rounded-xl bg-stone-900 hover:bg-black disabled:bg-stone-300 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                {isCancelling ? 'İptal ediliyor…' : 'Takası İptal Et'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReviewModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-2">
                 <Star className="w-6 h-6 fill-amber-500 text-amber-500" />
               </div>
-              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">Takas Değerlendirmesi</h3>
+              <h3 className="text-sm font-bold text-stone-900">Takas Değerlendirmesi</h3>
               <p className="text-xs text-stone-500">{otherUser.fullName} ile olan deneyiminizi puanlayın</p>
             </div>
 
@@ -512,40 +556,20 @@ export const TradeDetailPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Alt puanlar — önceden sabit "5/5" yazıyordu, artık gerçekten seçiliyor */}
-            <div className="space-y-2 text-xs bg-stone-50 dark:bg-stone-950 p-3 rounded-xl">
-              {(
-                [
-                  { key: 'itemAccuracy', label: 'Ürün açıklamaya uygunluk' },
-                  { key: 'communication', label: 'İletişim' },
-                  { key: 'delivery', label: 'Zamanında teslimat' },
-                ] as const
-              ).map((row) => (
-                <div key={row.key} className="flex justify-between items-center gap-2">
-                  <span className="text-stone-600 dark:text-stone-400">{row.label}</span>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() =>
-                          setReviewCategories((prev) => ({ ...prev, [row.key]: value }))
-                        }
-                        className="cursor-pointer"
-                        aria-label={`${row.label}: ${value}`}
-                      >
-                        <Star
-                          className={`w-3.5 h-3.5 ${
-                            value <= reviewCategories[row.key]
-                              ? 'fill-amber-400 text-amber-400'
-                              : 'text-stone-300'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            {/* Sub-ratings */}
+            <div className="space-y-2 text-xs bg-stone-50 p-3 rounded-xl">
+              <div className="flex justify-between items-center">
+                <span className="text-stone-600">Ürün Açıklamaya Uygunluk:</span>
+                <span className="font-bold text-amber-600">5/5</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-600">İletişim & Nezaket:</span>
+                <span className="font-bold text-amber-600">5/5</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-stone-600">Zamanında Teslimat:</span>
+                <span className="font-bold text-amber-600">5/5</span>
+              </div>
             </div>
 
             <textarea
@@ -553,14 +577,14 @@ export const TradeDetailPage: React.FC = () => {
               onChange={(e) => setReviewComment(e.target.value)}
               placeholder="Yorumunuz (İsteğe bağlı)..."
               rows={2}
-              className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl text-xs outline-hidden focus:bg-white focus:border-emerald-700"
+              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:bg-white focus:border-emerald-700"
             />
 
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl border border-stone-200 text-stone-700 font-bold text-xs"
               >
                 Vazgeç
               </button>
@@ -574,18 +598,6 @@ export const TradeDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* SVS Explanation Modal */}
-      {showSvsModal && <SvsExplanationModal onClose={() => setShowSvsModal(false)} />}
-
-      {showReport && (
-        <ReportModal
-          targetType="trade"
-          targetId={trade.id}
-          title={`${otherUser.fullName} ile olan takas · #${trade.id.slice(-6)}`}
-          onClose={() => setShowReport(false)}
-        />
       )}
     </div>
   );

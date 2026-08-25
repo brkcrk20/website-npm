@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { SwaloopLogo } from '../../components/common/SwaloopLogo';
-import { ArrowLeft, Smartphone, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 interface PhoneAuthPageProps {
@@ -11,8 +10,10 @@ interface PhoneAuthPageProps {
 
 export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
   const navigate = useNavigate();
-  const { showToast } = useApp();
+  const { setCurrentUser, showToast } = useApp();
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,7 +21,8 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
     setPhone(formatted);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // KAYIT: telefon numarası benzersiz mi kontrol edilir, sonra OTP gönderilir.
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authService.isValidPhone(phone)) {
       showToast('Geçersiz Numara', 'Lütfen 10 haneli geçerli bir telefon numarası giriniz (5XX...).', 'error');
@@ -29,98 +31,169 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
 
     setIsSubmitting(true);
     const check = await authService.checkPhoneRegistered(phone);
-    const result = await authService.sendOtp(phone);
     setIsSubmitting(false);
 
-    // SMS gönderilemediyse doğrulama ekranına GEÇME — eskiden hata
-    // yutuluyordu ve kullanıcı hiç gelmeyecek bir kodu bekliyordu.
-    if (!result.success) {
+    if (check.exists) {
       showToast(
-        'Kod gönderilemedi',
-        result.error || 'Numaranı kontrol edip tekrar dene.',
+        'Bu Numara Zaten Kayıtlı',
+        'Bu telefon numarasına ait bir hesap bulunmaktadır. Lütfen giriş yapınız.',
         'error'
       );
+      navigate('/giris');
       return;
     }
 
-    navigate('/dogrulama', { state: { phone, isExisting: check.exists } });
+    const otpResult = await authService.sendOtp(phone);
+    if (!otpResult.success) {
+      showToast('Kod Gönderilemedi', otpResult.error || 'SMS gönderiminde bir hata oluştu.', 'error');
+      return;
+    }
+
+    navigate('/dogrulama', {
+      state: { phone, isExisting: false },
+    });
   };
 
+  // GİRİŞ: telefon + şifre. Kullanıcı ayarlarından "her girişte SMS iste"
+  // açıksa şifre doğrulansa bile /dogrulama sayfasına ek doğrulama için
+  // yönlendirilir; kapalıysa direkt oturum açılır.
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authService.isValidPhone(phone)) {
+      showToast('Geçersiz Numara', 'Lütfen 10 haneli geçerli bir telefon numarası giriniz (5XX...).', 'error');
+      return;
+    }
+
+    if (!password) {
+      showToast('Eksik Bilgi', 'Lütfen şifreni gir.', 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = await authService.loginWithPassword(phone, password);
+    setIsSubmitting(false);
+
+    if (!result.success) {
+      showToast('Giriş Başarısız', result.error || 'Telefon numarası veya şifre hatalı.', 'error');
+      return;
+    }
+
+    if (result.requiresOtp) {
+      showToast('Ek Doğrulama Gerekli', 'Hesap ayarların gereği SMS kodu gönderildi.', 'info');
+      navigate('/dogrulama', {
+        state: { phone, isExisting: true, passwordVerified: true },
+      });
+      return;
+    }
+
+    if (result.user) setCurrentUser(result.user);
+    showToast('Giriş Başarılı!', 'Tekrar hoş geldin.', 'success');
+    navigate('/kesfet');
+  };
+
+  const handleSubmit = isRegister ? handleRegisterSubmit : handleLoginSubmit;
+
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col justify-between p-6 max-w-md mx-auto">
-      {/* Top Bar */}
-      <div>
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-surface flex flex-col">
+      <div className="max-w-md w-full mx-auto px-6 pt-6 pb-8 flex-1 flex flex-col">
+        <div className="flex items-center">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center hover:bg-stone-100 transition-colors"
+            aria-label="Geri"
+            className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-ink-soft hover:bg-canvas transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <SwaloopLogo size="sm" />
-          <div className="w-10" />
         </div>
 
-        <div className="space-y-2 mb-8">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-stone-100 font-display tracking-tight">
-            Telefon ile Kayıt / Giriş
-          </h1>
-          <p className="text-sm text-stone-500">
-            Swaloop topluluğuna katılmak için telefon numaranı gir. Güvenlik için SMS kodu göndereceğiz.
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-2">
-              Telefon Numarası
-            </label>
-            <div className="relative flex items-center">
-              <div className="absolute left-3.5 flex items-center gap-1.5 text-stone-500 font-medium text-sm border-r border-stone-200 dark:border-stone-800 pr-2.5">
-                <span className="text-base">🇹🇷</span>
-                <span className="font-semibold text-stone-800 dark:text-stone-200">TR +90</span>
-              </div>
-              <input
-                type="tel"
-                value={phone.replace('+90 ', '')}
-                onChange={handlePhoneChange}
-                placeholder="5XX XXX XX XX"
-                maxLength={13}
-                autoFocus
-                className="w-full pl-28 pr-4 py-4 rounded-2xl bg-white dark:bg-stone-900 border-2 border-stone-200 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-base font-semibold text-stone-900 dark:text-stone-100 tracking-wide transition-all shadow-xs"
-              />
-            </div>
-            <span className="text-[11px] text-stone-400 mt-1.5 block">
-              Örnek: 532 123 45 67 (Şifre gerektirmez, OTP ile anında doğrulama)
-            </span>
+        <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl text-ink">{isRegister ? 'Hesap Oluştur' : 'Giriş Yap'}</h1>
+            <p className="text-sm text-ink-soft mt-2">
+              {isRegister
+                ? 'Telefon numaranı gir, sana bir doğrulama kodu gönderelim.'
+                : 'Telefon numaran ve şifrenle hesabına giriş yap.'}
+            </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-            <div className="text-xs text-emerald-900 leading-relaxed">
-              <strong className="block font-bold">1 Telefon = 1 Hesap Kuralı</strong>
-              Her telefon numarasıyla yalnızca tek bir Swaloop hesabı açılabilir. Güvenli takas
-              ağımız doğrulanmış gerçek profillerle korunur.
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="phone" className="sw-label">
+                Telefon numarası
+              </label>
+              <div className="flex items-stretch gap-2">
+                <span className="sw-input w-20 flex items-center justify-center font-semibold text-ink shrink-0">
+                  +90
+                </span>
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone.replace('+90 ', '')}
+                  onChange={handlePhoneChange}
+                  placeholder="5XX XXX XX XX"
+                  maxLength={13}
+                  autoFocus
+                  className="sw-input flex-1 tracking-wide"
+                />
+              </div>
             </div>
+
+            {!isRegister && (
+              <div>
+                <label htmlFor="password" className="sw-label">
+                  Şifre
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Şifreni gir"
+                    className="sw-input pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-ink-faint hover:text-ink-soft cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting || phone.length < 5 || (!isRegister && !password)}
+              className="sw-btn sw-btn-primary sw-btn-block mt-2"
+            >
+              {isSubmitting ? 'Kontrol ediliyor…' : isRegister ? 'Devam Et' : 'Giriş Yap'}
+            </button>
+          </form>
+
+          <p className="text-[11px] text-ink-faint text-center mt-5 leading-relaxed">
+            Devam ederek kullanım şartlarını ve gizlilik politikasını kabul edersin.
+          </p>
+
+          <div className="flex items-center gap-2 mt-8">
+            <ShieldCheck className="w-4 h-4 text-brand shrink-0" />
+            <p className="text-[11px] text-ink-soft">
+              Bir telefon numarasıyla yalnızca tek hesap açılabilir.
+            </p>
           </div>
 
           <button
-            type="submit"
-            disabled={isSubmitting || phone.length < 5}
-            className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            type="button"
+            onClick={() => navigate(isRegister ? '/giris' : '/kayit')}
+            className="text-xs font-semibold text-brand-dark hover:underline mt-6 cursor-pointer"
           >
-            {isSubmitting ? 'Kod Gönderiliyor...' : 'Devam Et'}
-            <ArrowRight className="w-5 h-5" />
+            {isRegister ? 'Zaten hesabın var mı? Giriş yap' : 'Hesabın yok mu? Kayıt ol'}
           </button>
-        </form>
-      </div>
-
-      {/* Footer info */}
-      <div className="pt-6 text-center text-xs text-stone-400">
-        Devam ederek Swaloop <span className="underline text-stone-600 dark:text-stone-400">Kullanım Koşulları</span> ve{' '}
-        <span className="underline text-stone-600 dark:text-stone-400">Gizlilik Politikası</span>'nı kabul etmiş olursun.
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,46 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ===========================================================================
+   SWALOOP TASARIM SİSTEMİ
+   ---------------------------------------------------------------------------
+   Onaylanan arayüz tasarımına göre tek kaynaklı renk/ölçü tokenları.
+   Kurallar (ürün raporu md. 64-70, 147):
+     * Yeşil MARKA rengidir, "çevreci uygulama" işareti değil — her yeri
+       yeşile boyamıyoruz; yeşil sadece eylem (buton/aktif durum) rengi.
+     * Bol beyaz alan, ince kenarlık, az gölge.
+     * Orta yuvarlaklık: kart 16px, buton 12px, çip tam yuvarlak.
+       (Her şey 24-30px olursa çocuk uygulaması gibi görünüyor.)
+     * Renk tek başına durum belirtmez; ikon/metin ile birlikte kullanılır.
+   =========================================================================== */
+
+@theme {
+  /* Marka */
+  --color-brand: #2e9e5f;
+  --color-brand-dark: #24804c;
+  --color-brand-soft: #e8f5ee;
+  --color-brand-line: #c9e6d6;
+
+  /* Yüzeyler */
+  --color-canvas: #f6f7f5;
+  --color-surface: #ffffff;
+  --color-line: #e6e9e6;
+
+  /* Metin */
+  --color-ink: #16231d;
+  --color-ink-soft: #6e7b74;
+  --color-ink-faint: #9aa39e;
+
+  /* Koyu yüzey (splash, admin) */
+  --color-night: #16231d;
+  --color-night-soft: #1e302a;
+
+  /* Durum */
+  --color-warn: #d99a2b;
+  --color-danger: #d9534f;
+  --color-star: #f5a524;
+}
+
 @layer base {
   html, body {
     overflow-x: hidden;
@@ -14,10 +54,184 @@
   }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
   }
   h1, h2, h3, h4, .font-display {
     font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+    /* Font ağırlıkları bilinçli olarak düşük tutuldu (md. 68): her şeyi
+       bold yapmak ucuz gösteriyor. Başlık 700, alt başlık 600, gövde 400. */
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
+}
+
+@layer components {
+  /* --- Yüzeyler ------------------------------------------------------- */
+  .sw-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 16px;
+  }
+
+  .sw-card-flat {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+  }
+
+  /* --- Butonlar ------------------------------------------------------- */
+  /* Dokunma alanı en az 44px (md. 99). */
+  .sw-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 1.25rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+  }
+
+  .sw-btn-primary {
+    background-color: var(--color-brand);
+    color: #fff;
+  }
+  .sw-btn-primary:hover:not(:disabled) {
+    background-color: var(--color-brand-dark);
+  }
+  .sw-btn-primary:disabled {
+    background-color: #cdd4cf;
+    cursor: not-allowed;
+  }
+
+  .sw-btn-soft {
+    background-color: var(--color-brand-soft);
+    color: var(--color-brand-dark);
+    border: 1px solid var(--color-brand-line);
+  }
+  .sw-btn-soft:hover:not(:disabled) {
+    background-color: #dcefe4;
+  }
+
+  .sw-btn-ghost {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    border: 1px solid var(--color-line);
+  }
+  .sw-btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-canvas);
+  }
+
+  .sw-btn-block {
+    width: 100%;
+  }
+
+  /* --- Form alanları -------------------------------------------------- */
+  .sw-input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0.7rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface);
+    font-size: 0.875rem;
+    color: var(--color-ink);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .sw-input::placeholder {
+    color: var(--color-ink-faint);
+  }
+  .sw-input:focus {
+    border-color: var(--color-brand);
+  }
+
+  .sw-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    margin-bottom: 0.35rem;
+  }
+
+  /* --- Çipler (kategori filtreleri) ----------------------------------- */
+  .sw-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 34px;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface);
+    color: var(--color-ink-soft);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .sw-chip:hover {
+    border-color: var(--color-brand-line);
+  }
+  .sw-chip-active {
+    background-color: var(--color-brand);
+    border-color: var(--color-brand);
+    color: #fff;
+  }
+
+  /* --- Rozet / etiket -------------------------------------------------- */
+  .sw-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-canvas);
+    color: var(--color-ink-soft);
+  }
+  .sw-badge-brand {
+    background-color: var(--color-brand-soft);
+    border-color: var(--color-brand-line);
+    color: var(--color-brand-dark);
+  }
+
+  /* --- Ekran başlığı --------------------------------------------------- */
+  .sw-screen {
+    min-height: 100vh;
+    background-color: var(--color-canvas);
+    padding-bottom: 6rem;
+  }
+  .sw-container {
+    max-width: 32rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 768px) {
+    .sw-container { max-width: 48rem; }
+  }
+  @media (min-width: 1024px) {
+    .sw-container { max-width: 64rem; }
+  }
+
+  /* İskelet yükleme (md. 92) */
+  .sw-skeleton {
+    background-color: #e9ebe9;
+    border-radius: 12px;
+    animation: sw-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes sw-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 /* Custom smooth scrollbar & hiding utility */
@@ -34,39 +248,6 @@
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
 }
 
-/* Sabitlenen alt çubukların telefon çentiği/ana ekran çubuğuyla çakışmaması
-   için. Önceden bu sınıf kullanılıyordu ama hiç tanımlanmamıştı. */
-.safe-area-bottom {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
-}
-
-/* Basit giriş animasyonu. Projede `animate-in fade-in` gibi sınıflar
-   kullanılıyordu fakat bunları sağlayan eklenti kurulu değildi; bu yüzden
-   hiçbir animasyon çalışmıyordu. Aşağıdaki tanım en sık kullanılan
-   birleşimleri karşılıyor. */
-@keyframes swaloop-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-0.4rem) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-in {
-  animation: swaloop-enter 180ms ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-in,
-  .animate-loop-slow {
-    animation: none;
-  }
-}
-
-/* Pulse glow for trade/loop */
 @keyframes loop-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -75,4 +256,3 @@
 .animate-loop-slow {
   animation: loop-spin 12s linear infinite;
 }
-

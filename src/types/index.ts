@@ -27,33 +27,33 @@ export interface Category {
   name: string;
   iconName: string;
   color: string;
-  avgCo2Savings: number; // in kg
-  avgWaterSavings: number; // in Liters
+  itemCount: number;
 }
 
 export interface UserProfile {
   id: string;
   phone: string; // Masked: +90 5XX XXX XX XX
   fullName: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   avatarUrl: string;
   city: string;
   district: string;
   memberSince: string;
   bio?: string;
-  /** "Takas Yolculuğum" ekranındaki nihai hedef. */
-  journeyTarget?: string;
+  isAdmin?: boolean;
   interests: CategoryId[];
   wantedCategories: CategoryId[];
   isVerified: boolean;
+  // true ise her girişte şifreden sonra ayrıca SMS/OTP doğrulaması istenir.
+  // Varsayılan false: normal girişte sadece telefon + şifre yeterlidir.
+  smsVerificationEnabled: boolean;
   trustProfile: TrustProfile;
   stats: {
     totalTrades: number;
     activeListings: number;
     completedLoops: number;
-    totalCo2Prevented: number; // kg
-    totalWaterSaved: number; // Liters
-    totalEnergySaved: number; // kWh
-    totalRawMaterialsSaved: number; // kg
     totalItemsReused: number;
     responseRatePercent: number;
     avgResponseTimeMinutes: number;
@@ -76,18 +76,12 @@ export interface TrustProfile {
   positiveHighlights: string[];
 }
 
-export interface EnvironmentalImpact {
-  co2eKg: number;
-  waterLiters: number;
-  energyKwh: number;
-  rawMaterialKg: number;
-  wasteReductionKg: number;
-  reuseCount: number;
-  methodologyVersion: string;
-}
-
 export interface Listing {
   id: string;
+  // SEO-dostu URL için: /ilan/:id yerine /ilan/:slug kullanılır
+  // (örn. "deneme-ilanlari-2"). DB tetikleyicisi ilan oluşturulurken
+  // başlıktan otomatik üretir, bkz. supabase/migrations/20260818180000_add_listing_slugs.sql
+  slug: string;
   userId: string;
   user: {
     id: string;
@@ -106,15 +100,16 @@ export interface Listing {
   location: {
     city: string;
     district: string;
-    /** Kullanıcı konumu ve ilan konumu biliniyorsa hesaplanan mesafe (km). */
-    distanceKm?: number;
+    distanceKm: number;
     safeMeetingPoint?: string;
     lat?: number;
     lng?: number;
   };
-  lookingFor: string; // What the user wants in exchange
+  lookingFor: string; // Serbest metin: "karşılığında ne arıyorum" (insan okuması için)
+  // Yapılandırılmış karşılığı: eşleştirme motorunun okuduğu kategori listesi.
+  // lookingFor'un YERİNE geçmez, onu tamamlar (bkz. rapor md. 20).
+  lookingForCategories: CategoryId[];
   deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
-  estimatedImpact: EnvironmentalImpact;
   status: 'active' | 'in_trade' | 'traded' | 'paused' | 'removed';
   createdAt: string;
   updatedAt: string;
@@ -123,6 +118,36 @@ export interface Listing {
   interestedUsersCount?: number;
   isFavorite?: boolean;
   tags: string[];
+}
+
+// ─── İHTİYAÇ ("Need") ────────────────────────────────────────────────────
+// Swaloop'un temel birimi sadece "elimde ne var" (Listing) değil, "neye
+// ihtiyacım var" (Need) da olmalı — ilanı olmayan bir kullanıcı da bir şey
+// arayabilmeli (bkz. rapor md. 78-82). Bu yüzden Need, Listing'ten AYRI bir
+// nesnedir; DB karşılığı `public.needs` tablosudur.
+export type NeedStatus = 'active' | 'paused' | 'fulfilled';
+
+export interface Need {
+  id: string;
+  userId: string;
+  title: string;
+  categoryId?: CategoryId;
+  note?: string;
+  status: NeedStatus;
+  createdAt: string;
+  updatedAt: string;
+  fulfilledAt?: string;
+}
+
+// Bir ihtiyacın, açık bir ilanla ne kadar örtüştüğü. DİKKAT: bu bir DEĞER
+// karşılaştırması değildir (rapor md. 47) — "bu ürün şu kadar eder" demez,
+// sadece "bu iki tarafın aradığı şeyler birbirini karşılıyor mu" der.
+export interface NeedMatch {
+  need: Need;
+  listing: Listing;
+  // 0-100 arası uyum yüzdesi ve nedenleri (kullanıcıya açıklanabilir olmalı).
+  score: number;
+  reasons: string[];
 }
 
 export type TradeStatus =
@@ -165,7 +190,6 @@ export interface TradeOffer {
   updatedAt: string;
   counterOfferFromId?: string;
   timeline: TradeEvent[];
-  combinedImpact: EnvironmentalImpact;
   isReviewedByInitiator?: boolean;
   isReviewedByReceiver?: boolean;
 }
@@ -240,57 +264,19 @@ export interface Loop {
   totalParticipants: number;
   participants: LoopParticipant[];
   status: 'matching' | 'locked' | 'in_delivery' | 'completed' | 'cancelled';
-  totalImpact: EnvironmentalImpact;
   createdAt: string;
   completedAt?: string;
-}
-
-/** Takas puanının nereden geldiğini gösteren tek bir kalem. */
-export interface PointsBreakdownItem {
-  key: string;
-  label: string;
-  description: string;
-  count: number;
-  points: number;
-}
-
-export interface UserLevel {
-  index: number;
-  title: string;
-  minPoints: number;
-  /** Bir sonraki seviyenin eşiği; en üst seviyede null. */
-  nextPoints: number | null;
-  perk: string;
-}
-
-export interface UserPoints {
-  total: number;
-  level: UserLevel;
-  /** Bir sonraki seviyeye ilerleme yüzdesi (0-100). */
-  progressPercent: number;
-  pointsToNextLevel: number;
-  breakdown: PointsBreakdownItem[];
-}
-
-/** Takas Yolculuğu'ndaki tek bir basamak. */
-export interface JourneyStep {
-  index: number;
-  title: string;
-  imageUrl?: string;
-  co2eKg: number;
-  /** Tamamlanmış bir takastan mı geldi, elindeki ürün mü, yoksa hedef mi? */
-  kind: 'completed' | 'current' | 'target';
-  partnerName?: string;
-  completedAt?: string;
-  listingId?: string;
 }
 
 export interface Badge {
   id: string;
   title: string;
   description: string;
+  // Şimdilik lucide ikon adı değil, doğrudan gösterilecek emoji karakteri
+  // (bkz. src/constants/badges.ts) — küçük rozet setinde bağımlılık eklemeden
+  // renkli/tanınabilir simgeler için tercih edildi.
   iconName: string;
-  category: 'trade' | 'eco' | 'journey' | 'trust';
+  category: 'trade' | 'community' | 'trust' | 'loop';
   isEarned: boolean;
   earnedDate?: string;
   progressPercent: number;
@@ -298,18 +284,156 @@ export interface Badge {
   currentProgress: number;
 }
 
+export interface PaperclipStage {
+  stageNumber: number;
+  itemTitle: string;
+  category: string;
+  image: string;
+  dateCompleted?: string;
+  isCompleted: boolean;
+  isCurrent: boolean;
+}
 
+export interface MysterySwapItem {
+  id: string;
+  title: string;
+  category: CategoryId;
+  hint: string;
+  image: string;
+  ownerName: string;
+  ownerTrustScore: number;
+  location: string;
+}
 
+export interface CommunityPost {
+  id: string;
+  author: UserProfile;
+  title: string;
+  content: string;
+  images?: string[];
+  tradeStory?: {
+    itemGiven: string;
+    itemReceived: string;
+  };
+  likesCount: number;
+  commentsCount: number;
+  isLiked?: boolean;
+  createdAt: string;
+  tags: string[];
+}
 
+export interface CommunityEvent {
+  id: string;
+  title: string;
+  description: string;
+  city: string;
+  district: string;
+  locationName: string;
+  addressDetails: string;
+  date: string;
+  time: string;
+  attendeesCount: number;
+  isAttending?: boolean;
+  organizer: string;
+  imageUrl: string;
+  category: 'swap_party' | 'repair_cafe' | 'meetup';
+}
+
+// DB karşılığı: `public.notifications.type` CHECK constraint'i
+// (bkz. migration 20260820100000). İkisi birebir aynı kalmalı —
+// notificationService testinde doğrulanıyor.
+export type NotificationType =
+  | 'trade_offer'
+  | 'counter_offer'
+  | 'trade_status'
+  | 'need_matched'
+  | 'message'
+  | 'review_request'
+  | 'loop'
+  | 'badge'
+  | 'system';
 
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'trade_offer' | 'trade_status' | 'message' | 'loop' | 'badge' | 'system';
+  type: NotificationType;
   title: string;
   message: string;
   linkUrl: string;
   isRead: boolean;
   createdAt: string;
   thumbnail?: string;
+}
+
+// Takas iptal/ret nedenleri (rapor md. 31). Serbest metin değil sabit küme:
+// bu veri ileride güven sisteminin girdisi olacak. DB karşılığı
+// `public.trade_cancellation_reason` enum'ı.
+export type TradeCancellationReason =
+  | 'item_unavailable'
+  | 'no_agreement'
+  | 'delivery_problem'
+  | 'no_response'
+  | 'other';
+
+export const TRADE_CANCELLATION_REASONS: Array<{
+  id: TradeCancellationReason;
+  label: string;
+}> = [
+  { id: 'item_unavailable', label: 'Ürün artık uygun değil' },
+  { id: 'no_agreement', label: 'Karşı tarafla anlaşamadım' },
+  { id: 'delivery_problem', label: 'Teslimat konusunda sorun oldu' },
+  { id: 'no_response', label: 'Karşı taraf yanıt vermedi' },
+  { id: 'other', label: 'Başka bir sorun' },
+];
+
+export interface Report {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  targetType: 'user' | 'listing' | 'trade' | 'message';
+  targetId: string;
+  targetTitle: string;
+  reason: 'fraud' | 'inappropriate' | 'no_response' | 'broken_item' | 'fake_account' | 'other';
+  description: string;
+  priority: 'low' | 'normal' | 'high' | 'critical';
+  status: 'pending' | 'investigating' | 'resolved' | 'dismissed';
+  evidenceImages?: string[];
+  createdAt: string;
+  resolutionNote?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+}
+
+export interface Dispute {
+  id: string;
+  tradeId: string;
+  initiator: UserProfile;
+  respondent: UserProfile;
+  reason: string;
+  status: 'open' | 'under_review' | 'resolved_return' | 'resolved_cancel' | 'dismissed';
+  evidencePhotos: string[];
+  adminDecision?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface AdminKPI {
+  totalUsers: number;
+  activeUsers: number;
+  totalListings: number;
+  activeTrades: number;
+  completedTrades: number;
+  activeLoops: number;
+  pendingReports: number;
+  userGrowthPercent: number;
+  tradeGrowthPercent: number;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  adminName: string;
+  action: string;
+  target: string;
+  timestamp: string;
+  details: string;
 }

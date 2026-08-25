@@ -1,87 +1,98 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Compass, Repeat, Plus, MessageSquare, User } from 'lucide-react';
+import { Home, Search, Plus, MessageSquare, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-/**
- * Alt gezinme çubuğu — uygulamanın beş ana işi:
- * keşfet · takaslarım · ilan ver · mesajlar · profil.
- */
+// Alt navigasyon (md. 87): Ana Sayfa | Keşfet | + | Mesajlar | Profil
+// Ortadaki "+" belirgin: ilan vermek uygulamanın en değerli eylemi.
 
-const AUTH_PATHS = ['/', '/onboarding', '/giris', '/kayit', '/dogrulama', '/profil-olustur'];
+const HIDDEN_PREFIXES = [
+  '/onboarding',
+  '/kayit',
+  '/dogrulama',
+  '/giris',
+  '/profil-olustur',
+  '/admin',
+];
 
 export const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { unreadNotificationCount } = useApp();
 
-  if (AUTH_PATHS.includes(location.pathname)) return null;
+  const hidden =
+    location.pathname === '/' ||
+    HIDDEN_PREFIXES.some((prefix) => location.pathname.startsWith(prefix));
 
-  const navItems = [
+  if (hidden) return null;
+
+  const items = [
     {
-      id: 'kesfet',
-      label: 'Keşfet',
-      icon: Compass,
+      id: 'home',
+      label: 'Ana Sayfa',
+      icon: Home,
       path: '/kesfet',
-      isActive: (p: string) =>
-        p === '/kesfet' || p.startsWith('/arama') || p.startsWith('/yakinimdakiler') || p.startsWith('/ilan/'),
+      isActive: (p: string) => p === '/kesfet' || p.startsWith('/ilan/'),
     },
     {
-      id: 'takaslarim',
-      label: 'Takaslarım',
-      icon: Repeat,
-      path: '/takaslarim',
+      id: 'search',
+      label: 'Keşfet',
+      icon: Search,
+      path: '/arama',
       isActive: (p: string) =>
-        p.startsWith('/takas') || p.startsWith('/teklif') || p.startsWith('/eslesme') || p.startsWith('/donguler'),
+        p.startsWith('/arama') || p.startsWith('/kategoriler') || p.startsWith('/harita'),
     },
     {
-      id: 'ilan-ver',
+      id: 'create',
       label: 'İlan Ver',
       icon: Plus,
       path: '/ilan-ver',
-      isCenterAction: true,
+      isCenter: true,
       isActive: (p: string) => p === '/ilan-ver',
     },
     {
-      id: 'mesajlar',
+      id: 'messages',
       label: 'Mesajlar',
       icon: MessageSquare,
       path: '/mesajlar',
-      badgeCount: unreadNotificationCount,
+      badge: unreadNotificationCount,
       isActive: (p: string) => p.startsWith('/mesaj'),
     },
     {
-      id: 'profil',
+      id: 'profile',
       label: 'Profil',
       icon: User,
       path: '/profil',
       isActive: (p: string) =>
-        p === '/profil' ||
-        p.startsWith('/profil/duzenle') ||
-        p.startsWith('/puanlarim') ||
-        p.startsWith('/rozetlerim') ||
-        p.startsWith('/etkim'),
+        p.startsWith('/profil') ||
+        p.startsWith('/takaslarim') ||
+        p.startsWith('/aradiklarim') ||
+        p.startsWith('/favoriler'),
     },
   ];
 
   return (
-    <nav className="shrink-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/90 dark:border-stone-800 py-1 px-2 shadow-[0_-2px_12px_rgba(0,0,0,0.04)] safe-area-bottom">
-      <div className="flex items-center justify-around">
-        {navItems.map((item) => {
-          const active = item.isActive(location.pathname);
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-line">
+      <div
+        className="sw-container flex items-stretch justify-between"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        {items.map((item) => {
           const Icon = item.icon;
+          const active = item.isActive(location.pathname);
 
-          if (item.isCenterAction) {
+          if (item.isCenter) {
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="w-12 h-12 -mt-4 rounded-full bg-gradient-to-tr from-emerald-800 via-emerald-700 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-900/30 hover:scale-105 active:scale-95 transition-transform cursor-pointer border-4 border-stone-50 dark:border-stone-950"
-                title={item.label}
                 aria-label={item.label}
+                className="flex-1 flex items-center justify-center py-2 cursor-pointer"
               >
-                <Plus className="w-5 h-5 stroke-[2.5]" />
+                <span className="w-12 h-12 rounded-2xl bg-brand text-white flex items-center justify-center shadow-sm">
+                  <Icon className="w-6 h-6" />
+                </span>
               </button>
             );
           }
@@ -91,21 +102,22 @@ export const BottomNav: React.FC = () => {
               key={item.id}
               type="button"
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors cursor-pointer relative min-w-[56px] ${
-                active
-                  ? 'text-emerald-800 dark:text-emerald-400'
-                  : 'text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300'
+              aria-current={active ? 'page' : undefined}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] cursor-pointer transition-colors ${
+                active ? 'text-brand' : 'text-ink-faint hover:text-ink-soft'
               }`}
             >
-              <div className="relative">
-                <Icon className={`w-5 h-5 ${active ? 'stroke-[2.5]' : 'stroke-2'}`} />
-                {!!item.badgeCount && item.badgeCount > 0 && (
-                  <span className="absolute -top-1 -right-1.5 min-w-3.5 h-3.5 px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-stone-900">
-                    {item.badgeCount > 9 ? '9+' : item.badgeCount}
+              <span className="relative">
+                <Icon className="w-5 h-5" strokeWidth={active ? 2.4 : 2} />
+                {!!item.badge && item.badge > 0 && (
+                  <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">
+                    {item.badge}
                   </span>
                 )}
-              </div>
-              <span className={`text-[10px] tracking-tight mt-0.5 ${active ? 'font-bold' : 'font-medium'}`}>
+              </span>
+              {/* Aktif sekme rengin yanında kalın metinle de belirtiliyor:
+                  renk tek başına durum taşımamalı (md. 98). */}
+              <span className={`text-[10px] ${active ? 'font-bold' : 'font-medium'}`}>
                 {item.label}
               </span>
             </button>

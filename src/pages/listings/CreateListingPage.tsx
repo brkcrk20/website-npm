@@ -1,196 +1,193 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listingService } from '../../services/listingService';
-import { storageService } from '../../services/storageService';
-import { impactService } from '../../services/impactService';
-import { CATEGORIES, CONDITION_LABELS } from '../../constants';
+import { listingService, uploadListingImages } from '../../services/listingService';
+import { supabase } from '../../lib/supabase';
+import { CATEGORIES, CONDITION_OPTIONS } from '../../constants';
 import { CategoryId, ProductCondition } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { ImpactCard } from '../../components/common/ImpactCard';
-import { convertManyToWebp, formatBytes } from '../../utils/image';
-import { getCachedLocation, requestDeviceLocation } from '../../utils/geo';
 import {
   ArrowLeft,
-  ArrowRight,
   Camera,
-  CheckCircle2,
-  Loader2,
-  MapPin,
-  ShieldCheck,
-  Sparkles,
   X,
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
-
-const MAX_IMAGES = 6;
-/** Dönüştürmeden ÖNCEKİ dosya sınırı — WebP'e çevrilince zaten çok küçülür. */
-const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
-
-interface PreparedImage {
-  /** Yüklenecek WebP dosyası. */
-  file: File;
-  /** Önizleme için object URL. */
-  previewUrl: string;
-  originalBytes: number;
-  bytes: number;
-}
-
-const CONDITION_HINTS: Record<ProductCondition, string> = {
-  zero: 'Kutusu açılmamış, hiç kullanılmamış',
-  like_new: 'Kusursuz, çiziksiz durumda',
-  very_good: 'Çok az kullanılmış, temiz',
-  good: 'Normal kullanım izleri var',
-  acceptable: 'Çalışır durumda, yıpranmış',
-};
 
 export const CreateListingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, showToast, refreshScorecard } = useApp();
-
+  const { currentUser, showToast } = useApp();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
+  // Form State
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState<CategoryId>('electronics');
   const [description, setDescription] = useState('');
-  const [condition, setCondition] = useState<ProductCondition>('very_good');
-  const [lookingFor, setLookingFor] = useState('');
-  const [deliveryOptions, setDeliveryOptions] = useState<('in_person' | 'cargo' | 'safe_point')[]>([
-    'in_person',
-  ]);
-  const [city, setCity] = useState(currentUser.city);
-  const [district, setDistrict] = useState(currentUser.district);
 
-  const [images, setImages] = useState<PreparedImage[]>([]);
-  const [isPreparingImages, setIsPreparingImages] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [publishStatus, setPublishStatus] = useState('');
-
+  // images: ekranda gösterilen önizleme URL'leri (gerçek dosya seçilirse
+  // geçici bir object URL, örnek görsel seçilirse doğrudan uzak URL).
+  // imageFiles: images ile AYNI INDEX'te — o slot gerçek bir dosyaysa
+  // File objesini tutar, örnek görselse null'dur. Yayınlarken sadece
+  // File olan slotlar Supabase Storage'a gerçekten yüklenir.
+  const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<(File | null)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Object URL'leri sızdırmamak için bileşen kaldırılırken serbest bırak.
-  const imagesRef = useRef(images);
-  imagesRef.current = images;
+  // Bileşen unmount olduğunda kullanılmayan object URL'leri bellekten temizle
+  useEffect(() => {
+    return () => {
+      images.forEach((img, idx) => {
+        if (imageFiles[idx]) URL.revokeObjectURL(img);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(
-    () => () => {
-      imagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
-    },
-    []
-  );
+  const [condition, setCondition] = useState<ProductCondition>('very_good');
+  const [lookingFor, setLookingFor] = useState('');
+  // Yapılandırılmış "arıyorum" (rapor md. 20-21): serbest metnin yanında,
+  // eşleştirme motorunun okuyabildiği kategori listesi. Kullanıcı birden
+  // fazla kategori seçebilir; zorunlu değildir.
+  const [lookingForCategories, setLookingForCategories] = useState<CategoryId[]>([]);
+  const [deliveryOptions, setDeliveryOptions] = useState<('in_person' | 'cargo' | 'safe_point')[]>([
+    'in_person',
+    'safe_point',
+  ]);
 
-  const liveImpact = impactService.calculateEstimatedImpact(categoryId, condition);
+  const handleAddSampleImage = (url: string) => {
+    if (images.length >= 6) {
+      showToast('Limit Aşıldı', 'En fazla 6 görsel ekleyebilirsiniz.', 'warning');
+      return;
+    }
+    setImages((prev) => [...prev, url]);
+    setImageFiles((prev) => [...prev, null]);
+  };
 
-  /**
-   * Seçilen fotoğrafları HEMEN WebP'e çevirir. Dönüşüm burada, yayınlama
-   * anında değil yapılıyor; böylece kullanıcı "yayınla"ya bastığında
-   * yüklenecek dosyalar hazır ve küçük oluyor.
-   */
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(event.target.files ?? []);
-    event.target.value = '';
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    e.target.value = ''; // aynı dosyayı tekrar seçebilmek için input'u sıfırla
 
     if (!selected.length) return;
 
-    const remainingSlots = MAX_IMAGES - images.length;
-
+    const remainingSlots = 6 - images.length;
     if (remainingSlots <= 0) {
-      showToast('Limit doldu', `En fazla ${MAX_IMAGES} fotoğraf ekleyebilirsin.`, 'warning');
+      showToast('Limit Aşıldı', 'En fazla 6 görsel ekleyebilirsiniz.', 'warning');
       return;
     }
 
-    const oversized = selected.filter((file) => file.size > MAX_SOURCE_BYTES);
-    if (oversized.length) {
-      showToast('Çok büyük dosya', `${oversized[0].name} 20 MB sınırını aşıyor.`, 'warning');
+    const oversized = selected.find((f) => f.size > 5 * 1024 * 1024);
+    if (oversized) {
+      showToast('Dosya Çok Büyük', `${oversized.name} 5MB sınırını aşıyor.`, 'warning');
     }
 
-    const valid = selected
-      .filter((file) => file.type.startsWith('image/') && file.size <= MAX_SOURCE_BYTES)
+    const validFiles = selected
+      .filter((f) => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024)
       .slice(0, remainingSlots);
 
-    if (!valid.length) return;
+    if (!validFiles.length) return;
 
-    setIsPreparingImages(true);
-    const converted = await convertManyToWebp(valid);
-    setIsPreparingImages(false);
-
-    setImages((prev) => [
-      ...prev,
-      ...converted.map((item) => ({
-        file: item.file,
-        previewUrl: URL.createObjectURL(item.file),
-        originalBytes: item.originalBytes,
-        bytes: item.bytes,
-      })),
-    ]);
+    const previews = validFiles.map((f) => URL.createObjectURL(f));
+    setImages((prev) => [...prev, ...previews]);
+    setImageFiles((prev) => [...prev, ...validFiles]);
   };
 
   const handleRemoveImage = (index: number) => {
     setImages((prev) => {
-      URL.revokeObjectURL(prev[index].previewUrl);
+      if (imageFiles[index]) URL.revokeObjectURL(prev[index]);
       return prev.filter((_, i) => i !== index);
     });
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleToggleDelivery = (option: 'in_person' | 'cargo' | 'safe_point') => {
-    setDeliveryOptions((prev) => {
-      if (prev.includes(option)) {
-        // En az bir teslimat yöntemi seçili kalmalı.
-        return prev.length > 1 ? prev.filter((item) => item !== option) : prev;
-      }
-      return [...prev, option];
-    });
+  const handleToggleDelivery = (opt: 'in_person' | 'cargo' | 'safe_point') => {
+    setDeliveryOptions((prev) =>
+      prev.includes(opt)
+        ? prev.length > 1
+          ? prev.filter((o) => o !== opt)
+          : prev
+        : [...prev, opt]
+    );
   };
+
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
   const handlePublish = async () => {
-    if (!title.trim() || !lookingFor.trim() || !images.length) {
-      showToast('Eksik bilgi', 'Başlık, en az bir fotoğraf ve aradığın ürün zorunlu.', 'warning');
+    if (!title.trim() || !lookingFor.trim() || images.length === 0) {
+      showToast('Eksik Bilgi', 'Lütfen tüm zorunlu alanları doldurun.', 'warning');
       return;
     }
 
     setIsPublishing(true);
-    setPublishStatus('Fotoğraflar yükleniyor...');
 
-    const uploads = await storageService.uploadListingImages(images.map((image) => image.file));
-    const uploadedUrls = uploads.filter((item): item is NonNullable<typeof item> => !!item);
+    // Gerçek dosya seçilen slotları Supabase Storage'a yükle; örnek
+    // görsel seçilen slotlar (imageFiles[i] === null) olduğu gibi kalır.
+    let finalImages = images;
+    const pendingFiles = imageFiles.filter((f): f is File => f !== null);
 
-    if (!uploadedUrls.length) {
-      setIsPublishing(false);
-      setPublishStatus('');
-      showToast(
-        'Fotoğraflar yüklenemedi',
-        'Oturumun sona ermiş olabilir. Çıkış yapıp tekrar giriş yapmayı dene.',
-        'error'
-      );
-      return;
+    if (pendingFiles.length > 0) {
+      const { data: authData } = await supabase.auth.getUser();
+
+      if (!authData.user) {
+        setIsPublishing(false);
+        showToast(
+          'Oturum Sona Ermiş',
+          'Fotoğraf yüklemek için tekrar giriş yapmanız gerekiyor. Lütfen çıkış yapıp telefon numaranızla tekrar giriş yapın.',
+          'error'
+        );
+        return;
+      }
+
+      setIsUploadingPhotos(true);
+      const uploadResults = await uploadListingImages(currentUser.id, pendingFiles);
+      setIsUploadingPhotos(false);
+
+      let uploadIdx = 0;
+      const merged: string[] = [];
+      images.forEach((img, i) => {
+        if (imageFiles[i]) {
+          const uploadedUrl = uploadResults[uploadIdx];
+          uploadIdx++;
+          if (uploadedUrl) merged.push(uploadedUrl);
+          // uploadedUrl null ise (yükleme başarısız oldu) bu fotoğraf atlanır
+        } else {
+          merged.push(img);
+        }
+      });
+
+      const failedCount = pendingFiles.length - uploadResults.filter(Boolean).length;
+      if (failedCount > 0) {
+        showToast(
+          'Bazı Fotoğraflar Yüklenemedi',
+          `${failedCount} fotoğraf yüklenemedi, ilan geri kalan fotoğraflarla yayınlanıyor.`,
+          'warning'
+        );
+      }
+
+      if (merged.length === 0) {
+        setIsPublishing(false);
+        showToast('Hata', 'Hiçbir fotoğraf yüklenemedi. Lütfen tekrar deneyin.', 'error');
+        return;
+      }
+
+      finalImages = merged;
     }
 
-    if (uploadedUrls.length < images.length) {
-      showToast(
-        'Bazı fotoğraflar yüklenemedi',
-        `${images.length - uploadedUrls.length} fotoğraf atlandı, ilan diğerleriyle yayınlanıyor.`,
-        'warning'
-      );
-    }
-
-    setPublishStatus('İlan yayınlanıyor...');
-
-    // Konum izni verilmişse ilanın koordinatı da kaydedilir; böylece
-    // "yakınımdakiler" listesi gerçek mesafeye göre çalışır.
-    const coords = getCachedLocation();
-
-    const listing = await listingService.createListing({
+    const newListing = await listingService.createListing({
       userId: currentUser.id,
-      title: title.trim(),
-      description: description.trim() || `${title.trim()} takasa uygun durumda.`,
+      title,
+      description: description || `${title} temiz durumda, takasa uygundur.`,
       categoryId,
+      images: finalImages,
       condition,
-      images: uploadedUrls.map((item) => item.url),
-      lookingFor: lookingFor.trim(),
+      lookingFor,
+      lookingForCategories,
       deliveryOptions,
       location: {
-        city: city.trim() || currentUser.city,
-        district: district.trim() || currentUser.district,
-        lat: coords?.lat,
-        lng: coords?.lng,
+        city: currentUser.city,
+        district: currentUser.district,
+        distanceKm: 0.8,
       },
       user: {
         id: currentUser.id,
@@ -204,113 +201,81 @@ export const CreateListingPage: React.FC = () => {
     });
 
     setIsPublishing(false);
-    setPublishStatus('');
 
-    if (!listing) {
-      showToast('Yayınlanamadı', 'İlan kaydedilirken bir sorun oluştu. Tekrar dene.', 'error');
+    if (!newListing) {
+      showToast('Hata', 'İlan yayınlanırken bir sorun oluştu. Lütfen tekrar deneyin.', 'error');
       return;
     }
 
-    refreshScorecard();
-    showToast('İlanın yayında! 🎉', 'Takas teklifleri gelmeye başlayabilir.', 'success');
-    navigate(`/ilan/${listing.id}`, { replace: true });
+    showToast('İlanın Yayında! 🎉', 'Sana uygun takas teklifleri bekleyebilirsin.', 'success');
+    navigate(`/ilan/${newListing.slug || newListing.id}`);
   };
 
-  const savedBytes = images.reduce((sum, image) => sum + (image.originalBytes - image.bytes), 0);
-
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
-      <div className="px-4 pt-3 space-y-4">
+    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
+      <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-5">
+        {/* Header & Step progress */}
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => (step > 1 ? setStep((prev) => (prev - 1) as 1 | 2) : navigate(-1))}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-            aria-label="Geri"
+            onClick={() => {
+              if (step > 1) setStep((prev) => (prev - 1) as 1 | 2);
+              else navigate(-1);
+            }}
+            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-
-          <div className="flex items-center gap-1">
-            {[1, 2, 3].map((index) => (
-              <span
-                key={index}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === step
-                    ? 'w-6 bg-emerald-700'
-                    : index < step
-                      ? 'w-3 bg-emerald-400'
-                      : 'w-3 bg-stone-200 dark:bg-stone-800'
-                }`}
-              />
-            ))}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              Adım {step} / 3
+            </span>
           </div>
         </div>
 
-        {/* 1. Adım: fotoğraf + temel bilgi */}
+        {/* STEP 1: Photos & Basic Info */}
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-xl font-extrabold">Ne takas etmek istiyorsun?</h1>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Fotoğraflar otomatik olarak WebP'e çevrilir; yükleme saniyeler sürer.
+              <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
+                Ne Takas Etmek İstiyorsun?
+              </h1>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Kullanmadığın ürünün fotoğraflarını ve temel bilgilerini ekle.
               </p>
             </div>
 
-            <section className="bg-white dark:bg-stone-900 rounded-3xl p-4 border border-stone-200 dark:border-stone-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  Fotoğraflar ({images.length}/{MAX_IMAGES})
-                </label>
-                {savedBytes > 0 && (
-                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                    {formatBytes(savedBytes)} tasarruf edildi
-                  </span>
-                )}
-              </div>
+            {/* Images Grid */}
+            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-600">
+                Ürün Fotoğrafları ({images.length}/6)
+              </label>
 
               <div className="grid grid-cols-3 gap-2">
-                {images.map((image, index) => (
+                {images.map((img, idx) => (
                   <div
-                    key={image.previewUrl}
-                    className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700"
+                    key={idx}
+                    className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 group"
                   >
-                    <img
-                      src={image.previewUrl}
-                      alt={`Fotoğraf ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {index === 0 && (
-                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md bg-emerald-700 text-white text-[9px] font-bold">
-                        Kapak
-                      </span>
-                    )}
+                    <img src={img} alt="Product preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-stone-950/70 text-white flex items-center justify-center hover:bg-rose-600 transition-colors cursor-pointer"
-                      aria-label="Fotoğrafı kaldır"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-stone-950/70 text-white flex items-center justify-center hover:bg-rose-600 transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
 
-                {images.length < MAX_IMAGES && (
+                {images.length < 6 && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isPreparingImages}
-                    className="aspect-square rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-emerald-600 bg-stone-50 dark:bg-stone-800/50 flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer disabled:opacity-60"
+                    className="relative aspect-square rounded-2xl border-2 border-dashed border-stone-300 hover:border-emerald-600 bg-stone-50 flex flex-col items-center justify-center text-center p-2 transition-colors cursor-pointer"
                   >
-                    {isPreparingImages ? (
-                      <Loader2 className="w-5 h-5 text-stone-400 animate-spin" />
-                    ) : (
-                      <Camera className="w-5 h-5 text-stone-400" />
-                    )}
-                    <span className="text-[10px] font-semibold text-stone-500">
-                      {isPreparingImages ? 'Hazırlanıyor' : 'Fotoğraf ekle'}
-                    </span>
+                    <Camera className="w-6 h-6 text-stone-400 mb-1" />
+                    <span className="text-[10px] font-semibold text-stone-500">Fotoğraf Ekle</span>
                   </button>
                 )}
               </div>
@@ -318,271 +283,306 @@ export const CreateListingPage: React.FC = () => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp,image/gif"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
               />
 
-              <p className="text-[11px] text-stone-400">
-                İlk fotoğraf kapak görseli olur. İyi ışıkta, ürünü ortalayarak çek.
-              </p>
-            </section>
+              {/* Sample Quick Pick Presets */}
+              <div className="pt-2">
+                <span className="text-[11px] font-semibold text-stone-400 block mb-1.5">
+                  Örnek Ürün Görselleri:
+                </span>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {[
+                    {
+                      label: '💻 Laptop',
+                      url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500',
+                    },
+                    {
+                      label: '📷 Fotoğraf Mak.',
+                      url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500',
+                    },
+                    {
+                      label: '🚲 Bisiklet',
+                      url: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500',
+                    },
+                    {
+                      label: '🎸 Gitar',
+                      url: 'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?w=500',
+                    },
+                    {
+                      label: '📚 Kitap Seti',
+                      url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500',
+                    },
+                  ].map((preset, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleAddSampleImage(preset.url)}
+                      className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[11px] font-medium text-stone-700 whitespace-nowrap transition-colors"
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-            <section className="bg-white dark:bg-stone-900 rounded-3xl p-4 border border-stone-200 dark:border-stone-800 space-y-3">
+            {/* Title & Category */}
+            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-4">
               <div>
-                <label htmlFor="title" className="block text-xs font-bold mb-1.5">
-                  İlan başlığı *
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                  İlan Başlığı *
                 </label>
                 <input
-                  id="title"
                   type="text"
                   value={title}
-                  maxLength={80}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Örn: Apple Watch Series 7 45mm"
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
                 />
               </div>
 
               <div>
-                <label htmlFor="category" className="block text-xs font-bold mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
                   Kategori *
                 </label>
                 <select
-                  id="category"
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value as CategoryId)}
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
                 >
-                  {CATEGORIES.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-xs font-bold mb-1.5">
-                  Açıklama
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                  Açıklama (Opsiyonel)
                 </label>
                 <textarea
-                  id="description"
                   value={description}
-                  rows={3}
-                  maxLength={600}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Kutusu var mı, aksesuarları neler, bilinen bir kusuru var mı?"
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm resize-none"
+                  placeholder="Ürünün durumu, kutusu, aksesuarları hakkında bilgi verin..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-xs sm:text-sm font-medium"
                 />
               </div>
-            </section>
+            </div>
 
             <button
               type="button"
-              disabled={!title.trim() || images.length === 0 || isPreparingImages}
+              disabled={!title.trim() || images.length === 0}
               onClick={() => setStep(2)}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
-              Devam et
+              <span>Sonraki Adım: Takas Tercihleri</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* 2. Adım: durum, aranan ürün, teslimat */}
+        {/* STEP 2: Condition & Looking For & Delivery */}
         {step === 2 && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-xl font-extrabold">Takas tercihlerin</h1>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Karşılığında ne aradığını net yazarsan doğru teklifler gelir.
+              <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
+                Kondisyon & Aradığın Ürün
+              </h1>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Karşılığında ne takas etmek istediğini belirt.
               </p>
             </div>
 
-            <section className="bg-white dark:bg-stone-900 rounded-3xl p-4 border border-stone-200 dark:border-stone-800 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                Ürün durumu
+            {/* Condition Selection */}
+            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700">
+                Ürün Kondisyonu
               </label>
 
-              <div className="space-y-2">
-                {(Object.keys(CONDITION_HINTS) as ProductCondition[]).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setCondition(key)}
-                    className={`w-full p-3 rounded-2xl border-2 text-left transition-colors cursor-pointer ${
-                      condition === key
-                        ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40'
-                        : 'border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800'
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {CONDITION_OPTIONS.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => setCondition(c.id as ProductCondition)}
+                    className={`p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                      condition === c.id
+                        ? 'border-emerald-600 bg-emerald-50/60'
+                        : 'border-stone-200 hover:bg-stone-50'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">{CONDITION_LABELS[key]}</span>
-                      {condition === key && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                      <span className="text-xs font-bold text-stone-900">{c.title}</span>
+                      {condition === c.id && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      )}
                     </div>
-                    <span className="text-[11px] text-stone-500 dark:text-stone-400">
-                      {CONDITION_HINTS[key]}
-                    </span>
-                  </button>
+                    <span className="text-[11px] text-stone-500 block mt-0.5">{c.desc}</span>
+                  </div>
                 ))}
               </div>
-            </section>
+            </div>
 
-            <section className="bg-white dark:bg-stone-900 rounded-3xl p-4 border border-stone-200 dark:border-stone-800 space-y-3">
+            {/* Looking For Input */}
+            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
               <div>
-                <label htmlFor="lookingFor" className="block text-xs font-bold mb-1.5">
-                  Karşılığında ne istiyorsun? *
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                  Ne ile Takas Etmek İstersin? *
                 </label>
                 <input
-                  id="lookingFor"
                   type="text"
                   value={lookingFor}
-                  maxLength={120}
                   onChange={(e) => setLookingFor(e.target.value)}
-                  placeholder="Örn: Bisiklet, Nintendo Switch veya benzeri tablet"
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                  placeholder="Örn: Bisiklet, Nintendo Switch veya tablet"
+                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
                 />
+                <span className="text-[11px] text-stone-400 block mt-1">
+                  İpucu: Net ifadeler yazarsan akıllı algoritmamız sana uygun takasları daha hızlı
+                  önerir.
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label htmlFor="listing-city" className="block text-xs font-bold mb-1.5">
-                    İl
-                  </label>
-                  <input
-                    id="listing-city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm"
-                  />
+              {/* Aradığın kategoriler — rapor md. 20-21. Serbest metin insan
+                  için, bu liste eşleştirme motoru için. */}
+              <div>
+                <span className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                  Aradığın Kategoriler
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORIES.map((cat) => {
+                    const selected = lookingForCategories.includes(cat.id);
+
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setLookingForCategories((prev) =>
+                            prev.includes(cat.id)
+                              ? prev.filter((id) => id !== cat.id)
+                              : [...prev, cat.id]
+                          )
+                        }
+                        className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                          selected
+                            ? 'bg-emerald-700 border-emerald-700 text-white'
+                            : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-emerald-600'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div>
-                  <label htmlFor="listing-district" className="block text-xs font-bold mb-1.5">
-                    İlçe
-                  </label>
-                  <input
-                    id="listing-district"
-                    value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm"
-                  />
-                </div>
+                <span className="text-[11px] text-stone-400 block mt-1.5">
+                  Birden fazla seçebilirsin. Seçmezsen sadece yazdığın metne göre eşleştirilir.
+                </span>
               </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  const coords = await requestDeviceLocation();
-                  showToast(
-                    coords ? 'Konum eklendi' : 'Konum alınamadı',
-                    coords
-                      ? 'İlanın mesafesi karşı tarafta doğru görünecek.'
-                      : 'İzin verilmedi; ilan yine de yayınlanabilir.',
-                    coords ? 'success' : 'warning'
-                  );
-                }}
-                className="w-full py-2 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-              >
-                <MapPin className="w-3.5 h-3.5 text-emerald-700" />
-                Konumumu ilana ekle (isteğe bağlı)
-              </button>
-            </section>
-
-            <section className="bg-white dark:bg-stone-900 rounded-3xl p-4 border border-stone-200 dark:border-stone-800 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                Teslimat
+            {/* Delivery Methods */}
+            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700">
+                Teslimat Tercihleri
               </label>
 
-              <div className="grid grid-cols-1 gap-2">
-                {(
-                  [
-                    { id: 'in_person', title: 'Elden teslim', hint: 'Yüz yüze buluşarak' },
-                    { id: 'safe_point', title: 'Güvenli nokta', hint: 'Kamera/güvenlik olan yerler' },
-                    { id: 'cargo', title: 'Kargo', hint: 'Karşılıklı gönderim' },
-                  ] as const
-                ).map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => handleToggleDelivery(option.id)}
-                    className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-colors cursor-pointer ${
-                      deliveryOptions.includes(option.id)
-                        ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40'
-                        : 'border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800'
-                    }`}
-                  >
-                    <span className="text-left">
-                      <span className="text-xs font-bold block">{option.title}</span>
-                      <span className="text-[10px] text-stone-500 dark:text-stone-400">
-                        {option.hint}
-                      </span>
-                    </span>
-                    {deliveryOptions.includes(option.id) && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    )}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-2">
+                <div
+                  onClick={() => handleToggleDelivery('in_person')}
+                  className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                    deliveryOptions.includes('in_person')
+                      ? 'border-emerald-600 bg-emerald-50/60'
+                      : 'border-stone-200 hover:bg-stone-50'
+                  }`}
+                >
+                  <div>
+                    <span className="text-xs font-bold block text-stone-900">Elden Buluşma</span>
+                    <span className="text-[10px] text-stone-500">Güvenli noktalarda</span>
+                  </div>
+                  {deliveryOptions.includes('in_person') && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  )}
+                </div>
+
+                <div
+                  onClick={() => handleToggleDelivery('cargo')}
+                  className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                    deliveryOptions.includes('cargo')
+                      ? 'border-emerald-600 bg-emerald-50/60'
+                      : 'border-stone-200 hover:bg-stone-50'
+                  }`}
+                >
+                  <div>
+                    <span className="text-xs font-bold block text-stone-900">Kargo ile</span>
+                    <span className="text-[10px] text-stone-500">Alıcı / Gönderici</span>
+                  </div>
+                  {deliveryOptions.includes('cargo') && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  )}
+                </div>
               </div>
-            </section>
+            </div>
 
             <button
               type="button"
               disabled={!lookingFor.trim()}
               onClick={() => setStep(3)}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
-              Son adım: önizleme
+              <span>Sonraki Adım: Onayla & Yayınla</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* 3. Adım: önizleme ve yayınla */}
+        {/* STEP 3: Confirm & Publish */}
         {step === 3 && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-xl font-extrabold">Önizleme & yayınla</h1>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                Bu ürünü dolaşıma soktuğunda doğaya kazandıracağın fayda:
+              <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
+                Onayla & Yayınla
+              </h1>
+              <p className="text-xs text-stone-500 mt-0.5">
+                İlanını son bir kez kontrol et ve takasa hazır hale getir.
               </p>
             </div>
 
-            <ImpactCard impact={liveImpact} variant="detailed" />
-
-            <section className="bg-white dark:bg-stone-900 rounded-3xl p-4 border border-stone-200 dark:border-stone-800 space-y-3">
+            {/* Listing Summary Preview Box */}
+            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
               <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
-                İlan özeti
+                İlan Özeti
               </span>
 
               <div className="flex gap-3 items-center">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0">
-                  {images[0] && (
-                    <img src={images[0].previewUrl} alt={title} className="w-full h-full object-cover" />
-                  )}
+                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-stone-100 shrink-0">
+                  <img src={images[0]} alt="Product" className="w-full h-full object-cover" />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold truncate">{title}</h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
-                    İstediğin:{' '}
-                    <span className="font-semibold text-emerald-800 dark:text-emerald-400">
-                      {lookingFor}
-                    </span>
+                <div>
+                  <h3 className="text-sm font-bold text-stone-900">{title}</h3>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    İstenen: <span className="font-semibold text-emerald-900">{lookingFor}</span>
                   </p>
-                  <span className="text-[11px] text-stone-400 block">
-                    {[district, city].filter(Boolean).join(', ')} · {CONDITION_LABELS[condition]}
+                  <span className="text-[11px] text-stone-400 block mt-0.5">
+                    {currentUser.district}, {currentUser.city}
                   </span>
                 </div>
               </div>
-            </section>
+            </div>
 
-            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs text-emerald-950 dark:text-emerald-200 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+            {/* Zero Cash Reminder */}
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
               <div>
-                <strong className="block font-bold">Nakit yok, sadece takas</strong>
-                Swaloop'ta para transferi yapılmaz. Ürünü teslim ettiğinde karşı tarafın onayıyla
-                takas tamamlanır.
+                <strong className="block font-bold">Nakit Para Olmadan Takas Güvencesi</strong>
+                Swaloop'ta para transferi yapılmaz. Ürününü teslim ettiğinde karşı tarafın da onayını
+                alarak güvenle takasını tamamlarsın.
               </div>
             </div>
 
@@ -590,14 +590,16 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               onClick={handlePublish}
               disabled={isPublishing}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base shadow-lg flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60"
             >
-              {isPublishing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Sparkles className="w-5 h-5 text-amber-300" />
-              )}
-              <span>{isPublishing ? publishStatus : 'İlanı ücretsiz yayınla'}</span>
+              <Sparkles className="w-5 h-5 text-amber-300" />
+              <span>
+                {isUploadingPhotos
+                  ? 'Fotoğraflar yükleniyor...'
+                  : isPublishing
+                  ? 'Yayınlanıyor...'
+                  : 'İlanı Ücretsiz Yayınla'}
+              </span>
             </button>
           </div>
         )}

@@ -1,165 +1,107 @@
+import { NotificationItem, NotificationType } from '../types';
 import { supabase } from '../lib/supabase';
-import { NotificationItem } from '../types';
 
-/**
- * Bildirimler.
- *
- * Önceden bu liste `mockData.INITIAL_NOTIFICATIONS` içindeki üç sabit
- * satırdı — kullanıcının gerçek durumuyla hiçbir ilgisi yoktu. Artık
- * bildirimler her açılışta canlı veriden türetiliyor:
- *
- *   • sana gelen ve hâlâ yanıtlanmamış takas teklifleri,
- *   • senin gönderdiğin tekliflerin kabul/red edilmesi,
- *   • okunmamış mesajlar.
- *
- * DB'de ayrı bir `notifications` tablosu yok; "okundu" bilgisi cihazda
- * (localStorage) tutuluyor. Bu bilinçli bir tercih: bildirim satırlarını
- * kalıcı olarak saklamak, üretilebilir bir veriyi ikinci kez yazmak
- * anlamına gelirdi ve tekliflerle senkron kalması gerekirdi.
- */
+// ─────────────────────────────────────────────────────────────────────────
+// BİLDİRİM SERVİSİ (rapor md. 44-45)
+//
+// Bildirimler bugüne kadar `INITIAL_NOTIFICATIONS` adlı sabit bir mock
+// listeydi; gerçek olaylardan hiç tetiklenmiyordu (bkz. rapor.txt §2).
+// Artık `public.notifications` tablosunu okuyoruz; satırları DB trigger'ları
+// üretiyor (migration 20260820100000):
+//   yeni teklif · karşı teklif · kabul/ret/süre doldu · takas durumu ·
+//   yeni mesaj · "aradığın bir ürün eklendi"
+//
+// Bildirim ÜRETİMİ bilinçli olarak istemcide değil DB'de: teklif hangi
+// ekrandan gönderilirse gönderilsin bildirim garanti oluşur ve kullanıcı
+// başkasına sahte bildirim yazamaz (notifications tablosunda INSERT
+// politikası yok).
+// ─────────────────────────────────────────────────────────────────────────
 
-const READ_STORAGE_KEY = 'swaloop_read_notifications';
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  link_url: string | null;
+  is_read: boolean;
+  created_at: string;
+};
 
-function readIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(READ_STORAGE_KEY);
-    return new Set<string>(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function persistReadIds(ids: Set<string>) {
-  try {
-    // Liste sonsuza kadar büyümesin: en son 200 kayıt yeter.
-    localStorage.setItem(READ_STORAGE_KEY, JSON.stringify([...ids].slice(-200)));
-  } catch {
-    // Depolama kapalıysa bildirimler sadece okunmamış görünür; kritik değil.
-  }
-}
-
-function relativeTime(iso: string): string {
+function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diffMs / 60000);
+  const minutes = Math.floor(diffMs / 60000);
 
-  if (minutes < 1) return 'az önce';
+  if (minutes < 1) return 'Az önce';
   if (minutes < 60) return `${minutes} dk önce`;
 
-  const hours = Math.round(minutes / 60);
+  const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} saat önce`;
 
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days} gün önce`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} gün önce`;
 
   return new Date(iso).toLocaleDateString('tr-TR');
 }
 
+export function mapNotification(row: NotificationRow): NotificationItem {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type as NotificationType,
+    title: row.title,
+    message: row.message,
+    linkUrl: row.link_url ?? '',
+    isRead: row.is_read,
+    createdAt: formatRelativeTime(row.created_at),
+  };
+}
+
 export const notificationService = {
-  markAsRead(id: string) {
-    const ids = readIds();
-    ids.add(id);
-    persistReadIds(ids);
+  async getUserNotifications(userId: string, limit = 50): Promise<NotificationItem[]> {
+    if (!userId || userId.length < 30) return [];
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Bildirimler alınamadı:', error);
+      return [];
+    }
+
+    return (data as unknown as NotificationRow[]).map(mapNotification);
   },
 
-  markAllAsRead(items: NotificationItem[]) {
-    const ids = readIds();
-    items.forEach((item) => ids.add(item.id));
-    persistReadIds(ids);
+  async markAsRead(notificationId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId);
+
+    if (error) {
+      console.error('Bildirim okundu işaretlenemedi:', error);
+      return false;
+    }
+
+    return true;
   },
 
-  async getNotifications(userId: string): Promise<NotificationItem[]> {
-    if (!userId) return [];
+  async markAllAsRead(userId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
 
-    const [incomingResult, outgoingResult, conversationsResult] = await Promise.all([
-      supabase
-        .from('trade_offers')
-        .select('id, created_at, status, sender:profiles!trade_offers_sender_id_fkey(full_name, avatar_url)')
-        .eq('receiver_id', userId)
-        .in('status', ['offer_sent', 'counter_offered'])
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('trade_offers')
-        .select('id, updated_at, status, receiver:profiles!trade_offers_receiver_id_fkey(full_name, avatar_url)')
-        .eq('sender_id', userId)
-        .in('status', ['accepted', 'rejected'])
-        .order('updated_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('conversations')
-        .select('id')
-        .or(`participant_one_id.eq.${userId},participant_two_id.eq.${userId}`),
-    ]);
-
-    const items: NotificationItem[] = [];
-
-    for (const row of (incomingResult.data ?? []) as any[]) {
-      items.push({
-        id: `offer-in-${row.id}`,
-        userId,
-        type: 'trade_offer',
-        title: 'Yeni takas teklifi',
-        message: `${row.sender?.full_name ?? 'Bir kullanıcı'} sana takas teklifi gönderdi.`,
-        linkUrl: `/teklif/${row.id}`,
-        isRead: false,
-        createdAt: row.created_at,
-        thumbnail: row.sender?.avatar_url ?? undefined,
-      });
+    if (error) {
+      console.error('Bildirimler okundu işaretlenemedi:', error);
+      return false;
     }
 
-    for (const row of (outgoingResult.data ?? []) as any[]) {
-      const accepted = row.status === 'accepted';
-      items.push({
-        id: `offer-out-${row.id}-${row.status}`,
-        userId,
-        type: 'trade_status',
-        title: accepted ? 'Teklifin kabul edildi 🎉' : 'Teklifin reddedildi',
-        message: accepted
-          ? `${row.receiver?.full_name ?? 'Karşı taraf'} teklifini kabul etti. Teslimatı planlayabilirsin.`
-          : `${row.receiver?.full_name ?? 'Karşı taraf'} teklifini reddetti. Başka bir teklif deneyebilirsin.`,
-        linkUrl: `/teklif/${row.id}`,
-        isRead: false,
-        createdAt: row.updated_at,
-        thumbnail: row.receiver?.avatar_url ?? undefined,
-      });
-    }
-
-    const conversationIds = (conversationsResult.data ?? []).map((c: any) => c.id);
-
-    if (conversationIds.length) {
-      const { data: messageRows } = await supabase
-        .from('messages')
-        .select('id, conversation_id, content, created_at, sender:profiles!messages_sender_id_fkey(full_name, avatar_url)')
-        .in('conversation_id', conversationIds)
-        .neq('sender_id', userId)
-        .eq('is_read', false)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      for (const row of (messageRows ?? []) as any[]) {
-        items.push({
-          id: `message-${row.id}`,
-          userId,
-          type: 'message',
-          title: `${row.sender?.full_name ?? 'Yeni mesaj'}`,
-          message: row.content,
-          linkUrl: `/mesajlar/${row.conversation_id}`,
-          isRead: false,
-          createdAt: row.created_at,
-          thumbnail: row.sender?.avatar_url ?? undefined,
-        });
-      }
-    }
-
-    const read = readIds();
-
-    return items
-      .map((item) => ({ ...item, isRead: read.has(item.id) }))
-      // Önce okunmamışlar, her grup kendi içinde en yeniden eskiye.
-      .sort((a, b) => {
-        if (a.isRead !== b.isRead) return Number(a.isRead) - Number(b.isRead);
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      })
-      .map((item) => ({ ...item, createdAt: relativeTime(item.createdAt) }));
+    return true;
   },
 };

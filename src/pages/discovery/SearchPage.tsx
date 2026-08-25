@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { listingService } from '../../services/listingService';
+import { needService, NeedSeeker } from '../../services/needService';
+import { useApp } from '../../context/AppContext';
 import { CATEGORIES } from '../../constants';
 import { ProductCard } from '../../components/common/ProductCard';
 import { Search, SlidersHorizontal, ArrowLeft, X, Filter } from 'lucide-react';
-import { Listing } from '../../types';
+import { Listing, Need } from '../../types';
 
 export const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { currentUser } = useApp();
 
   const queryParam = searchParams.get('q') || '';
   const [query, setQuery] = useState(queryParam);
@@ -24,27 +27,48 @@ export const SearchPage: React.FC = () => {
   const [results, setResults] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Arama her tuş vuruşunda sorgu atmasın diye kısa bir gecikmeyle
-  // çalışır; hızlı yazarken gereksiz onlarca istek gitmiyor.
+  // Rapor md. 76: aynı kelime iki farklı soruyu yanıtlar —
+  //   "kim veriyor?" (ilanlar)  ve  "kim arıyor?" (ihtiyaçlar).
+  // Swaloop'u klasik ilan sitelerinden ayıran şey ikincisi.
+  const [tab, setTab] = useState<'giving' | 'seeking'>('giving');
+  const [seekers, setSeekers] = useState<Array<{ need: Need; seeker: NeedSeeker }>>([]);
+
   useEffect(() => {
     let isCancelled = false;
     setIsLoading(true);
 
-    const timer = setTimeout(() => {
-      listingService
-        .searchListings(query, selectedCategory, selectedCondition, maxDistance)
-        .then((data) => {
-          if (isCancelled) return;
+    listingService
+      .searchListings(query, selectedCategory, selectedCondition, maxDistance)
+      .then((data) => {
+        if (!isCancelled) {
           setResults(data);
           setIsLoading(false);
-        });
-    }, 250);
+        }
+      });
 
     return () => {
       isCancelled = true;
-      clearTimeout(timer);
     };
   }, [query, selectedCategory, selectedCondition, maxDistance]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!query.trim()) {
+      setSeekers([]);
+      return;
+    }
+
+    needService
+      .searchNeeds(query, { excludeUserId: currentUser.id })
+      .then((data) => {
+        if (!isCancelled) setSeekers(data);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [query, currentUser.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,14 +76,14 @@ export const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-24 text-stone-900 dark:text-stone-100">
+    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
       <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 pt-3 space-y-4">
         {/* Search header */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center hover:bg-stone-100 transition-colors shrink-0 shadow-xs"
+            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shrink-0 shadow-xs"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -72,7 +96,7 @@ export const SearchPage: React.FC = () => {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="İlan veya istenen ürün ara..."
               autoFocus
-              className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-sm font-medium shadow-xs"
+              className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-medium shadow-xs"
             />
             {query && (
               <button
@@ -94,7 +118,7 @@ export const SearchPage: React.FC = () => {
             className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-colors shrink-0 shadow-xs cursor-pointer ${
               showFilters || selectedCategory !== 'all' || selectedCondition !== 'all'
                 ? 'bg-emerald-800 text-white border-emerald-800'
-                : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
+                : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
@@ -103,9 +127,9 @@ export const SearchPage: React.FC = () => {
 
         {/* Filter Drawer / Accordion */}
         {showFilters && (
-          <div className="bg-white dark:bg-stone-900 rounded-2xl p-4 border border-stone-200 dark:border-stone-800 shadow-sm space-y-4 animate-in fade-in zoom-in-98 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100 dark:border-stone-800">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
+          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-4 animate-in fade-in zoom-in-98 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5" />
                 Detaylı Filtreler
               </span>
@@ -124,7 +148,7 @@ export const SearchPage: React.FC = () => {
 
             {/* Category */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">Kategori</label>
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">Kategori</label>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
@@ -132,7 +156,7 @@ export const SearchPage: React.FC = () => {
                   className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                     selectedCategory === 'all'
                       ? 'bg-emerald-800 text-white'
-                      : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                      : 'bg-stone-100 text-stone-700'
                   }`}
                 >
                   Tümü
@@ -145,7 +169,7 @@ export const SearchPage: React.FC = () => {
                     className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                       selectedCategory === cat.id
                         ? 'bg-emerald-800 text-white'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                        : 'bg-stone-100 text-stone-700'
                     }`}
                   >
                     {cat.name}
@@ -156,7 +180,7 @@ export const SearchPage: React.FC = () => {
 
             {/* Condition */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">Kondisyon</label>
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">Kondisyon</label>
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { id: 'all', label: 'Tümü' },
@@ -164,7 +188,6 @@ export const SearchPage: React.FC = () => {
                   { id: 'like_new', label: 'Sıfır Gibi' },
                   { id: 'very_good', label: 'Çok İyi' },
                   { id: 'good', label: 'İyi' },
-                  { id: 'acceptable', label: 'Makul' },
                 ].map((c) => (
                   <button
                     key={c.id}
@@ -173,7 +196,7 @@ export const SearchPage: React.FC = () => {
                     className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                       selectedCondition === c.id
                         ? 'bg-emerald-800 text-white'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                        : 'bg-stone-100 text-stone-700'
                     }`}
                   >
                     {c.label}
@@ -184,13 +207,10 @@ export const SearchPage: React.FC = () => {
 
             {/* Distance Slider */}
             <div>
-              <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                <span>Maksimum mesafe</span>
+              <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-1">
+                <span>Maksimum Mesafe</span>
                 <span className="text-emerald-800">{maxDistance} km</span>
               </div>
-              <p className="text-[10px] text-stone-400 mb-1">
-                Mesafe yalnızca konumu bilinen ilanlar için uygulanır.
-              </p>
               <input
                 type="range"
                 min="1"
@@ -205,28 +225,94 @@ export const SearchPage: React.FC = () => {
 
         {/* Results Stream */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-              {isLoading
-                ? 'Aranıyor...'
-                : results.length > 0
-                  ? `${results.length} takas ilanı bulundu`
-                  : 'Sonuç bulunamadı'}
-            </h2>
-          </div>
+          {query.trim() && (
+            <div className="inline-flex p-0.5 rounded-2xl bg-stone-200/70 mb-3">
+              <button
+                type="button"
+                onClick={() => setTab('giving')}
+                aria-pressed={tab === 'giving'}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  tab === 'giving' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                }`}
+              >
+                Verenler ({results.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('seeking')}
+                aria-pressed={tab === 'seeking'}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  tab === 'seeking' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                }`}
+              >
+                Arayanlar ({seekers.length})
+              </button>
+            </div>
+          )}
 
-          {isLoading ? (
+          {/* Arama kutusu boşaltılırsa sekme durumu takılı kalmasın:
+              "Arayanlar" yalnızca aktif bir arama varken anlamlı. */}
+          {tab === 'seeking' && query.trim() ? (
+            seekers.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 border border-stone-200 text-center space-y-2">
+                <h3 className="text-base font-bold text-stone-900">Bunu arayan kimse yok</h3>
+                <p className="text-xs text-stone-500 max-w-xs mx-auto">
+                  Sen arayabilirsin: aradığın şeyi listene ekle, uygun bir ilan yayınlandığında
+                  haberin olsun.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/aradiklarim')}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-colors"
+                >
+                  Aradıklarıma Ekle
+                </button>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {seekers.map(({ need, seeker }) => (
+                  <li key={need.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/profil/${seeker.id}`)}
+                      className="w-full bg-white rounded-2xl p-3 border border-stone-200 flex items-center gap-3 text-left hover:bg-stone-50 transition-colors cursor-pointer"
+                    >
+                      {seeker.avatarUrl ? (
+                        <img
+                          src={seeker.avatarUrl}
+                          alt=""
+                          className="w-10 h-10 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 rounded-full bg-stone-100 shrink-0" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-bold text-stone-900 truncate">
+                          {need.title}
+                        </span>
+                        <span className="block text-[11px] text-stone-500 truncate">
+                          {seeker.fullName}
+                          {seeker.district ? ` · ${seeker.district}` : ''}
+                          {seeker.city ? `, ${seeker.city}` : ''}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="aspect-[3/4] rounded-2xl bg-stone-100 dark:bg-stone-800 animate-pulse" />
+                <div key={i} className="aspect-[3/4] rounded-2xl bg-stone-100 animate-pulse" />
               ))}
             </div>
           ) : results.length === 0 ? (
-            <div className="bg-white dark:bg-stone-900 rounded-3xl p-8 border border-stone-200 dark:border-stone-800 text-center space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-400 flex items-center justify-center mx-auto">
+            <div className="bg-white rounded-3xl p-8 border border-stone-200 text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto">
                 <Search className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+              <h3 className="text-base font-bold text-stone-900">
                 Henüz sana uygun takas bulunamadı.
               </h3>
               <p className="text-xs text-stone-500 max-w-xs mx-auto">

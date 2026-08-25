@@ -1,34 +1,53 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { storageService } from '../../services/storageService';
-import { CATEGORIES, DEFAULT_AVATAR, TR_CITIES } from '../../constants';
+import { CATEGORIES } from '../../constants';
 import { CategoryId } from '../../types';
-import { ArrowLeft, Camera, Loader2, User } from 'lucide-react';
+import { TURKEY_CITIES, getDistrictsForCity } from '../../data/turkeyLocations';
+import { ArrowLeft, Camera, User, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — bkz. avatars bucket file_size_limit
 
 export const CreateProfilePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setCurrentUser, showToast, refreshUserData } = useApp();
+  const { setCurrentUser, showToast } = useApp();
 
   const state = (location.state as { phone?: string }) || {};
-  const phone = state.phone ?? '';
+  const phone = state.phone || '+90 532 890 12 34';
 
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [username, setUsername] = useState('');
+  const [bio, setBio] = useState('');
+  // Kayıt üç adıma bölündü: profil → konum → ne arıyorsun.
+  // Her ekranın tek bir amacı olsun diye (md. 145); tek uzun formda 12 alan
+  // gören kullanıcı kaçıyor (md. 142).
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+
   const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
+  const districtsForCity = useMemo(() => getDistrictsForCity(city), [city]);
+
+  const handleCityChange = (newCity: string) => {
+    setCity(newCity);
+    const districts = getDistrictsForCity(newCity);
+    setDistrict(districts[0] ?? '');
+  };
+
+  // Varsayılan olarak stok bir portre atamak yerine boş bırakılıyor:
+  // kullanıcı fotoğraf yüklemediyse baş harfleri gösteriliyor.
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [selectedInterests, setSelectedInterests] = useState<CategoryId[]>([]);
   const [selectedWanted, setSelectedWanted] = useState<CategoryId[]>([]);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Telefon doğrulaması yapılmadan bu adıma gelinemez.
-  useEffect(() => {
-    if (!phone) navigate('/giris', { replace: true });
-  }, [phone, navigate]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleInterest = (id: CategoryId) => {
     setSelectedInterests((prev) =>
@@ -42,206 +61,366 @@ export const CreateProfilePage: React.FC = () => {
     );
   };
 
-  /**
-   * Gerçek profil fotoğrafı yüklemesi. Önceden bu düğme hazır stok
-   * görseller arasında dönüyordu; artık kullanıcının seçtiği fotoğraf
-   * WebP'e çevrilip Storage'a yükleniyor.
-   */
-  const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
+  const handleAvatarButtonClick = () => {
+    if (isUploadingAvatar) return;
+    avatarInputRef.current?.click();
+  };
 
-    if (!file || !file.type.startsWith('image/')) return;
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // aynı dosyayı tekrar seçebilmek için input'u sıfırla
+    if (!file) return;
 
-    setIsUploadingAvatar(true);
-    const uploaded = await storageService.uploadAvatar(file);
-    setIsUploadingAvatar(false);
-
-    if (!uploaded) {
-      showToast('Fotoğraf yüklenemedi', 'Fotoğrafsız da devam edebilirsin.', 'warning');
+    if (!file.type.startsWith('image/')) {
+      showToast('Geçersiz Dosya', 'Lütfen bir resim dosyası seçin.', 'error');
       return;
     }
 
-    setAvatarUrl(uploaded.url);
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      showToast('Dosya Çok Büyük', 'Profil fotoğrafı en fazla 5 MB olabilir.', 'error');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const uploadedUrl = await authService.uploadAvatar(file);
+    setIsUploadingAvatar(false);
+
+    if (!uploadedUrl) {
+      showToast('Yükleme Başarısız', 'Fotoğraf yüklenemedi, lütfen tekrar deneyin.', 'error');
+      return;
+    }
+
+    setAvatarUrl(uploadedUrl);
+    showToast('Profil Fotoğrafı Yüklendi', 'Görsel güncellendi.', 'success');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fullName.trim()) {
-      showToast('Eksik bilgi', 'Lütfen adını ve soyadını gir.', 'warning');
+    if (!firstName.trim() || !lastName.trim()) {
+      showToast('Eksik Bilgi', 'Lütfen adını ve soyadını ayrı ayrı giriniz.', 'warning');
       return;
     }
 
-    setIsSaving(true);
+    if (!authService.isValidEmail(email)) {
+      showToast('Geçersiz E-posta', 'Lütfen geçerli bir e-posta adresi giriniz.', 'warning');
+      return;
+    }
+
+    if (!authService.isValidPassword(password)) {
+      showToast(
+        'Zayıf Şifre',
+        'Şifre en az 8 karakter olmalı ve en az bir harf ile bir rakam içermelidir.',
+        'warning'
+      );
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      showToast('Şifreler Uyuşmuyor', 'Girdiğin iki şifre birbiriyle aynı değil.', 'warning');
+      return;
+    }
+
+    if (!city || !district) {
+      showToast('Eksik Bilgi', 'Lütfen il ve ilçe seçiniz.', 'warning');
+      return;
+    }
+
+    setIsSubmitting(true);
     const newUser = await authService.createProfile({
       phone,
-      fullName: fullName.trim(),
-      city: city.trim(),
-      district: district.trim(),
-      // Yer tutucu avatar DB'ye yazılmaz; kullanıcı sonradan ekleyebilir.
-      avatarUrl: avatarUrl === DEFAULT_AVATAR ? undefined : avatarUrl,
+      firstName,
+      lastName,
+      email,
+      password,
+      city,
+      district,
+      avatarUrl,
+      username,
+      bio,
       interests: selectedInterests,
       wantedCategories: selectedWanted,
     });
-    setIsSaving(false);
+    setIsSubmitting(false);
 
     if (!newUser) {
-      showToast('Hata', 'Profil oluşturulamadı. Lütfen tekrar deneyin.', 'error');
+      showToast(
+        'Hata',
+        'Profil oluşturulamadı. Lütfen tekrar deneyin.',
+        'error'
+      );
       return;
     }
 
     setCurrentUser(newUser);
-    await refreshUserData();
-    showToast('Profilin hazır 🎉', 'Swaloop’a hoş geldin.', 'success');
-    navigate('/kesfet', { replace: true });
+    showToast('Profil Oluşturuldu! 🎉', 'Swaloop dünyasına hoş geldin.', 'success');
+    navigate('/kesfet');
   };
 
+  const isFormValid =
+    firstName.trim() &&
+    lastName.trim() &&
+    email.trim() &&
+    password &&
+    passwordConfirm &&
+    city &&
+    district;
+
+  const step1Valid =
+    firstName.trim() && lastName.trim() && email.trim() && password && passwordConfirm;
+
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col justify-between p-6 max-w-md mx-auto">
-      <div>
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-surface flex flex-col">
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarFileChange}
+        className="hidden"
+      />
+
+      <div className="max-w-md w-full mx-auto px-6 pt-6 pb-10 flex-1 flex flex-col">
+        <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center hover:bg-stone-100 transition-colors"
+            onClick={() => (step === 1 ? navigate(-1) : setStep((s) => (s === 3 ? 2 : 1)))}
+            aria-label="Geri"
+            className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-ink-soft hover:bg-canvas transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-            Adım 3 / 3
-          </span>
+          <span className="text-xs font-semibold text-ink-faint">{step} / 3</span>
         </div>
 
-        <div className="space-y-2 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-stone-100 font-display tracking-tight">
-            Profilini Oluştur
-          </h1>
-          <p className="text-sm text-stone-500">
-            Topluluğun seni tanıması ve akıllı takas eşleşmeleri için birkaç bilgi ekle.
-          </p>
-        </div>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col mt-4">
+          {step === 1 && (
+            <div className="flex-1">
+              <h1 className="text-2xl text-ink">Profili Tamamla</h1>
+              <p className="text-sm text-ink-soft mt-2">
+                Diğer kullanıcıların seni tanıyabilmesi için birkaç bilgi.
+              </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Profil fotoğrafı */}
-          <div className="flex flex-col items-center justify-center my-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingAvatar}
-              className="relative group cursor-pointer disabled:opacity-60"
-            >
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-stone-100 dark:bg-stone-800">
-                <img src={avatarUrl} alt="Profil fotoğrafı" className="w-full h-full object-cover" />
+              <div className="flex justify-center my-6">
+                <button
+                  type="button"
+                  onClick={handleAvatarButtonClick}
+                  className="relative w-24 h-24 rounded-full bg-canvas border border-line flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-line transition-colors"
+                  aria-label="Profil fotoğrafı seç"
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-9 h-9 text-ink-faint" />
+                  )}
+                  <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center border-2 border-white">
+                    {isUploadingAvatar ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                  </span>
+                </button>
               </div>
-              <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center border-2 border-white shadow-md">
-                {isUploadingAvatar ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Camera className="w-4 h-4" />
-                )}
-              </span>
-            </button>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarSelect}
-              className="hidden"
-            />
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Ad"
+                    className="sw-input"
+                    aria-label="Ad"
+                  />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Soyad"
+                    className="sw-input"
+                    aria-label="Soyad"
+                  />
+                </div>
 
-            <span className="text-[11px] text-stone-400 mt-2">
-              İsteğe bağlı — sonradan da ekleyebilirsin
-            </span>
-          </div>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Kullanıcı adı (opsiyonel)"
+                  className="sw-input"
+                  aria-label="Kullanıcı adı"
+                />
 
-          {/* Ad Soyad */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-1.5">
-              Ad Soyad
-            </label>
-            <div className="relative">
-              <User className="w-5 h-5 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Adını ve soyadını gir"
-                required
-                className="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
-            </div>
-          </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="E-posta"
+                  className="sw-input"
+                  aria-label="E-posta"
+                />
 
-          {/* Şehir & İlçe */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-1.5">
-                Şehir
-              </label>
-              <input
-                list="create-profile-cities"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="İlini yaz"
-                className="w-full px-3.5 py-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
-              <datalist id="create-profile-cities">
-                {TR_CITIES.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-1.5">
-                İlçe
-              </label>
-              <input
-                type="text"
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                placeholder="İlçeni gir"
-                className="w-full px-3.5 py-3.5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold shadow-xs"
-              />
-            </div>
-          </div>
-
-          {/* İlgi Alanların */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider mb-1.5">
-              İlgi Alanların & Sahip Olduğun Kategoriler
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((cat) => {
-                const isSelected = selectedInterests.includes(cat.id);
-                return (
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Şifre (en az 8 karakter)"
+                    className="sw-input pr-12"
+                    aria-label="Şifre"
+                  />
                   <button
-                    key={cat.id}
                     type="button"
-                    onClick={() => toggleInterest(cat.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-700 text-white shadow-xs'
-                        : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
-                    }`}
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-ink-faint cursor-pointer"
                   >
-                    {isSelected && '✓ '}
-                    {cat.name}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                );
-              })}
-            </div>
-          </div>
+                </div>
 
-          <button
-            type="submit"
-            disabled={!fullName.trim() || isSaving || isUploadingAvatar}
-            className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer mt-4"
-          >
-            {isSaving ? 'Oluşturuluyor...' : 'Kaydı tamamla ve keşfet'}
-          </button>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
+                  placeholder="Şifre tekrar"
+                  className="sw-input"
+                  aria-label="Şifre tekrar"
+                />
+
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={2}
+                  maxLength={160}
+                  placeholder="Kısa bio (opsiyonel)"
+                  className="sw-input resize-none"
+                  aria-label="Kısa bio"
+                />
+              </div>
+
+              <button
+                type="button"
+                disabled={!step1Valid}
+                onClick={() => setStep(2)}
+                className="sw-btn sw-btn-primary sw-btn-block mt-6"
+              >
+                Devam Et
+              </button>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="flex-1">
+              <h1 className="text-2xl text-ink">Konumunu Seç</h1>
+              <p className="text-sm text-ink-soft mt-2">
+                Takasların daha kolay gerçekleşmesi için konumunu seç. Tam adresin kimseye
+                gösterilmez, yalnızca ilçe ve yaklaşık mesafe görünür.
+              </p>
+
+              <div className="space-y-3 mt-6">
+                <div>
+                  <label htmlFor="city" className="sw-label">
+                    İl
+                  </label>
+                  <select
+                    id="city"
+                    value={city}
+                    onChange={(e) => handleCityChange(e.target.value)}
+                    className="sw-input"
+                  >
+                    <option value="">İl Seçin</option>
+                    {TURKEY_CITIES.map((cityName) => (
+                      <option key={cityName} value={cityName}>
+                        {cityName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="district" className="sw-label">
+                    İlçe
+                  </label>
+                  <select
+                    id="district"
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    disabled={!city}
+                    className="sw-input disabled:opacity-60"
+                  >
+                    <option value="">İlçe Seçin</option>
+                    {districtsForCity.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={!city || !district}
+                onClick={() => setStep(3)}
+                className="sw-btn sw-btn-primary sw-btn-block mt-6"
+              >
+                Devam Et
+              </button>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="flex-1">
+              <h1 className="text-2xl text-ink">Ne arıyorsun?</h1>
+              <p className="text-sm text-ink-soft mt-2">
+                Aradığın kategorileri seç; sana uygun takasları bulalım. Sonradan
+                değiştirebilirsin.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mt-6">
+                {CATEGORIES.map((category) => {
+                  const selected = selectedWanted.includes(category.id);
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleWanted(category.id)}
+                      className={`sw-chip ${selected ? 'sw-chip-active' : ''}`}
+                    >
+                      {category.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="sw-label mt-8">İlgi alanların (opsiyonel)</p>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((category) => {
+                  const selected = selectedInterests.includes(category.id);
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleInterest(category.id)}
+                      className={`sw-chip ${selected ? 'sw-chip-active' : ''}`}
+                    >
+                      {category.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || !isFormValid}
+                className="sw-btn sw-btn-primary sw-btn-block mt-8"
+              >
+                {isSubmitting ? 'Kaydediliyor…' : 'Kaydet ve Başla'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

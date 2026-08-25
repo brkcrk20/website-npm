@@ -1,145 +1,168 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SwaloopLogo, CircularExchangeIcon } from '../../components/common/SwaloopLogo';
-import {
-  ArrowRight,
-  ArrowLeft,
-  Leaf,
-  ShieldCheck,
-  Repeat,
-  Sparkles,
-  MapPin,
-  PlusCircle,
-  CheckCircle2,
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { authService } from '../../services/authService';
+
+// 2-4. ONBOARDING
+//
+// Özellik listesi değil, hikâye (md. 10): üç ekran, her biri tek bir fikir.
+// Önceki sürümde dört ekran vardı ve ikisi ürünün ikincil katmanlarını
+// anlatıyordu — kullanıcı daha ne olduğunu anlamadan.
+
+const ILLUSTRATION_BG = '#e8f5ee';
+
+const SwapIllustration: React.FC = () => (
+  <svg viewBox="0 0 240 160" className="w-full h-full" role="img" aria-hidden="true">
+    <ellipse cx="120" cy="140" rx="92" ry="12" fill={ILLUSTRATION_BG} />
+    <rect x="34" y="62" width="58" height="52" rx="8" fill="#2e9e5f" opacity="0.9" />
+    <rect x="34" y="62" width="58" height="16" rx="6" fill="#24804c" />
+    <rect x="148" y="62" width="58" height="52" rx="8" fill="#9fd3b6" />
+    <rect x="148" y="62" width="58" height="16" rx="6" fill="#6bbd90" />
+    <path
+      d="M100 78h40"
+      stroke="#16231d"
+      strokeWidth="4"
+      strokeLinecap="round"
+    />
+    <path d="M132 70l10 8-10 8" stroke="#16231d" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path d="M140 100h-40" stroke="#16231d" strokeWidth="4" strokeLinecap="round" />
+    <path d="M108 92l-10 8 10 8" stroke="#16231d" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <circle cx="63" cy="40" r="14" fill="#16231d" opacity="0.85" />
+    <circle cx="177" cy="40" r="14" fill="#16231d" opacity="0.5" />
+  </svg>
+);
+
+const TrustIllustration: React.FC = () => (
+  <svg viewBox="0 0 240 160" className="w-full h-full" role="img" aria-hidden="true">
+    <ellipse cx="120" cy="140" rx="92" ry="12" fill={ILLUSTRATION_BG} />
+    <path
+      d="M120 26l46 18v34c0 28-19 48-46 58-27-10-46-30-46-58V44l46-18z"
+      fill="#2e9e5f"
+    />
+    <path
+      d="M100 84l14 14 28-28"
+      stroke="#fff"
+      strokeWidth="8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+    <circle cx="50" cy="56" r="9" fill="#9fd3b6" />
+    <circle cx="192" cy="70" r="7" fill="#9fd3b6" />
+    <circle cx="70" cy="112" r="5" fill="#c9e6d6" />
+  </svg>
+);
+
+const LoopIllustration: React.FC = () => (
+  <svg viewBox="0 0 240 160" className="w-full h-full" role="img" aria-hidden="true">
+    <ellipse cx="120" cy="140" rx="92" ry="12" fill={ILLUSTRATION_BG} />
+    <circle cx="120" cy="76" r="46" fill="#e8f5ee" />
+    <path
+      d="M92 76a28 28 0 0 1 28-28c9 0 17 4 22 11"
+      stroke="#2e9e5f"
+      strokeWidth="9"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path d="M144 40v18h-18" stroke="#2e9e5f" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path
+      d="M148 76a28 28 0 0 1-28 28c-9 0-17-4-22-11"
+      stroke="#24804c"
+      strokeWidth="9"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path d="M96 112V94h18" stroke="#24804c" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <circle cx="46" cy="52" r="7" fill="#9fd3b6" />
+    <circle cx="196" cy="100" r="9" fill="#9fd3b6" />
+  </svg>
+);
+
+const STEPS = [
+  {
+    illustration: SwapIllustration,
+    title: 'Takasın yeni nesli ile tanış',
+    description:
+      'İhtiyaçlarını paylaş, fazlalıklarını değerlendir. Para yok, sadece anlamlı takaslar var.',
+  },
+  {
+    illustration: TrustIllustration,
+    title: 'Güvenli, şeffaf ve topluluk odaklı',
+    description:
+      'Güven puanı sistemi ile her takas daha güvenli. Kimin ne yaptığını görürsün.',
+  },
+  {
+    illustration: LoopIllustration,
+    title: 'Döngüyü birlikte büyütelim',
+    description:
+      'Daha az tüket, daha çok paylaş. Daha iyi bir dünya için swaloop’a katıl.',
+  },
+];
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
+  const [step, setStep] = useState(0);
 
-  const steps = [
-    {
-      title: 'Swaloop Nedir?',
-      subtitle: 'Satma. Takas et. Yeniden kullan.',
-      description:
-        'Swaloop klasik bir ikinci el satış uygulaması değildir. Kullanıcıların nakit para ödemeden ürünlerini karşılıklı takas ettikleri sürdürülebilir bir sosyal takas platformudur.',
-      icon: CircularExchangeIcon,
-      accentColor: 'from-emerald-800 to-teal-900',
-    },
-    {
-      title: 'Nasıl Çalışır?',
-      subtitle: '3 Adımda Kolay Takas',
-      description:
-        '1. Kullanmadığın ürünün ilanını oluştur.\n2. Sana uygun ürünleri keşfet ve takas teklifi gönder.\n3. Güvenli buluşma noktasında veya kargo ile takasını tamamla.',
-      icon: Repeat,
-      accentColor: 'from-amber-700 to-orange-800',
-    },
-    {
-      title: 'Çevresel Etki (SVS) Nedir?',
-      subtitle: 'SVS Kesinlikle Para veya Fiyat Değildir!',
-      description:
-        'Her takas sıfırdan üretim yerine mevcut bir eşyayı dolaşıma sokar. Swaloop; önlenen CO₂e salımını, tasarruf edilen suyu ve korunan hammaddeyi hesaplayarak doğaya kazandırdığın faydayı gösterir.',
-      icon: Leaf,
-      accentColor: 'from-emerald-900 to-emerald-700',
-    },
-    {
-      title: 'Döngüsel Ekonomi & Loop',
-      subtitle: '3 veya daha fazla kişiyle çoklu takaslar!',
-      description:
-        'Sen Kullanıcı A’ya, Kullanıcı A Kullanıcı B’ye, Kullanıcı B de sana vererek döngüsel çoklu takaslar (Loop) yapabilirsin. Herkes istediğini kazanır!',
-      icon: Sparkles,
-      accentColor: 'from-teal-800 to-emerald-900',
-    },
-  ];
-
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      authService.setOnboardingDone(true);
-      navigate('/kayit');
-    }
+  const finish = () => {
+    authService.setOnboardingDone(true);
+    navigate('/kayit');
   };
 
-  const current = steps[currentStep];
-  const StepIcon = current.icon;
+  const current = STEPS[step];
+  const Illustration = current.illustration;
+  const isLast = step === STEPS.length - 1;
 
   return (
-    <div className="min-h-full bg-stone-950 text-white flex flex-col justify-between p-6 max-w-md mx-auto relative overflow-hidden">
-      {/* Top Header & Skip */}
-      <div className="flex items-center justify-between z-10">
-        <SwaloopLogo size="sm" variant="white" />
-        <button
-          type="button"
-          onClick={() => {
-            authService.setOnboardingDone(true);
-            navigate('/kesfet');
-          }}
-          className="text-xs text-stone-400 hover:text-white transition-colors cursor-pointer"
-        >
-          Atla
-        </button>
-      </div>
-
-      {/* Main card */}
-      <div className="my-auto py-8 z-10 flex flex-col items-center text-center">
-        {/* Animated illustration container */}
-        <div className="w-28 h-28 rounded-3xl bg-stone-900/80 border border-stone-800 flex items-center justify-center mb-8 shadow-2xl relative">
-          <div className="absolute inset-0 rounded-3xl bg-emerald-600/10 blur-xl pointer-events-none" />
-          {typeof StepIcon === 'function' ? (
-            currentStep === 0 ? (
-              <CircularExchangeIcon size={52} animate />
-            ) : (
-              // @ts-ignore
-              <StepIcon className="w-12 h-12 text-emerald-400" />
-            )
-          ) : null}
-        </div>
-
-        <span className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">
-          {current.subtitle}
-        </span>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display tracking-tight mb-4">
-          {current.title}
-        </h2>
-        <p className="text-sm text-stone-300 leading-relaxed max-w-xs whitespace-pre-line">
-          {current.description}
-        </p>
-
-        {/* Step indicator dots */}
-        <div className="flex items-center gap-2 mt-8">
-          {steps.map((_, idx) => (
-            <div
-              key={idx}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                idx === currentStep ? 'w-8 bg-emerald-500' : 'w-2 bg-stone-800'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Bottom buttons */}
-      <div className="z-10 space-y-3">
-        <button
-          type="button"
-          onClick={handleNext}
-          className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 transition-all cursor-pointer"
-        >
-          <span>{currentStep === steps.length - 1 ? 'Hemen Başla' : 'İlerle'}</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
-
-        {currentStep > 0 && (
+    <div className="min-h-screen bg-surface flex flex-col">
+      <div className="flex-1 flex flex-col max-w-md w-full mx-auto px-6 pt-6 pb-8">
+        <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => setCurrentStep((prev) => prev - 1)}
-            className="w-full py-2.5 text-xs text-stone-400 hover:text-stone-200 transition-colors"
+            onClick={finish}
+            className="text-xs font-semibold text-ink-soft hover:text-ink px-3 py-2 cursor-pointer"
           >
-            Geri
+            Atla
           </button>
-        )}
+        </div>
+
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="h-52 sm:h-60">
+            <Illustration />
+          </div>
+
+          <h1 className="text-2xl text-ink mt-10 leading-snug">{current.title}</h1>
+          <p className="text-sm text-ink-soft mt-3 leading-relaxed">{current.description}</p>
+        </div>
+
+        <div className="flex items-center justify-between mt-8">
+          <div className="flex items-center gap-1.5" role="tablist" aria-label="Tanıtım adımları">
+            {STEPS.map((_, index) => (
+              <span
+                key={index}
+                role="tab"
+                aria-selected={index === step}
+                className={`h-1.5 rounded-full transition-all ${
+                  index === step ? 'w-6 bg-brand' : 'w-1.5 bg-line'
+                }`}
+              />
+            ))}
+          </div>
+
+          {isLast ? (
+            <button type="button" onClick={finish} className="sw-btn sw-btn-primary px-8">
+              Başlayalım
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s + 1)}
+              aria-label="Sonraki"
+              className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand-dark transition-colors cursor-pointer"
+            >
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

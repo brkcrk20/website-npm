@@ -1,71 +1,155 @@
-import { Listing, CategoryId, ListingCondition } from '../types';
-import { impactService } from './impactService';
-import { storageService } from './storageService';
+import {
+  Listing,
+  CategoryId,
+  ListingCondition,
+} from '../types';
+
 import { supabase } from '../lib/supabase';
-import { DEFAULT_AVATAR, PLACEHOLDER_IMAGE } from '../constants';
-import { Coordinates, getCachedLocation, haversineKm } from '../utils/geo';
+import { blockService } from './blockService';
 import type { TablesUpdate } from '../types/supabase';
+import { convertImagesToWebp } from '../utils/imageToWebp';
+
+const DEFAULT_IMAGE =
+  'https://images.unsplash.com/photo-1523275335684-37898b6bafeb?w=800&auto=format&fit=crop&q=80';
+
+const LISTING_IMAGES_BUCKET = 'listing-images';
 
 /**
- * İlan (takas eşyası) veri katmanı.
+ * İlan sorgularında ilan sahibinin profilinden çekilen kolonlar.
  *
- * Sorgu şekli tek bir sabitte toplandı (`LISTING_SELECT`) ve zenginleştirme
- * (`enrichListings`) artık kategori, güven puanı ve favori bilgisini TEK
- * turda, paralel üç sorguyla çekiyor. Önceden favori durumu hiç
- * okunmadığı için kalp ikonu her zaman boş görünüyordu.
+ * GÜVENLİK: Buraya `profiles(*)` YAZILMAMALI. `profiles` üzerindeki RLS
+ * politikası satır bazlıdır (`profiles_select_all ... using (true)`),
+ * Postgres'te kolon bazlı RLS yoktur — yani `*` ile sorgulandığında her
+ * ilan sahibinin `phone` (ve e-posta, tercih vb.) alanı istemciye kadar
+ * iniyordu. Ekranda bunların hiçbiri gösterilmiyor; join'i açık kolon
+ * listesine sabitleyerek veri hiç dışarı çıkmıyor.
  */
+const LISTING_OWNER_COLUMNS = 'id, full_name, avatar_url, city, district';
 
 const LISTING_SELECT =
-  '*, user:profiles(*), images:listing_images(storage_path, sort_order)';
+  `*, user:profiles(${LISTING_OWNER_COLUMNS}), images:listing_images(storage_path)`;
 
 /**
- * Favori id'leri kısa süreli önbellek. Keşfet ekranı sayfa başına birden
- * çok liste çekebiliyor; her biri için ayrı favori sorgusu atmamak için
- * kısa bir pencere boyunca aynı sonuç kullanılıyor. Favori değiştiğinde
- * anında geçersiz kılınır.
+ * Kullanıcının arama metnini PostgREST `or()` filtresine gömülebilir hale
+ * getirir.
+ *
+ * GÜVENLİK: `or()` argümanı parametreli bir sorgu değil, ham bir filtre
+ * ifadesidir. Metin doğrudan gömüldüğünde `,` yeni bir koşul, `(` `)` ise
+ * iç içe and/or grubu başlatır — yani `foo,status.eq.sold` gibi bir arama
+ * sorgunun kendi `status = 'active'` kısıtının yanına koşul ekleyebiliyordu.
+ * `"` ve `\` ise PostgREST'in değer içindeki tırnak/kaçış karakterleri.
+ * Bunların tamamı atılıyor.
+ *
+ * Ayrıca `%`, `_` ve `*` ilike jokerleridir; kaçırmak yerine atılıyorlar
+ * (kaçış karakterinin `or()` ifadesi içinde nasıl yorumlanacağı PostgREST
+ * sürümüne bağlı — atmak hem güvenli hem öngörülebilir).
+ *
+ * `.` bilerek korunuyor: PostgREST her koşulu yalnızca ilk iki noktadan
+ * ayırır, gerisi değerin parçasıdır. Yani "3.5mm" gibi aramalar çalışmaya
+ * devam ediyor.
  */
-let favoriteCache: { ids: Set<string>; fetchedAt: number } | null = null;
-const FAVORITE_CACHE_MS = 15_000;
-
-export function invalidateFavoriteCache() {
-  favoriteCache = null;
+export function sanitizeSearchQuery(query: string): string {
+  return query
+    .replace(/[,()"\\%_*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-async function getFavoriteIdSet(): Promise<Set<string>> {
-  if (favoriteCache && Date.now() - favoriteCache.fetchedAt < FAVORITE_CACHE_MS) {
-    return favoriteCache.ids;
+/**
+ * Kullanıcının seçtiği gerçek fotoğrafları Supabase Storage'a yükler ve
+ * herkese açık (public) URL'lerini döndürür. Bucket ve RLS politikaları
+ * için bkz. supabase/migrations/20260818150000_create_listing_images_storage_bucket.sql
+ *
+ * ÖNEMLİ: Dosya yolu (`{ownerId}/{dosya}`) RLS politikasının
+ * `(storage.foldername(name))[1] = auth.uid()::text` kontrolüyle
+ * eşleşmek ZORUNDA. Bu yüzden `userId` parametresi yerine, isteği
+ * gerçekten yapacak olan Supabase oturumundaki `auth.uid()` kullanılıyor
+ * (`supabase.auth.getUser()`). Eğer bu ikisi (uygulamanın yerel
+ * `currentUser.id`'si ile gerçek oturum kullanıcısı) farklıysa, ya da
+ * hiç aktif oturum yoksa (süresi dolmuş / hiç giriş yapılmamış), yükleme
+ * "new row violates row-level security policy" hatasıyla reddedilir —
+ * bu artık konsola net bir teşhis mesajıyla loglanıyor.
+ *
+ * Dönen dizi, `files` ile AYNI SIRA ve AYNI UZUNLUKTADIR — bir dosya
+ * yüklenemezse o index'te `null` döner (çağıran taraf pozisyona göre
+ * eşleştirme yapabilsin diye; array.filter ile sessizce atlarsak sıra
+ * kayar ve yanlış görsel yanlış slota eşlenebilir).
+ */
+export async function uploadListingImages(
+  userId: string,
+  files: File[]
+): Promise<(string | null)[]> {
+  if (!files.length) return [];
+
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    console.error(
+      'Fotoğraf yüklenemedi: geçerli bir Supabase oturumu bulunamadı. ' +
+        'Kullanıcı arayüzde "giriş yapılmış" görünse bile, gerçek Supabase ' +
+        'oturumu sona ermiş olabilir (localStorage önbelleği ile Supabase ' +
+        'auth session farklı şeylerdir). Çözüm: kullanıcının tekrar giriş ' +
+        '(telefon+OTP) yapması gerekiyor.',
+      authError
+    );
+    return files.map(() => null);
   }
 
-  // getSession() oturumu yerelden okur; getUser() her çağrıda auth
-  // sunucusuna gider. Bu fonksiyon her liste çiziminde çalıştığı için
-  // yerel okuma tercih ediliyor.
-  const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user?.id;
-
-  if (!userId) {
-    favoriteCache = { ids: new Set(), fetchedAt: Date.now() };
-    return favoriteCache.ids;
+  if (authData.user.id !== userId) {
+    console.warn(
+      'Uyarı: uygulamanın önbellekteki currentUser.id değeri ile gerçek ' +
+        'Supabase oturum kullanıcı id\'si FARKLI. RLS kontrolü oturumdaki ' +
+        'id\'ye göre yapılacağı için yükleme buna göre devam ediyor.',
+      { sessionUserId: authData.user.id, cachedUserId: userId }
+    );
   }
 
-  const { data, error } = await supabase
-    .from('favorites')
-    .select('listing_id')
-    .eq('user_id', userId);
+  // RLS foldername kontrolü auth.uid()'e göre çalıştığı için, path'te
+  // parametre olarak gelen userId değil, gerçek oturum id'si kullanılır.
+  const ownerId = authData.user.id;
 
-  if (error) {
-    console.error('Favoriler alınamadı:', error);
-    return new Set();
+  // Yüklemeden önce tüm görselleri tarayıcıda WebP'ye çevir (daha küçük
+  // dosya boyutu, daha hızlı yükleme). Dönüşüm başarısız olan dosyalar
+  // olduğu gibi (orijinal formatında) yüklenmeye devam eder.
+  const webpFiles = await convertImagesToWebp(files);
+
+  const results: (string | null)[] = [];
+
+  for (const file of webpFiles) {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const randomId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const path = `${ownerId}/${randomId}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(LISTING_IMAGES_BUCKET)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Fotoğraf yüklenemedi:', file.name, uploadError);
+      results.push(null);
+      continue;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(LISTING_IMAGES_BUCKET).getPublicUrl(path);
+
+    results.push(publicUrl);
   }
 
-  favoriteCache = {
-    ids: new Set((data ?? []).map((row) => row.listing_id)),
-    fetchedAt: Date.now(),
-  };
-
-  return favoriteCache.ids;
+  return results;
 }
 
-async function getCategoryUuid(categoryId: CategoryId | string): Promise<string | null> {
+async function getCategoryUuid(
+  categoryId: CategoryId | string
+): Promise<string | null> {
   const { data, error } = await supabase
     .from('categories')
     .select('id')
@@ -80,202 +164,268 @@ async function getCategoryUuid(categoryId: CategoryId | string): Promise<string 
   return data?.id ?? null;
 }
 
-function mapImages(raw: any): string[] {
-  if (!Array.isArray(raw) || !raw.length) return [PLACEHOLDER_IMAGE];
+async function getCategorySlug(
+  categoryUuid: string
+): Promise<string> {
+  const { data } = await supabase
+    .from('categories')
+    .select('slug')
+    .eq('id', categoryUuid)
+    .maybeSingle();
 
-  const urls = [...raw]
-    .sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0))
-    .map((img: any) => (typeof img === 'string' ? img : img?.storage_path))
-    .filter((url: unknown): url is string => typeof url === 'string' && url.length > 0);
-
-  return urls.length ? urls : [PLACEHOLDER_IMAGE];
+  return data?.slug ?? categoryUuid;
 }
 
-function mapListing(row: any, viewerLocation?: Coordinates | null): Listing {
-  const categoryId = (row.category_slug ?? row.category_id) as CategoryId;
+const DEFAULT_AVATAR =
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
 
-  const estimatedImpact = impactService.calculateListingImpact(
-    categoryId,
-    row.condition as ListingCondition
-  );
+function mapListing(row: any): Listing {
+  const categoryId = row.category_slug ?? row.category_id;
 
-  // row.user, `user:profiles(*)` join'inden gelen HAM satırdır (snake_case);
-  // Listing['user'] tipinin beklediği camelCase şekle burada çevrilir.
-  // Güven puanı profiles'ta değil trust_profiles'ta durduğu için
-  // enrichListings tarafından `owner_trust_score` olarak taşınır.
+  // row.user, Supabase join'inden (bkz. LISTING_SELECT) gelen HAM profil
+  // satırıdır (snake_case: full_name, avatar_url...) — Listing['user']
+  // tipinin beklediği camelCase şekille birebir aynı DEĞİLDİR. Önceden
+  // bu ham satır doğrudan atanıyordu ve `trustScore` alanı hiç var
+  // olmadığı için ProductCard'da `.toFixed(1)` çağrısı patlıyordu.
+  // Burada doğru şekilde eşleniyor; güven puanı enrichListings'te
+  // ayrıca hesaplanıp `row.owner_trust_score` olarak taşınıyor.
   const mappedUser = row.user
     ? {
         id: row.user.id ?? row.owner_id,
         fullName: row.user.full_name ?? 'Swaloop Kullanıcısı',
         avatarUrl: row.user.avatar_url || DEFAULT_AVATAR,
-        trustScore: Number(row.owner_trust_score ?? 5),
+        trustScore: row.owner_trust_score ?? 5,
         city: row.user.city ?? '',
         district: row.user.district ?? '',
-        isVerified: true,
+        // Önceden sabit `true` idi: doğrulanmamış her ilan sahibi de
+        // "doğrulanmış üye" rozetiyle görünüyordu. Artık gerçek
+        // trust_profiles.verification_level değerinden geliyor
+        // (enrichListings'te topluca çekiliyor).
+        isVerified: row.owner_is_verified ?? false,
       }
     : {
         id: row.owner_id,
         fullName: 'Swaloop Kullanıcısı',
         avatarUrl: DEFAULT_AVATAR,
-        trustScore: Number(row.owner_trust_score ?? 5),
+        trustScore: row.owner_trust_score ?? 5,
         city: row.city ?? '',
         district: row.district ?? '',
         isVerified: false,
       };
 
-  const lat = row.latitude ?? undefined;
-  const lng = row.longitude ?? undefined;
-
-  const distanceKm =
-    viewerLocation && typeof lat === 'number' && typeof lng === 'number'
-      ? Number(haversineKm(viewerLocation, { lat, lng }).toFixed(1))
-      : undefined;
-
   return {
     id: row.id,
+
+    // row.slug DB trigger'ı tarafından garanti üretilir (bkz. migration
+    // 20260818180000). Eski/olası boş durumlar için id'ye düşer.
+    slug: row.slug || row.id,
+
     userId: row.owner_id,
+
     user: mappedUser,
+
     title: row.title ?? '',
     description: row.description ?? '',
-    categoryId,
+
+    categoryId: categoryId as CategoryId,
+
     condition: row.condition as ListingCondition,
-    images: mapImages(row.images),
+
+    // BURASI GÜNCELLENDİ: Fotoğrafları objeden string'e çeviriyor
+    images:
+      Array.isArray(row.images) && row.images.length
+        ? row.images.map((img: any) => typeof img === 'string' ? img : img.storage_path || img)
+        : [DEFAULT_IMAGE],
+
     location: {
       city: row.city ?? '',
       district: row.district ?? '',
-      lat,
-      lng,
-      distanceKm,
+      lat: row.latitude ?? 0,
+      lng: row.longitude ?? 0,
+      distanceKm: row.distance_km ?? 0,
     },
+
     lookingFor: row.looking_for ?? '',
-    deliveryOptions: Array.isArray(row.delivery_options) ? row.delivery_options : ['in_person'],
-    estimatedImpact,
+
+    // Yapılandırılmış "arıyorum": eşleştirme motorunun okuduğu kategori
+    // listesi (bkz. migration 20260820000000, rapor md. 20).
+    lookingForCategories: Array.isArray(row.looking_for_categories)
+      ? (row.looking_for_categories as CategoryId[])
+      : [],
+
+    deliveryOptions:
+      Array.isArray(row.delivery_options)
+        ? row.delivery_options
+        : ['in_person'],
+
     status: row.status ?? 'active',
+
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+
     viewCount: row.view_count ?? 0,
     favoriteCount: row.favorite_count ?? 0,
     isFavorite: row.is_favorite ?? false,
+
     tags: Array.isArray(row.tags) ? row.tags : [],
   };
 }
 
 /**
- * Ham `listings` satırlarını uygulamanın `Listing` tipine çevirir; kategori
- * slug'ı, ilan sahibinin güven puanı ve favori durumu paralel olarak
- * eklenir.
+ * Engellenen kullanıcıların ilanlarını keşif akışlarından düşürür
+ * (rapor md. 106).
+ *
+ * Bilinçli olarak SADECE keşif/arama yollarında uygulanır: devam eden bir
+ * takasın ya da geçmişin içindeki ilanlar gizlenirse takas ekranı boş
+ * görünür ve kullanıcı ne olduğunu anlamaz.
  */
+async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
+  if (!rows.length) return rows;
+
+  const blockedIds = await blockService.getBlockedIdsForCurrentUser();
+
+  if (!blockedIds.length) return rows;
+
+  const blocked = new Set(blockedIds);
+
+  return rows.filter((row) => !blocked.has(row.owner_id));
+}
+
 export async function enrichListings(rows: any[]): Promise<Listing[]> {
   if (!rows.length) return [];
 
-  const categoryIds = [...new Set(rows.map((row) => row.category_id).filter(Boolean))];
-  const ownerIds = [...new Set(rows.map((row) => row.owner_id).filter(Boolean))];
+  const categoryIds = [
+    ...new Set(
+      rows
+        .map((row) => row.category_id)
+        .filter(Boolean)
+    ),
+  ];
 
-  const [categoryResult, trustResult, favoriteIds] = await Promise.all([
-    categoryIds.length
-      ? supabase.from('categories').select('id, slug').in('id', categoryIds)
-      : Promise.resolve({ data: [], error: null } as any),
-    ownerIds.length
-      ? supabase.from('trust_profiles').select('user_id, trust_score').in('user_id', ownerIds)
-      : Promise.resolve({ data: [], error: null } as any),
-    getFavoriteIdSet(),
-  ]);
+  let categoryMap = new Map<string, string>();
 
-  const categoryMap = new Map<string, string>();
-  for (const category of categoryResult.data ?? []) {
-    categoryMap.set(category.id, category.slug);
-  }
+  if (categoryIds.length) {
+    const { data } = await supabase
+      .from('categories')
+      .select('id, slug')
+      .in('id', categoryIds);
 
-  const trustScoreMap = new Map<string, number>();
-  for (const trust of trustResult.data ?? []) {
-    if (trust.user_id != null && trust.trust_score != null) {
-      trustScoreMap.set(trust.user_id, Number(trust.trust_score));
+    for (const category of data ?? []) {
+      categoryMap.set(category.id, category.slug);
     }
   }
 
-  const viewerLocation = getCachedLocation();
+  // İlan sahiplerinin gerçek güven puanını (trust_profiles.trust_score)
+  // topluca çekiyoruz. Önceden bu hiç yapılmıyordu ve ProductCard'ın
+  // beklediği `user.trustScore` alanı DB'den gelen ham `profiles` satırında
+  // hiç yoktu (yalnızca `trust_profiles` tablosunda tutuluyor) — bu da
+  // "Cannot read properties of undefined (reading 'toFixed')" hatasına
+  // yol açıyordu. Skor bulunamazsa 5 (varsayılan başlangıç puanı) kullanılır.
+  const ownerIds = [
+    ...new Set(rows.map((row) => row.owner_id).filter(Boolean)),
+  ];
 
-  return rows.map((row) =>
-    mapListing(
-      {
-        ...row,
-        category_slug: categoryMap.get(row.category_id) ?? row.category_id,
-        owner_trust_score: trustScoreMap.get(row.owner_id) ?? 5,
-        is_favorite: favoriteIds.has(row.id),
-      },
-      viewerLocation
-    )
-  );
+  let trustScoreMap = new Map<string, number>();
+  const verifiedMap = new Map<string, boolean>();
+
+  if (ownerIds.length) {
+    const { data: trustRows } = await supabase
+      .from('trust_profiles')
+      .select('user_id, trust_score, verification_level')
+      .in('user_id', ownerIds);
+
+    for (const t of trustRows ?? []) {
+      if (t.user_id == null) continue;
+
+      if (t.trust_score != null) {
+        trustScoreMap.set(t.user_id, t.trust_score);
+      }
+
+      verifiedMap.set(t.user_id, t.verification_level === 'id_verified');
+    }
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    category_slug:
+      categoryMap.get(row.category_id) ?? row.category_id,
+    owner_trust_score: trustScoreMap.get(row.owner_id) ?? 5,
+    owner_is_verified: verifiedMap.get(row.owner_id) ?? false,
+  })).map(mapListing);
 }
 
 export const listingService = {
-  async getAllListings(limit = 60): Promise<Listing[]> {
+  async getAllListings(): Promise<Listing[]> {
+    // BURASI GÜNCELLENDİ: İlanla birlikte profil ve fotoğrafları da çekiyoruz
     const { data, error } = await supabase
       .from('listings')
       .select(LISTING_SELECT)
       .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('İlanlar alınamadı:', error);
+      console.error('Listings alınamadı:', error);
       return [];
     }
 
-    return enrichListings(data ?? []);
+    return enrichListings(await withoutBlockedOwners(data ?? []));
   },
 
-  async getListingById(id: string): Promise<Listing | undefined> {
-    const { data, error } = await supabase
+  async getListingById(
+    idOrSlug: string
+  ): Promise<Listing | undefined> {
+    if (!idOrSlug) return undefined;
+
+    // UUID format kontrolü (36 karakter ve tire içeren standart yapı).
+    // /ilan/:param artık slug taşıyor ("deneme-ilanlari-2") ama eski
+    // paylaşılmış linkler hâlâ uuid olabilir — ikisini de destekliyoruz.
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    const query = supabase
       .from('listings')
       .select(LISTING_SELECT)
-      .eq('id', id)
-      .maybeSingle();
+      .eq(uuidRegex.test(idOrSlug) ? 'id' : 'slug', idOrSlug);
+
+    const { data, error } = await query.maybeSingle();
 
     if (error || !data) {
-      if (error) console.error('İlan alınamadı:', error);
+      console.warn('İlan bulunamadı:', idOrSlug);
       return undefined;
     }
 
+    if (!(data as any).images) {
+      (data as any).images = [];
+    }
+
     const [listing] = await enrichListings([data]);
+
     return listing;
   },
 
-  /**
-   * Görüntülenme sayacını artırır. Kullanıcı başkasının ilanını doğrudan
-   * UPDATE edemeyeceği için (RLS) bunu `security definer` bir fonksiyon
-   * yapar; migration uygulanmamışsa sessizce atlanır.
-   */
-  async incrementViewCount(id: string): Promise<void> {
-    const { error } = await supabase.rpc('increment_listing_view', { p_listing_id: id });
-
-    if (error && error.code !== 'PGRST202') {
-      console.warn('Görüntülenme sayacı artırılamadı:', error.message);
+  async getUserListings(
+    userId: string
+  ): Promise<Listing[]> {
+    // Eğer geçerli bir UUID değilse (örneğin mock/default "user-current" ise) sorgu atma
+    if (!userId || userId === 'user-current' || userId.length < 30) {
+      return [];
     }
-  },
-
-  async getUserListings(userId: string): Promise<Listing[]> {
-    if (!userId) return [];
 
     const { data, error } = await supabase
       .from('listings')
       .select(LISTING_SELECT)
       .eq('owner_id', userId)
-      .neq('status', 'removed')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Kullanıcı ilanları alınamadı:', error);
+      console.error(
+        'Kullanıcı ilanları alınamadı:',
+        error
+      );
+
       return [];
     }
 
     return enrichListings(data ?? []);
-  },
-
-  /** Teklif ekranlarında kullanılan, yalnızca takasa uygun ilanlar. */
-  async getTradableUserListings(userId: string): Promise<Listing[]> {
-    const listings = await this.getUserListings(userId);
-    return listings.filter((listing) => listing.status === 'active');
   },
 
   async createListing(data: {
@@ -288,13 +438,24 @@ export const listingService = {
     images: string[];
     location: Listing['location'];
     lookingFor: string;
-    deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
+    lookingForCategories?: CategoryId[];
+    deliveryOptions: (
+      | 'in_person'
+      | 'cargo'
+      | 'safe_point'
+    )[];
     tags?: string[];
   }): Promise<Listing | undefined> {
-    const categoryUuid = await getCategoryUuid(data.categoryId);
+    const categoryUuid = await getCategoryUuid(
+      data.categoryId
+    );
 
     if (!categoryUuid) {
-      console.error('Geçersiz kategori:', data.categoryId);
+      console.error(
+        'Geçersiz kategori:',
+        data.categoryId
+      );
+
       return undefined;
     }
 
@@ -311,6 +472,7 @@ export const listingService = {
         latitude: data.location.lat ?? null,
         longitude: data.location.lng ?? null,
         looking_for: data.lookingFor,
+        looking_for_categories: data.lookingForCategories ?? [],
         delivery_options: data.deliveryOptions,
         tags: data.tags ?? [],
         status: 'active',
@@ -319,48 +481,97 @@ export const listingService = {
       .single();
 
     if (error || !created) {
-      console.error('İlan oluşturulamadı:', error);
+      console.error(
+        'İlan oluşturulamadı:',
+        error
+      );
+
       return undefined;
     }
 
     if (data.images.length > 0) {
-      const { error: imageError } = await supabase.from('listing_images').insert(
-        data.images.map((url, index) => ({
+      const imageRows = data.images.map(
+        (url, index) => ({
           listing_id: created.id,
           storage_path: url,
           sort_order: index,
-        }))
+        })
       );
 
+      const { error: imageError } =
+        await supabase
+          .from('listing_images')
+          .insert(imageRows);
+
       if (imageError) {
-        console.warn('İlan oluşturuldu fakat fotoğraflar kaydedilemedi:', imageError);
+        console.warn(
+          'İlan oluşturuldu fakat fotoğraflar kaydedilemedi:',
+          imageError
+        );
       }
     }
 
+    const listing = mapListing({
+      ...created,
+      category_slug: data.categoryId,
+    });
+
     return {
-      ...mapListing({ ...created, category_slug: data.categoryId }),
+      ...listing,
+
+      userId: data.userId,
       user: data.user,
-      images: data.images.length ? data.images : [PLACEHOLDER_IMAGE],
+
+      images:
+        data.images.length > 0
+          ? data.images
+          : [DEFAULT_IMAGE],
+
       location: data.location,
+
+      lookingFor: data.lookingFor,
+      lookingForCategories: data.lookingForCategories ?? [],
+
+      deliveryOptions: data.deliveryOptions,
+
+      tags: data.tags ?? [],
+
+      viewCount: 0,
+      favoriteCount: 0,
+      isFavorite: false,
     };
   },
 
-  async updateListing(id: string, updates: Partial<Listing>): Promise<Listing | undefined> {
+  async updateListing(
+    id: string,
+    updates: Partial<Listing>
+  ): Promise<Listing | undefined> {
     const updateData: TablesUpdate<'listings'> = {};
 
-    if (updates.title !== undefined) updateData.title = updates.title;
-    if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.condition !== undefined) updateData.condition = updates.condition;
-    if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.lookingFor !== undefined) updateData.looking_for = updates.lookingFor;
-    if (updates.deliveryOptions !== undefined) updateData.delivery_options = updates.deliveryOptions;
-    if (updates.tags !== undefined) updateData.tags = updates.tags;
+    if (updates.title !== undefined) {
+      updateData.title = updates.title;
+    }
+
+    if (updates.description !== undefined) {
+      updateData.description = updates.description;
+    }
+
+    if (updates.condition !== undefined) {
+      updateData.condition = updates.condition;
+    }
 
     if (updates.categoryId !== undefined) {
-      const categoryUuid = await getCategoryUuid(updates.categoryId);
+      const categoryUuid =
+        await getCategoryUuid(
+          updates.categoryId
+        );
 
       if (!categoryUuid) {
-        console.error('Kategori bulunamadı:', updates.categoryId);
+        console.error(
+          'Kategori bulunamadı:',
+          updates.categoryId
+        );
+
         return undefined;
       }
 
@@ -368,69 +579,105 @@ export const listingService = {
     }
 
     if (updates.location) {
-      updateData.city = updates.location.city;
-      updateData.district = updates.location.district;
-      updateData.latitude = updates.location.lat ?? null;
-      updateData.longitude = updates.location.lng ?? null;
+      updateData.city =
+        updates.location.city;
+
+      updateData.district =
+        updates.location.district;
+
+      updateData.latitude =
+        updates.location.lat;
+
+      updateData.longitude =
+        updates.location.lng;
     }
 
-    updateData.updated_at = new Date().toISOString();
+    if (updates.status !== undefined) {
+      updateData.status = updates.status;
+    }
+
+    if (updates.lookingFor !== undefined) {
+      updateData.looking_for = updates.lookingFor;
+    }
+
+    if (updates.lookingForCategories !== undefined) {
+      updateData.looking_for_categories = updates.lookingForCategories;
+    }
+
+    if (updates.deliveryOptions !== undefined) {
+      updateData.delivery_options = updates.deliveryOptions;
+    }
+
+    if (updates.tags !== undefined) {
+      updateData.tags = updates.tags;
+    }
+
+    updateData.updated_at =
+      new Date().toISOString();
 
     const { data, error } = await supabase
       .from('listings')
       .update(updateData)
       .eq('id', id)
-      .select(LISTING_SELECT)
+      .select('*')
       .maybeSingle();
 
     if (error || !data) {
-      console.error('İlan güncellenemedi:', error);
+      console.error(
+        'İlan güncellenemedi:',
+        error
+      );
+
       return undefined;
     }
 
-    const [listing] = await enrichListings([data]);
+    const [listing] =
+      await enrichListings([data]);
+
     return listing;
   },
 
-  /** İlanı yayından kaldırır / geri alır. */
-  async setListingStatus(id: string, status: Listing['status']): Promise<boolean> {
+  async deleteListing(
+    id: string
+  ): Promise<boolean> {
     const { error } = await supabase
       .from('listings')
-      .update({ status, updated_at: new Date().toISOString() })
+      .delete()
       .eq('id', id);
 
     if (error) {
-      console.error('İlan durumu değiştirilemedi:', error);
+      console.error(
+        'İlan silinemedi:',
+        error
+      );
+
       return false;
     }
 
     return true;
   },
 
-  async deleteListing(id: string): Promise<boolean> {
-    // Fotoğraf satırları `on delete cascade` ile birlikte silinir.
-    const { error } = await supabase.from('listings').delete().eq('id', id);
+  async toggleFavorite(
+    id: string
+  ): Promise<boolean> {
+    const {
+      data: userData,
+    } = await supabase.auth.getUser();
 
-    if (error) {
-      console.error('İlan silinemedi:', error);
-      return false;
-    }
-
-    invalidateFavoriteCache();
-    return true;
-  },
-
-  /** Favoriye ekler/çıkarır ve yeni durumu (favoride mi) döndürür. */
-  async toggleFavorite(id: string): Promise<boolean> {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user?.id;
+    const userId =
+      userData.user?.id;
 
     if (!userId) {
-      console.warn('Favori işlemi için giriş gerekli.');
+      console.warn(
+        'Favori işlemi için giriş gerekli.'
+      );
+
       return false;
     }
 
-    const { data: existing } = await supabase
+    const {
+      data: existing,
+    } = await supabase
       .from('favorites')
       .select('id')
       .eq('listing_id', id)
@@ -438,51 +685,95 @@ export const listingService = {
       .maybeSingle();
 
     if (existing) {
-      const { error } = await supabase.from('favorites').delete().eq('id', existing.id);
+      const { error } =
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('id', existing.id);
 
       if (error) {
-        console.error('Favori kaldırılamadı:', error);
-        return true;
+        console.error(
+          'Favori kaldırılamadı:',
+          error
+        );
+
+        return false;
       }
 
-      invalidateFavoriteCache();
       return false;
     }
 
-    const { error } = await supabase
-      .from('favorites')
-      .insert({ listing_id: id, user_id: userId });
+    const { error } =
+      await supabase
+        .from('favorites')
+        .insert({
+          listing_id: id,
+          user_id: userId,
+        });
 
     if (error) {
-      console.error('Favori eklenemedi:', error);
+      console.error(
+        'Favori eklenemedi:',
+        error
+      );
+
       return false;
     }
 
-    invalidateFavoriteCache();
     return true;
   },
 
-  async getFavoriteIds(): Promise<string[]> {
-    return [...(await getFavoriteIdSet())];
-  },
-
   async getFavorites(): Promise<Listing[]> {
-    const ids = await this.getFavoriteIds();
+    const {
+      data: userData,
+    } = await supabase.auth.getUser();
 
-    if (!ids.length) return [];
+    const userId =
+      userData.user?.id;
 
-    const { data, error } = await supabase
-      .from('listings')
-      .select(LISTING_SELECT)
-      .in('id', ids)
-      .order('created_at', { ascending: false });
-
-    if (error || !data) {
-      if (error) console.error('Favori ilanlar alınamadı:', error);
+    if (!userId) {
       return [];
     }
 
-    return enrichListings(data);
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('favorites')
+      .select('listing_id')
+      .eq('user_id', userId);
+
+    if (error || !data) {
+      return [];
+    }
+
+    const ids =
+      data.map(
+        (item) => item.listing_id
+      );
+
+    if (!ids.length) {
+      return [];
+    }
+
+    const {
+      data: listings,
+      error: listingsError,
+    } = await supabase
+      .from('listings')
+      .select(LISTING_SELECT) // BURASI DA GÜNCELLENDİ
+      .in('id', ids);
+
+    if (
+      listingsError ||
+      !listings
+    ) {
+      return [];
+    }
+
+    return enrichListings(
+      listings
+    );
   },
 
   async searchListings(
@@ -491,81 +782,84 @@ export const listingService = {
     condition?: string,
     maxDistance?: number
   ): Promise<Listing[]> {
+    // BURASI GÜNCELLENDİ
     let request = supabase
       .from('listings')
       .select(LISTING_SELECT)
       .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(60);
+      .order('created_at', {
+        ascending: false,
+      });
 
-    const cleanQuery = query.trim();
+    const cleanQuery = sanitizeSearchQuery(query);
 
     if (cleanQuery) {
-      // Virgül ve parantez PostgREST `or` filtresini bozar; temizleniyor.
-      const safeQuery = cleanQuery.replace(/[,()]/g, ' ');
-      request = request.or(`title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%,looking_for.ilike.%${safeQuery}%`);
+      request = request.or(
+        `title.ilike.%${cleanQuery}%,description.ilike.%${cleanQuery}%`
+      );
     }
 
-    if (categoryId && categoryId !== 'all') {
-      const categoryUuid = await getCategoryUuid(categoryId);
-      if (!categoryUuid) return [];
-      request = request.eq('category_id', categoryUuid);
+    if (
+      categoryId &&
+      categoryId !== 'all'
+    ) {
+      const categoryUuid =
+        await getCategoryUuid(
+          categoryId
+        );
+
+      if (!categoryUuid) {
+        return [];
+      }
+
+      request = request.eq(
+        'category_id',
+        categoryUuid
+      );
     }
 
-    if (condition && condition !== 'all') {
-      request = request.eq('condition', condition);
+    if (
+      condition &&
+      condition !== 'all'
+    ) {
+      request = request.eq(
+        'condition',
+        condition
+      );
     }
 
-    const { data, error } = await request;
+    const {
+      data,
+      error,
+    } = await request;
 
     if (error) {
-      console.error('İlan araması başarısız:', error);
+      console.error(
+        'İlan araması başarısız:',
+        error
+      );
+
       return [];
     }
 
-    const listings = await enrichListings(data ?? []);
-
-    if (maxDistance !== undefined && maxDistance > 0) {
-      // Konumu bilinmeyen ilanlar mesafe filtresiyle elenmez — aksi halde
-      // konum izni verilmediğinde liste tamamen boşalırdı.
-      return listings.filter(
-        (listing) =>
-          listing.location.distanceKm === undefined || listing.location.distanceKm <= maxDistance
+    let listings =
+      await enrichListings(
+        await withoutBlockedOwners(data ?? [])
       );
+
+    if (
+      maxDistance !== undefined &&
+      maxDistance > 0
+    ) {
+      listings =
+        listings.filter(
+          (listing) =>
+            listing.location
+              .distanceKm <=
+            maxDistance
+        );
     }
 
     return listings;
   },
-
-  /** Kategori bazlı gerçek ilan sayıları (keşfet ekranındaki rozetler için). */
-  async getCategoryCounts(): Promise<Record<string, number>> {
-    const { data, error } = await supabase
-      .from('listings')
-      .select('category_id')
-      .eq('status', 'active');
-
-    if (error || !data) {
-      if (error) console.error('Kategori sayıları alınamadı:', error);
-      return {};
-    }
-
-    const { data: categories } = await supabase.from('categories').select('id, slug');
-    const slugById = new Map((categories ?? []).map((c) => [c.id, c.slug]));
-
-    return data.reduce<Record<string, number>>((acc, row) => {
-      const slug = slugById.get(row.category_id ?? '') ?? 'other';
-      acc[slug] = (acc[slug] ?? 0) + 1;
-      return acc;
-    }, {});
-  },
 };
-
-/**
- * İlan fotoğraflarını yükler. Dosyalar `storageService` içinde WebP'e
- * çevrilir; dönen dizi girişle aynı sırada olup başarısız slotlarda
- * `null` taşır.
- */
-export async function uploadListingImages(files: File[]): Promise<(string | null)[]> {
-  const results = await storageService.uploadListingImages(files);
-  return results.map((result) => result?.url ?? null);
-}

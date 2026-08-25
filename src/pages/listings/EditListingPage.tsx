@@ -16,7 +16,7 @@ import { ArrowLeft, CheckCircle2, Trash2 } from 'lucide-react';
 export const EditListingPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentUser, showToast, refreshScorecard } = useApp();
+  const { currentUser, showToast, refreshUserData } = useApp();
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,6 +90,9 @@ export const EditListingPage: React.FC = () => {
       location: {
         city: city.trim(),
         district: district.trim(),
+        // distanceKm hesaplanan bir alan (kullanıcının konumuna göre); ilan
+        // düzenlerken değişmez, mevcut değeri korunur.
+        distanceKm: listing?.location.distanceKm ?? 0,
         lat: listing?.location.lat,
         lng: listing?.location.lng,
       },
@@ -101,7 +104,7 @@ export const EditListingPage: React.FC = () => {
       return;
     }
 
-    refreshScorecard();
+    refreshUserData();
     showToast('İlan güncellendi', updated.title, 'success');
     navigate(`/ilan/${id}`, { replace: true });
   };
@@ -117,7 +120,7 @@ export const EditListingPage: React.FC = () => {
       return;
     }
 
-    refreshScorecard();
+    refreshUserData();
     showToast('İlan silindi', listing.title, 'info');
     navigate('/profil', { replace: true });
   };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { ArrowLeft, CheckCircle2, Delete, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Delete } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const OtpVerificationPage: React.FC = () => {
@@ -9,19 +9,15 @@ export const OtpVerificationPage: React.FC = () => {
   const navigate = useNavigate();
   const { setCurrentUser, showToast } = useApp();
 
-  const state = (location.state as { phone?: string; isExisting?: boolean }) || {};
-  const phone = state.phone ?? '';
+  const state =
+    (location.state as { phone?: string; isExisting?: boolean; passwordVerified?: boolean }) || {};
+  const phone = state.phone || '+90 532 890 12 34';
   const isExisting = state.isExisting || false;
+  const passwordVerified = state.passwordVerified || false;
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState<number>(60);
+  const [timer, setTimer] = useState<number>(56);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-
-  // Numarasız bu ekrana doğrudan gelinemez (yenilenmiş sekme, paylaşılan link).
-  useEffect(() => {
-    if (!phone) navigate('/giris', { replace: true });
-  }, [phone, navigate]);
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -56,22 +52,10 @@ export const OtpVerificationPage: React.FC = () => {
     }
   };
 
-  /** SMS gelmediyse kodu yeniden gönderir. */
-  const handleResend = async () => {
-    if (timer > 0 || isResending) return;
-
-    setIsResending(true);
-    const result = await authService.sendOtp(phone);
-    setIsResending(false);
-
-    if (!result.success) {
-      showToast('Kod gönderilemedi', result.error || 'Lütfen tekrar dene.', 'error');
-      return;
-    }
-
-    setOtp(['', '', '', '', '', '']);
-    setTimer(60);
-    showToast('Kod tekrar gönderildi', phone, 'info');
+  const handleAutoFillDemo = () => {
+    const demoCode = '246810';
+    setOtp(demoCode.split(''));
+    verifyCode(demoCode);
   };
 
   const verifyCode = async (code: string) => {
@@ -88,109 +72,131 @@ export const OtpVerificationPage: React.FC = () => {
         navigate('/kesfet');
       }
     } else {
-      setOtp(['', '', '', '', '', '']);
-      showToast('Hatalı kod', res.error || 'SMS ile gelen 6 haneli kodu kontrol et.', 'error');
+      showToast('Hatalı Kod', 'Lütfen SMS ile gelen 6 haneli kodu kontrol ediniz (Demo: 246810).', 'error');
     }
   };
 
+  const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'demo', '0', 'backspace'];
+  const KEY_LETTERS: Record<string, string> = {
+    '2': 'ABC',
+    '3': 'DEF',
+    '4': 'GHI',
+    '5': 'JKL',
+    '6': 'MNO',
+    '7': 'PQRS',
+    '8': 'TUV',
+    '9': 'WXYZ',
+  };
+
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col justify-between p-6 max-w-md mx-auto">
-      {/* Top Bar */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-surface flex flex-col">
+      <div className="max-w-md w-full mx-auto px-6 pt-6 flex-1 flex flex-col">
+        <div className="flex items-center">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center hover:bg-stone-100 transition-colors"
+            aria-label="Geri"
+            className="w-11 h-11 -ml-2 rounded-xl flex items-center justify-center text-ink-soft hover:bg-canvas transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-            Adım 2 / 3
-          </span>
         </div>
 
-        <div className="space-y-2 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-stone-100 font-display tracking-tight">
-            Doğrulama Kodu
-          </h1>
-          <p className="text-sm text-stone-500">
-            <span className="font-semibold text-stone-800 dark:text-stone-200">{phone}</span> numarasına gönderilen 6 haneli SMS kodunu gir.
+        <div className="text-center mt-6">
+          <h1 className="text-2xl text-ink">Doğrulama Kodu</h1>
+          <p className="text-sm text-ink-soft mt-2">
+            <span className="font-semibold text-ink">{phone}</span> numarasına gönderdiğimiz 6
+            haneli kodu gir.
           </p>
         </div>
 
-        {/* 6 Digit Pin Boxes */}
-        <div className="flex justify-between gap-2 sm:gap-2.5 my-6">
-          {otp.map((digit, idx) => (
+        {/* Kod kutuları */}
+        <div className="flex items-center justify-center gap-2 mt-8" aria-label="Doğrulama kodu">
+          {otp.map((digit, index) => (
             <div
-              key={idx}
-              className={`w-12 h-14 sm:w-14 sm:h-16 rounded-2xl flex items-center justify-center text-xl font-extrabold font-display border-2 transition-all shadow-xs ${
-                digit
-                  ? 'border-emerald-600 bg-emerald-50/50 text-emerald-950 scale-105'
-                  : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-400'
+              key={index}
+              className={`w-11 h-14 rounded-xl border flex items-center justify-center text-xl font-semibold text-ink transition-colors ${
+                digit ? 'border-brand bg-brand-soft' : 'border-line bg-canvas'
               }`}
             >
-              {digit || '•'}
+              {digit}
             </div>
           ))}
         </div>
 
-        {/* Kodu yeniden gönder */}
-        <div className="flex items-center justify-center text-xs text-stone-500 mb-6">
+        <div className="text-center mt-5">
           {timer > 0 ? (
-            <span>Kodu yeniden gönderebilmek için {timer} sn</span>
+            <span className="text-xs text-ink-soft">
+              Kodu Tekrar Gönder (00:{String(timer).padStart(2, '0')})
+            </span>
           ) : (
             <button
               type="button"
-              onClick={handleResend}
-              disabled={isResending}
-              className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline cursor-pointer disabled:opacity-60"
+              onClick={async () => {
+                await authService.sendOtp(phone);
+                setTimer(56);
+                showToast('Kod tekrar gönderildi', undefined, 'info');
+              }}
+              className="text-xs font-bold text-brand-dark hover:underline cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
-              {isResending ? 'Gönderiliyor...' : 'Kodu yeniden gönder'}
+              Kodu Tekrar Gönder
             </button>
           )}
         </div>
+
+        {isVerifying && (
+          <p className="text-center text-xs text-ink-soft mt-4">Doğrulanıyor…</p>
+        )}
       </div>
 
-      {/* Custom Keypad for Mobile-Native Feel */}
-      <div className="pt-2">
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-xs mx-auto mb-4">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'backspace'].map((key, i) => {
-            if (key === '') return <div key={i} />;
-            if (key === 'backspace') {
+      {/* Sayısal tuş takımı — mobilde klavye açılmadan hızlı giriş. */}
+      <div className="bg-canvas border-t border-line mt-8">
+        <div className="max-w-md mx-auto grid grid-cols-3 gap-px bg-line">
+          {keypad.map((key) => {
+            if (key === 'demo') {
               return (
                 <button
-                  key={i}
+                  key={key}
                   type="button"
-                  onClick={() => handleKeypadPress('backspace')}
-                  className="h-14 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 active:bg-stone-300 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors cursor-pointer"
+                  onClick={handleAutoFillDemo}
+                  className="h-16 bg-canvas text-[10px] font-bold text-ink-faint hover:bg-surface transition-colors cursor-pointer"
                 >
-                  <Delete className="w-6 h-6" />
+                  DEMO
                 </button>
               );
             }
+
+            if (key === 'backspace') {
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleKeypadPress('backspace')}
+                  aria-label="Sil"
+                  className="h-16 bg-canvas flex items-center justify-center text-ink-soft hover:bg-surface transition-colors cursor-pointer"
+                >
+                  <Delete className="w-5 h-5" />
+                </button>
+              );
+            }
+
             return (
               <button
-                key={i}
+                key={key}
                 type="button"
                 onClick={() => handleKeypadPress(key)}
-                className="h-14 rounded-2xl bg-white dark:bg-stone-900 hover:bg-stone-100 active:bg-emerald-50 border border-stone-200 dark:border-stone-800 shadow-xs flex items-center justify-center text-xl font-bold text-stone-800 dark:text-stone-200 transition-all active:scale-95 cursor-pointer font-display"
+                className="h-16 bg-canvas flex flex-col items-center justify-center hover:bg-surface transition-colors cursor-pointer"
               >
-                {key}
+                <span className="text-xl font-semibold text-ink leading-none">{key}</span>
+                {KEY_LETTERS[key] && (
+                  <span className="text-[9px] font-semibold text-ink-faint tracking-widest mt-0.5">
+                    {KEY_LETTERS[key]}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-
-        <button
-          type="button"
-          onClick={() => verifyCode(otp.join(''))}
-          disabled={otp.join('').length < 6 || isVerifying}
-          className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-        >
-          {isVerifying ? 'Doğrulanıyor...' : 'Doğrula ve Devam Et'}
-        </button>
       </div>
     </div>
   );
