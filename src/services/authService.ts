@@ -3,6 +3,7 @@ import { CURRENT_USER } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImageToWebp } from '../utils/imageToWebp';
+import { blockService } from './blockService';
 
 const AUTH_STORAGE_KEY = 'swaloop_auth_user';
 const ONBOARDING_COMPLETED_KEY = 'swaloop_onboarding_done';
@@ -122,7 +123,22 @@ function trustLevelFromScore(
   return 'Başlangıç';
 }
 
+/**
+ * Ham `profiles` satırını UserProfile'a çevirir.
+ *
+ * `row` bilerek NULL kabul ediyor: join'lerde karşı tarafın profili
+ * gelmeyebilir (satır silinmiş, RLS elemiş ya da PostgREST embed'i boş
+ * dönmüş olabilir). Önceden bu durumda `row.id` okunduğu için
+ * "Cannot read properties of null" hatasıyla tüm sayfa çöküyordu —
+ * mesaj listesi, teklif listesi ve döngü katılımcıları bu yoldan
+ * geçtiği için tek bozuk satır ekranın tamamını boşaltıyordu.
+ * Artık anonim bir yer tutucu profil üretiliyor.
+ */
 export function mapProfile(row: any, trust?: any | null): UserProfile {
+  if (!row) {
+    row = { id: '', full_name: 'Swaloop Kullanıcısı' };
+  }
+
   const completedTrades = trust?.completed_trades ?? 0;
   const cancelledTrades = trust?.cancelled_trades ?? 0;
   const totalTrades = completedTrades + cancelledTrades;
@@ -688,6 +704,11 @@ export const authService = {
 
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(ONBOARDING_COMPLETED_KEY);
+
+    // Engel listesi oturum içi önbellekte tutuluyor. Çıkış yapılınca
+    // düşürülmezse, aynı cihazda başka bir hesapla girildiğinde önceki
+    // kullanıcının engel listesi ilk sorguya kadar geçerli kalıyordu.
+    blockService.invalidateCache();
   },
 
   async updateUserProfile(

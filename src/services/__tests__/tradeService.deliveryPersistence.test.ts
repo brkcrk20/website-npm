@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Rapor 1.3 fix'in regresyon testi:
 // MakeOfferPage'de seçilen deliveryMethod/deliveryDetails,
@@ -68,57 +70,26 @@ describe('teklif teslimat bilgisi: oluşturma -> kabul zinciri', () => {
     vi.doUnmock('../../lib/supabase');
   });
 
-  it('acceptOffer, trade_offers\'daki teslimat bilgisini trades satırına taşır (kaybolmaz)', async () => {
+  it('acceptOffer, kabul islemini accept_trade_offer() RPC\'sine devreder', async () => {
     vi.resetModules();
-    const capturedTradeInsert: any[] = [];
-
-    const fakeOfferRow = {
-      id: 'offer-1',
-      sender_id: 'user-a',
-      receiver_id: 'user-b',
-      status: 'offer_sent',
-      message: null,
-      parent_offer_id: null,
-      delivery_method: 'cargo',
-      delivery_scheduled_at: '2026-09-01T00:00:00.000Z',
-      delivery_location_name: 'Kadıköy PTT',
-      delivery_notes: 'Kırılacak eşya, dikkatli paketleyin',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    const capturedRpcCalls: Array<{ fn: string; args: any }> = [];
 
     vi.doMock('../../lib/supabase', () => {
       const supabase = {
+        rpc: async (fn: string, args: any) => {
+          capturedRpcCalls.push({ fn, args });
+          return { data: 'trade-1', error: null };
+        },
         from(table: string) {
+          // acceptOffer, RPC'den sonra getTradeById ile teklifi tekrar okur;
+          // bu test yalnizca RPC cagrisini dogruladigi icin "bulunamadi"
+          // donmek yeterli.
           if (table === 'trade_offers') {
             return {
               select: () => ({
-                eq: () => ({
-                  maybeSingle: async () => ({ data: fakeOfferRow, error: null }),
-                }),
-              }),
-              update: () => ({
-                eq: async () => ({ error: null }),
+                eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
               }),
             };
-          }
-          if (table === 'trades') {
-            return {
-              insert: (row: any) => {
-                capturedTradeInsert.push(row);
-                return {
-                  select: () => ({
-                    single: async () => ({
-                      data: { id: 'trade-1', ...row, started_at: new Date().toISOString(), completed_at: null },
-                      error: null,
-                    }),
-                  }),
-                };
-              },
-            };
-          }
-          if (table === 'trade_events') {
-            return { insert: async () => ({ error: null }) };
           }
           throw new Error(`Beklenmeyen tablo: ${table}`);
         },
@@ -128,19 +99,46 @@ describe('teklif teslimat bilgisi: oluşturma -> kabul zinciri', () => {
 
     const { tradeService } = await import('../tradeService');
 
-    // acceptOffer, trades insert'inden sonra getTradeById ile tekrar
-    // hydrate etmeye çalışır; bu test yalnızca trades insert payload'ını
-    // doğruladığı için o kısmın hata vermesi (fetch edememesi) beklenen
-    // ve zararsız bir durumdur.
-    await tradeService.acceptOffer('offer-1').catch(() => undefined);
+    await tradeService.acceptOffer('offer-1');
 
-    expect(capturedTradeInsert).toHaveLength(1);
-    const insertedTrade = capturedTradeInsert[0];
-    expect(insertedTrade.delivery_method).toBe('cargo');
-    expect(insertedTrade.delivery_location_name).toBe('Kadıköy PTT');
-    expect(insertedTrade.delivery_notes).toBe('Kırılacak eşya, dikkatli paketleyin');
-    expect(insertedTrade.delivery_scheduled_at).toBe('2026-09-01T00:00:00.000Z');
+    expect(capturedRpcCalls).toEqual([
+      { fn: 'accept_trade_offer', args: { p_offer_id: 'offer-1' } },
+    ]);
 
     vi.doUnmock('../../lib/supabase');
+  });
+
+  it('accept_trade_offer() teslimat bilgisini trade_offers\'tan trades\'e kopyalar', () => {
+    // Kabul akisi istemciden DB'ye tasindigi icin (tek islem + yetki
+    // kontrolu, bkz. 20260827000000), teslimat bilgisinin tasindigini artik
+    // SQL fonksiyonunun govdesi uzerinden dogruluyoruz. Biri fonksiyondan
+    // delivery_* alanlarini dusururse bu test kirilir.
+    const migrationsDir = path.resolve(__dirname, '../../../supabase/migrations');
+    const file = fs
+      .readdirSync(migrationsDir)
+      .find((f) => f.includes('backend_integrity_fixes'));
+
+    expect(file, 'backend_integrity_fixes migration dosyasi bulunamadi').toBeTruthy();
+
+    const sql = fs.readFileSync(path.join(migrationsDir, file as string), 'utf-8');
+    const fnStart = sql.indexOf('function public.accept_trade_offer');
+    expect(fnStart, 'accept_trade_offer fonksiyonu bulunamadi').toBeGreaterThan(-1);
+
+    const body = sql.slice(fnStart);
+    const insertBlock = body.slice(
+      body.indexOf('insert into public.trades'),
+      body.indexOf('returning id into v_trade_id')
+    );
+
+    for (const column of [
+      'delivery_method',
+      'delivery_scheduled_at',
+      'delivery_location_name',
+      'delivery_notes',
+    ]) {
+      // Hem hedef kolon listesinde hem de v_offer.<kolon> kaynaginda gecmeli.
+      expect(insertBlock).toContain(column);
+      expect(insertBlock).toContain(`v_offer.${column}`);
+    }
   });
 });

@@ -203,6 +203,37 @@ alter table public.listings
   add column if not exists view_count integer not null default 0,
   add column if not exists favorite_count integer not null default 0;
 
+-- sync_listing_favorite_count: favorites tablosundaki her ekleme/silmede
+-- listings.favorite_count'u güncelleyen fonksiyon.
+--
+-- SIRALAMA NOTU: Fonksiyonun tanımı 20260818135000'de de var, ama o dosya
+-- BU dosyadan SONRA çalışıyor. Aşağıdaki trigger fonksiyonu tanımlanmadan
+-- kurulamayacağı için ("function public.sync_listing_favorite_count() does
+-- not exist"), sıfırdan kurulan bir ortamda şema bu satırda çöküyordu.
+-- Tanım idempotent (`create or replace`) olduğundan burada da bulunması
+-- 135000'in aynı tanımı tekrar yazmasını zararsız kılar.
+create or replace function public.sync_listing_favorite_count()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+begin
+  if (tg_op = 'INSERT') then
+    update public.listings
+      set favorite_count = favorite_count + 1
+      where id = new.listing_id;
+    return new;
+  elsif (tg_op = 'DELETE') then
+    update public.listings
+      set favorite_count = greatest(favorite_count - 1, 0)
+      where id = old.listing_id;
+    return old;
+  end if;
+  return null;
+end;
+$$;
+
 drop trigger if exists trg_sync_listing_favorite_count on public.favorites;
 create trigger trg_sync_listing_favorite_count
   after insert or delete on public.favorites

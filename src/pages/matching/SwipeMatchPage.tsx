@@ -46,7 +46,8 @@ export const SwipeMatchPage: React.FC = () => {
   // Filtered deck of listings
   const filteredListings = allListings.filter((item) => {
     if (selectedCategory !== 'all' && item.categoryId !== selectedCategory) return false;
-    if (item.location.distanceKm > maxDistance) return false;
+    // Mesafesi bilinmeyen ilan elenmez (konum izni yoksa akış boş kalmasın).
+    if (item.location.distanceKm !== undefined && item.location.distanceKm > maxDistance) return false;
     if (onlyVerified && !item.user.isVerified) return false;
     return true;
   });
@@ -74,7 +75,7 @@ export const SwipeMatchPage: React.FC = () => {
   // Helper to calculate match score between target and user's items
   const getMatchAffinity = (target: Listing) => {
     let score = 75;
-    if (target.location.distanceKm <= 5) score += 10;
+    if (target.location.distanceKm !== undefined && target.location.distanceKm <= 5) score += 10;
     if (target.user.isVerified) score += 5;
     if (target.user.trustScore >= 4.7) score += 5;
     return Math.min(score, 98);
@@ -278,7 +279,9 @@ export const SwipeMatchPage: React.FC = () => {
 
               <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-stone-200 text-[11px] font-medium border border-stone-700 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-emerald-400" />
-                {currentListing.location.district} ({currentListing.location.distanceKm} km)
+                {currentListing.location.district}
+                {currentListing.location.distanceKm !== undefined &&
+                  ` (${currentListing.location.distanceKm} km)`}
               </span>
             </div>
 

@@ -152,23 +152,23 @@ function buildDeliveryDetails(
   };
 }
 
-async function hydrateOffer(
+function hydrateOffer(
   offerRow: TradeOfferRow,
   tradeRow: TradeRow | null,
-  events: TradeEventRow[]
-): Promise<TradeOffer> {
+  events: TradeEventRow[],
+  listingsById: Map<string, Listing>
+): TradeOffer {
   const initiator = mapProfile(offerRow.sender);
   const receiver = mapProfile(offerRow.receiver);
 
-  const offeredItemRows = (offerRow.items ?? []).filter((i) => i.role === TRADE_ITEM_ROLE.OFFERED);
-  const requestedItemRows = (offerRow.items ?? []).filter((i) => i.role === TRADE_ITEM_ROLE.REQUESTED);
+  const pickListings = (role: TradeItemRole): Listing[] =>
+    (offerRow.items ?? [])
+      .filter((i) => i.role === role)
+      .map((i) => listingsById.get(i.listing_id))
+      .filter((l): l is Listing => Boolean(l));
 
-  const offeredListings = await enrichListings(
-    offeredItemRows.map((i) => i.listing).filter(Boolean)
-  );
-  const requestedListings = await enrichListings(
-    requestedItemRows.map((i) => i.listing).filter(Boolean)
-  );
+  const offeredListings = pickListings(TRADE_ITEM_ROLE.OFFERED);
+  const requestedListings = pickListings(TRADE_ITEM_ROLE.REQUESTED);
 
   // Frontend durumu: teklif reddedilmediyse ve henüz `trades` satırı yoksa
   // teklifin kendi durumu (offer_sent / counter_offered) geçerli; `trades`
@@ -330,46 +330,100 @@ async function fetchTradeRowByOfferId(offerId: string): Promise<TradeRow | null>
   return data as TradeRow | null;
 }
 
-async function fetchEventsForTrade(tradeId: string | undefined): Promise<TradeEventRow[]> {
-  if (!tradeId) return [];
-  const { data, error } = await supabase
-    .from('trade_events')
+/**
+ * Bir teklif listesini TAM olarak, teklif sayısından BAĞIMSIZ sabit sayıda
+ * istekle hidratlar.
+ *
+ * Önceki hâli her teklif için ayrı ayrı `trades`, `trade_events`, `reviews`
+ * sorgusu ve iki kez `enrichListings` (o da kendi içinde 2 sorgu) atıyordu:
+ * 20 teklifli bir "Takaslarım" ekranı ~140 HTTP isteği demekti. README'nin
+ * "liste sorguları toplu çalışır, istek sayısı teklif sayısından bağımsızdır"
+ * cümlesi kod tarafında karşılıksızdı. Artık gerçekten öyle: 3 sorgu +
+ * enrichListings'in sabit 2 sorgusu.
+ */
+async function hydrateOffers(offerRows: TradeOfferRow[]): Promise<TradeOffer[]> {
+  if (!offerRows.length) return [];
+
+  const offerIds = offerRows.map((o) => o.id);
+
+  const { data: tradeRows, error: tradeError } = await supabase
+    .from('trades')
     .select('*')
-    .eq('trade_id', tradeId)
-    .order('created_at', { ascending: true });
+    .in('offer_id', offerIds);
 
-  if (error) {
-    console.error('Trade eventleri alınamadı:', error);
-    return [];
+  if (tradeError) console.error('Trade kayıtları alınamadı:', tradeError);
+
+  const tradeByOfferId = new Map<string, TradeRow>();
+  for (const row of (tradeRows ?? []) as TradeRow[]) {
+    tradeByOfferId.set(row.offer_id, row);
   }
-  return (data ?? []) as TradeEventRow[];
-}
 
-async function attachReviewFlags(
-  offer: TradeOffer,
-  tradeId: string | undefined
-): Promise<TradeOffer> {
-  if (!tradeId) return offer;
+  const tradeIds = [...tradeByOfferId.values()].map((t) => t.id);
 
-  const { data, error } = await supabase
-    .from('reviews')
-    .select('reviewer_id')
-    .eq('trade_id', tradeId);
+  const [eventsResult, reviewsResult] = await Promise.all([
+    tradeIds.length
+      ? supabase
+          .from('trade_events')
+          .select('*')
+          .in('trade_id', tradeIds)
+          .order('created_at', { ascending: true })
+      : Promise.resolve({ data: [], error: null } as const),
+    tradeIds.length
+      ? supabase.from('reviews').select('trade_id, reviewer_id').in('trade_id', tradeIds)
+      : Promise.resolve({ data: [], error: null } as const),
+  ]);
 
-  if (error || !data) return offer;
+  if (eventsResult.error) console.error('Trade eventleri alınamadı:', eventsResult.error);
+  if (reviewsResult.error) console.error('Değerlendirme bayrakları alınamadı:', reviewsResult.error);
 
-  return {
-    ...offer,
-    isReviewedByInitiator: data.some((r) => r.reviewer_id === offer.initiatorId),
-    isReviewedByReceiver: data.some((r) => r.reviewer_id === offer.receiverId),
-  };
+  const eventsByTradeId = new Map<string, TradeEventRow[]>();
+  for (const row of (eventsResult.data ?? []) as TradeEventRow[]) {
+    const list = eventsByTradeId.get(row.trade_id);
+    if (list) list.push(row);
+    else eventsByTradeId.set(row.trade_id, [row]);
+  }
+
+  const reviewersByTradeId = new Map<string, Set<string>>();
+  for (const row of (reviewsResult.data ?? []) as { trade_id: string; reviewer_id: string }[]) {
+    const set = reviewersByTradeId.get(row.trade_id);
+    if (set) set.add(row.reviewer_id);
+    else reviewersByTradeId.set(row.trade_id, new Set([row.reviewer_id]));
+  }
+
+  // Tüm tekliflerin tüm ilanları TEK seferde zenginleştirilir. Aynı ilan
+  // birden fazla teklifte geçebileceği için önce id'ye göre tekilleştiriliyor.
+  const listingRowById = new Map<string, any>();
+  for (const offerRow of offerRows) {
+    for (const item of offerRow.items ?? []) {
+      if (item.listing && !listingRowById.has(item.listing_id)) {
+        listingRowById.set(item.listing_id, item.listing);
+      }
+    }
+  }
+
+  const enriched = await enrichListings([...listingRowById.values()]);
+  const listingsById = new Map<string, Listing>(enriched.map((l) => [l.id, l]));
+
+  return offerRows.map((offerRow) => {
+    const tradeRow = tradeByOfferId.get(offerRow.id) ?? null;
+    const events = tradeRow ? eventsByTradeId.get(tradeRow.id) ?? [] : [];
+    const offer = hydrateOffer(offerRow, tradeRow, events, listingsById);
+
+    if (!tradeRow) return offer;
+
+    const reviewers = reviewersByTradeId.get(tradeRow.id);
+
+    return {
+      ...offer,
+      isReviewedByInitiator: reviewers ? reviewers.has(offer.initiatorId) : false,
+      isReviewedByReceiver: reviewers ? reviewers.has(offer.receiverId) : false,
+    };
+  });
 }
 
 async function fullyHydrate(offerRow: TradeOfferRow): Promise<TradeOffer> {
-  const tradeRow = await fetchTradeRowByOfferId(offerRow.id);
-  const events = await fetchEventsForTrade(tradeRow?.id);
-  const offer = await hydrateOffer(offerRow, tradeRow, events);
-  return attachReviewFlags(offer, tradeRow?.id);
+  const [offer] = await hydrateOffers([offerRow]);
+  return offer;
 }
 
 export const tradeService = {
@@ -387,7 +441,7 @@ export const tradeService = {
       return [];
     }
 
-    return Promise.all(data.map((row: any) => fullyHydrate(row)));
+    return hydrateOffers(data as unknown as TradeOfferRow[]);
   },
 
   async getTradeById(id: string): Promise<TradeOffer | undefined> {
@@ -417,7 +471,7 @@ export const tradeService = {
       return [];
     }
 
-    return Promise.all(data.map((row: any) => fullyHydrate(row)));
+    return hydrateOffers(data as unknown as TradeOfferRow[]);
   },
 
   async getUserOutgoingTrades(userId: string): Promise<TradeOffer[]> {
@@ -432,7 +486,7 @@ export const tradeService = {
       return [];
     }
 
-    return Promise.all(data.map((row: any) => fullyHydrate(row)));
+    return hydrateOffers(data as unknown as TradeOfferRow[]);
   },
 
   async createTradeOffer(data: {
@@ -449,10 +503,23 @@ export const tradeService = {
     };
     // Sohbete düşen kartın etiketi için: karşı teklif mi, ilk teklif mi?
     isCounterOffer?: boolean;
+    // Karşı teklifte, yanıtlanan orijinal teklifin id'si. INSERT'in KENDİSİNDE
+    // yazılmak zorunda: `notify_on_new_offer()` tetikleyicisi bildirim türünü
+    // (`trade_offer` / `counter_offer`) `new.parent_offer_id`'ye bakarak
+    // seçiyor ve o an satır zaten yazılmış oluyor. Eskiden bu alan INSERT'ten
+    // SONRA ayrı bir UPDATE ile set ediliyordu, dolayısıyla her karşı teklif
+    // karşı tarafa "Yeni takas teklifi" olarak bildiriliyordu.
+    parentOfferId?: string;
   }): Promise<TradeOffer | undefined> {
+    if (data.initiator.id === data.receiver.id) {
+      console.error('Kendine takas teklifi gönderilemez.');
+      return undefined;
+    }
+
     const insertPayload: TablesInsert<'trade_offers'> = {
       sender_id: data.initiator.id,
       receiver_id: data.receiver.id,
+      parent_offer_id: data.parentOfferId ?? null,
       // DB check constraint (trade_offers_status_check) sadece
       // 'pending' | 'accepted' | 'rejected' | 'countered' | 'cancelled' |
       // 'expired' değerlerine izin veriyor. UI'daki zengin durumlar
@@ -529,59 +596,32 @@ export const tradeService = {
     return this.getTradeById(offerRow.id);
   },
 
+  /**
+   * Teklifi kabul eder.
+   *
+   * Eskiden bu üç ayrı istekti (teklifi 'accepted' yap → `trades` satırı aç →
+   * olay kaydı yaz) ve aralarında hiçbir atomiklik yoktu:
+   *   * ikinci istek başarısız olursa teklif "kabul edildi" görünüp arkasında
+   *     takas olmuyordu; o teklif kalıcı olarak ilerletilemez hâle geliyordu,
+   *   * çift tıklamada aynı teklif için İKİ `trades` satırı oluşuyor ve
+   *     `fetchTradeRowByOfferId()`'nin .maybeSingle()'ı yüzünden teklif
+   *     detayı bir daha hiç açılmıyordu,
+   *   * teklifin durumu (reddedilmiş / süresi dolmuş / zaten kabul edilmiş)
+   *     ve çağıranın gerçekten alıcı olup olmadığı hiç kontrol edilmiyordu.
+   *
+   * Üçü de `accept_trade_offer()` içinde tek işlem olarak yapılıyor
+   * (bkz. migration 20260827000000). Fonksiyon idempotent: aynı teklif için
+   * tekrar çağrılırsa var olan takası döndürür.
+   */
   async acceptOffer(tradeId: string): Promise<TradeOffer | undefined> {
-    const { data: offerRow, error: offerError } = await supabase
-      .from('trade_offers')
-      .select('*')
-      .eq('id', tradeId)
-      .maybeSingle();
+    const { error } = await supabase.rpc('accept_trade_offer', {
+      p_offer_id: tradeId,
+    });
 
-    if (offerError || !offerRow) {
-      console.error('Teklif bulunamadı:', offerError);
+    if (error) {
+      console.error('Teklif kabul edilemedi:', error);
       return undefined;
     }
-
-    const { error: updateError } = await supabase
-      .from('trade_offers')
-      .update({ status: 'accepted' })
-      .eq('id', tradeId);
-
-    if (updateError) {
-      console.error('Teklif durumu güncellenemedi:', updateError);
-      return undefined;
-    }
-
-    const tradeInsert: TablesInsert<'trades'> = {
-      offer_id: offerRow.id,
-      sender_id: offerRow.sender_id,
-      receiver_id: offerRow.receiver_id,
-      status: 'locked',
-      // Rapor 1.3 fix: teklif oluşturulurken trade_offers'a kaydedilen
-      // teslimat tercihi burada trades'e taşınıyor, böylece kabul
-      // edildikten sonra da kaybolmuyor.
-      delivery_method: offerRow.delivery_method,
-      delivery_scheduled_at: offerRow.delivery_scheduled_at,
-      delivery_location_name: offerRow.delivery_location_name,
-      delivery_notes: offerRow.delivery_notes,
-    };
-
-    const { data: tradeRow, error: tradeError } = await supabase
-      .from('trades')
-      .insert(tradeInsert)
-      .select()
-      .single();
-
-    if (tradeError || !tradeRow) {
-      console.error('Trade kaydı oluşturulamadı:', tradeError);
-      return undefined;
-    }
-
-    await supabase.from('trade_events').insert({
-      trade_id: tradeRow.id,
-      actor_id: offerRow.receiver_id,
-      event_type: 'offer_accepted',
-      note: 'Teklif kabul edildi, ürünler kilitlendi.',
-    } as TablesInsert<'trade_events'>);
 
     return this.getTradeById(tradeId);
   },
@@ -681,11 +721,11 @@ export const tradeService = {
     const orig = await this.getTradeById(originalTradeId);
     if (!orig) return undefined;
 
-    await supabase
-      .from('trade_offers')
-      .update({ status: 'countered' })
-      .eq('id', originalTradeId);
-
+    // Karşı teklif ÖNCE oluşturulur. Eskiden orijinal teklif hemen
+    // 'countered' yapılıyordu; karşı teklif oluşturulamazsa (ağ hatası,
+    // engellenmiş kullanıcı) orijinal teklif geri alınamaz biçimde
+    // "karşı teklif verildi" durumunda kalıyor ve iki taraf da onu bir daha
+    // yanıtlayamıyordu.
     const counterOffer = await this.createTradeOffer({
       initiator: orig.receiver,
       receiver: orig.initiator,
@@ -693,6 +733,7 @@ export const tradeService = {
       requestedListings: newRequestedListings,
       deliveryMethod: newDeliveryMethod,
       isCounterOffer: true,
+      parentOfferId: originalTradeId,
       // Orijinal teklifte kararlaştırılan tarih/buluşma yeri karşı teklifte
       // kaybolmasın; karşı teklif veren yalnızca yöntemi değiştirebiliyor.
       deliveryDetails: orig.deliveryDetails,
@@ -701,10 +742,14 @@ export const tradeService = {
 
     if (!counterOffer) return undefined;
 
-    await supabase
+    const { error: markError } = await supabase
       .from('trade_offers')
-      .update({ parent_offer_id: originalTradeId })
-      .eq('id', counterOffer.id);
+      .update({ status: 'countered' })
+      .eq('id', originalTradeId);
+
+    if (markError) {
+      console.error('Orijinal teklif "karşı teklif verildi" olarak işaretlenemedi:', markError);
+    }
 
     return this.getTradeById(counterOffer.id);
   },
@@ -715,6 +760,24 @@ export const tradeService = {
       console.error('advanceTradeStep: bu teklife bağlı bir trade kaydı yok.');
       return undefined;
     }
+
+    // Adım sırası artık DB'de de zorunlu (trg_enforce_trade_transition), ama
+    // burada da kontrol ediliyor ki kullanıcıya boş bir hata yerine anlamlı
+    // bir sonuç dönebilelim ve gereksiz istek atılmasın. Eskiden hiçbir
+    // kontrol yoktu: "kilitli" bir takas tek çağrıda "tamamlandı" yapılabiliyor
+    // ve teslimat hiç gerçekleşmeden iki tarafın güven sayacı artıyordu.
+    if (tradeRow.status === 'completed' || tradeRow.status === 'cancelled') {
+      console.error('advanceTradeStep: sonuçlanmış bir takas ilerletilemez.', tradeRow.status);
+      return this.getTradeById(tradeId);
+    }
+
+    const rank: Record<string, number> = {
+      locked: 1,
+      delivery_planned: 2,
+      in_transit: 3,
+      received: 4,
+      completed: 5,
+    };
 
     let newStatus: string;
     let eventType: string;
@@ -736,6 +799,13 @@ export const tradeService = {
       update.completed_at = new Date().toISOString();
     }
 
+    if ((rank[newStatus] ?? 0) <= (rank[tradeRow.status] ?? 0)) {
+      console.error(
+        `advanceTradeStep: takas adımı geriye alınamaz (${tradeRow.status} -> ${newStatus}).`
+      );
+      return this.getTradeById(tradeId);
+    }
+
     update.status = newStatus;
 
     const { error: updateError } = await supabase
@@ -748,8 +818,14 @@ export const tradeService = {
       return undefined;
     }
 
+    // actor_id, olay kaydının kim tarafından üretildiğini gösterir; boş
+    // bırakıldığında admin panelindeki aktivite akışı olayı kime
+    // bağlayacağını bilemiyordu.
+    const { data: authData } = await supabase.auth.getUser();
+
     await supabase.from('trade_events').insert({
       trade_id: tradeRow.id,
+      actor_id: authData.user?.id ?? null,
       event_type: eventType,
     } as TablesInsert<'trade_events'>);
 
@@ -760,6 +836,30 @@ export const tradeService = {
     const tradeRow = await fetchTradeRowByOfferId(review.tradeId);
     if (!tradeRow) {
       console.error('submitReview: bu teklife bağlı bir trade kaydı yok.');
+      return undefined;
+    }
+
+    // DB tarafında da zorunlu (reviews_insert_trade_party politikası +
+    // reviews_not_self_check / reviews_one_per_reviewer_key kısıtları), ama
+    // istemcide de kontrol ediliyor ki kullanıcı ham bir RLS hatası yerine
+    // ne olduğunu anlasın. Eskiden hiçbiri kontrol edilmiyordu: henüz teslim
+    // edilmemiş bir takasa da, kendine de, aynı takasa defalarca da
+    // değerlendirme yazılabiliyordu.
+    if (tradeRow.status !== 'completed') {
+      console.error('submitReview: değerlendirme yalnızca tamamlanmış bir takasa yazılabilir.');
+      return undefined;
+    }
+
+    if (review.authorId === review.targetUserId) {
+      console.error('submitReview: kullanıcı kendini değerlendiremez.');
+      return undefined;
+    }
+
+    if (
+      ![tradeRow.sender_id, tradeRow.receiver_id].includes(review.authorId) ||
+      ![tradeRow.sender_id, tradeRow.receiver_id].includes(review.targetUserId)
+    ) {
+      console.error('submitReview: değerlendiren ve değerlendirilen bu takasın tarafı olmalı.');
       return undefined;
     }
 

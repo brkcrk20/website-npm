@@ -44,8 +44,10 @@ type ConversationRow = {
   active_trade_offer_id: string | null;
   created_at: string;
   updated_at: string;
+  last_message_id: string | null;
   participant_one?: any;
   participant_two?: any;
+  last_message?: MessageRow | null;
 };
 
 type MessageRow = {
@@ -60,8 +62,12 @@ type MessageRow = {
   sender?: any;
 };
 
+// `last_message` embed'i, `conversations.last_message_id` üzerinden gelir.
+// Bu kolon her yeni mesajda tetikleyiciyle güncelleniyor (bkz. migration
+// 20260827000000); böylece konuşma listesi için ayrıca "son mesajı getir"
+// sorgusu atmak gerekmiyor.
 const CONVERSATION_SELECT =
-  `*, participant_one:profiles!conversations_participant_one_id_fkey(${PROFILE_COLUMNS}), participant_two:profiles!conversations_participant_two_id_fkey(${PROFILE_COLUMNS})`;
+  `*, participant_one:profiles!conversations_participant_one_id_fkey(${PROFILE_COLUMNS}), participant_two:profiles!conversations_participant_two_id_fkey(${PROFILE_COLUMNS}), last_message:messages!conversations_last_message_id_fkey(*, sender:profiles(${PROFILE_COLUMNS}))`;
 
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -84,24 +90,14 @@ function mapMessageRow(row: MessageRow): Message {
   };
 }
 
-async function mapConversationRow(row: ConversationRow, currentUserId: string): Promise<Conversation> {
+function buildConversation(
+  row: ConversationRow,
+  currentUserId: string,
+  lastMessage: MessageRow | null,
+  unreadCount: number
+): Conversation {
   const otherRow = row.participant_one_id === currentUserId ? row.participant_two : row.participant_one;
   const participant: UserProfile = mapProfile(otherRow);
-
-  const { data: lastMsgRow } = await supabase
-    .from('messages')
-    .select(`*, sender:profiles(${PROFILE_COLUMNS})`)
-    .eq('conversation_id', row.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { count: unreadCount } = await supabase
-    .from('messages')
-    .select('id', { count: 'exact', head: true })
-    .eq('conversation_id', row.id)
-    .eq('is_read', false)
-    .neq('sender_id', currentUserId);
 
   const fallbackLastMessage: Message = {
     id: `placeholder-${row.id}`,
@@ -118,11 +114,64 @@ async function mapConversationRow(row: ConversationRow, currentUserId: string): 
   return {
     id: row.id,
     participant,
-    lastMessage: lastMsgRow ? mapMessageRow(lastMsgRow as MessageRow) : fallbackLastMessage,
-    unreadCount: unreadCount ?? 0,
+    lastMessage: lastMessage ? mapMessageRow(lastMessage) : fallbackLastMessage,
+    unreadCount,
     updatedAt: row.updated_at,
     activeTradeId: row.active_trade_offer_id ?? undefined,
   };
+}
+
+/**
+ * Konuşma satırlarını, konuşma sayısından BAĞIMSIZ sabit sayıda istekle
+ * hidratlar.
+ *
+ * Önceki hâli her konuşma için iki ek sorgu atıyordu (son mesaj + okunmamış
+ * sayısı): 30 sohbeti olan bir kullanıcı mesajlar ekranını her açtığında
+ * 61 HTTP isteği tetikliyordu. Artık son mesajlar ve okunmamışlar tek
+ * seferde çekilip istemcide gruplanıyor.
+ */
+async function mapConversationRows(
+  rows: ConversationRow[],
+  currentUserId: string
+): Promise<Conversation[]> {
+  if (!rows.length) return [];
+
+  const conversationIds = rows.map((row) => row.id);
+
+  // Son mesaj zaten satırın içinde embed edildi; geriye yalnızca okunmamış
+  // sayıları kalıyor ve o da tek sorguda toplanıyor. PostgREST group by
+  // desteklemediği için sayım istemcide yapılıyor — sorgu yalnızca
+  // OKUNMAMIŞ satırları döndürdüğü için veri hacmi küçük.
+  const { data: unreadRows, error: unreadError } = await supabase
+    .from('messages')
+    .select('conversation_id')
+    .in('conversation_id', conversationIds)
+    .eq('is_read', false)
+    .neq('sender_id', currentUserId);
+
+  if (unreadError) console.error('Okunmamış sayıları alınamadı:', unreadError);
+
+  const unreadByConversation = new Map<string, number>();
+  for (const row of (unreadRows ?? []) as { conversation_id: string }[]) {
+    unreadByConversation.set(
+      row.conversation_id,
+      (unreadByConversation.get(row.conversation_id) ?? 0) + 1
+    );
+  }
+
+  return rows.map((row) =>
+    buildConversation(
+      row,
+      currentUserId,
+      row.last_message ?? null,
+      unreadByConversation.get(row.id) ?? 0
+    )
+  );
+}
+
+async function mapConversationRow(row: ConversationRow, currentUserId: string): Promise<Conversation> {
+  const [conversation] = await mapConversationRows([row], currentUserId);
+  return conversation;
 }
 
 export const messageService = {
@@ -139,7 +188,7 @@ export const messageService = {
       return [];
     }
 
-    return Promise.all((data ?? []).map((row) => mapConversationRow(row as ConversationRow, currentUserId)));
+    return mapConversationRows((data ?? []) as unknown as ConversationRow[], currentUserId);
   },
 
   async getConversationById(id: string, currentUserId: string): Promise<Conversation | undefined> {
@@ -179,10 +228,19 @@ export const messageService = {
     type: Message['type'] = 'text',
     tradeOfferId?: string
   ): Promise<Message | undefined> {
+    const trimmed = content.trim();
+
+    // Boş mesaj DB'de `content text not null` kısıtını geçiyordu (boş string
+    // da bir değerdir) ve sohbette görünmez bir satır olarak duruyordu.
+    if (!trimmed) {
+      console.error('Boş mesaj gönderilemez.');
+      return undefined;
+    }
+
     const insertPayload: TablesInsert<'messages'> = {
       conversation_id: conversationId,
       sender_id: senderId,
-      content,
+      content: trimmed,
       type,
       trade_offer_id: tradeOfferId ?? null,
       is_read: false,

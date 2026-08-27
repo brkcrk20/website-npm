@@ -92,7 +92,7 @@ export const EditListingPage: React.FC = () => {
         district: district.trim(),
         // distanceKm hesaplanan bir alan (kullanıcının konumuna göre); ilan
         // düzenlerken değişmez, mevcut değeri korunur.
-        distanceKm: listing?.location.distanceKm ?? 0,
+        distanceKm: listing?.location.distanceKm,
         lat: listing?.location.lat,
         lng: listing?.location.lng,
       },
