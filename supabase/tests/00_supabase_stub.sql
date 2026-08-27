@@ -29,5 +29,16 @@ alter table storage.objects enable row level security;
 create or replace function storage.foldername(name text) returns text[]
 language sql immutable as $$ select string_to_array(name, '/') $$;
 
-create role anon;
-create role authenticated;
+-- Roller küme (cluster) genelindedir, veritabanına özel değil: aynı küme
+-- üzerinde ikinci kez çalıştırıldığında `create role` "already exists"
+-- hatası verip koşumu ON_ERROR_STOP ile durduruyordu. Idempotent hâle
+-- getirildi ki testler aynı PostgreSQL örneğinde tekrar tekrar koşabilsin.
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated;
+  end if;
+end $$;

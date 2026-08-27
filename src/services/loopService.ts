@@ -153,6 +153,41 @@ function hydrateLoop(row: LoopRow, listingsById: Map<string, Listing>): Loop {
   };
 }
 
+/**
+ * Döngüye konacak ilan gerçekten çağıranın mı ve yayında mı?
+ *
+ * Kural DB'de de zorunlu (trg_enforce_loop_participant_listing, migration
+ * 20260828000000) — burada da bakılıyor ki kullanıcı ham bir Postgres hatası
+ * yerine ne olduğunu anlatan bir mesaj görsün. Eskiden hiçbir kontrol yoktu:
+ * `loop_participants_insert_own` politikası yalnızca "satırdaki user_id
+ * benim" diyordu, `offering_listing_id` hiç doğrulanmıyordu; yani başkasının
+ * ilanı döngüye kendi teklifin gibi konabiliyordu.
+ */
+async function assertOwnActiveListing(userId: string, listingId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('listings')
+    .select('owner_id, status')
+    .eq('id', listingId)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error('Döngüye eklenecek ilan bulunamadı:', error);
+    return false;
+  }
+
+  if (data.owner_id !== userId) {
+    console.error('Döngüye yalnızca kendi ilanını koyabilirsin.');
+    return false;
+  }
+
+  if (data.status !== 'active') {
+    console.error(`Yalnızca yayında olan bir ilan döngüye konabilir (mevcut durum: ${data.status}).`);
+    return false;
+  }
+
+  return true;
+}
+
 export const loopService = {
   async getLoops(): Promise<Loop[]> {
     const { data, error } = await supabase
@@ -198,6 +233,8 @@ export const loopService = {
     maxParticipants: number = 3,
     description?: string
   ): Promise<Loop | undefined> {
+    if (!(await assertOwnActiveListing(creatorId, listingId))) return undefined;
+
     const loopInsert: TablesInsert<'loops'> = {
       creator_id: creatorId,
       title,
@@ -247,6 +284,8 @@ export const loopService = {
    * otomatik olarak 'locked'e çevirir.
    */
   async joinLoop(loopId: string, userId: string, listingId: string): Promise<Loop | undefined> {
+    if (!(await assertOwnActiveListing(userId, listingId))) return undefined;
+
     // Katılmadan önce döngünün gerçekten katılıma açık ve dolu olmadığı
     // kontrol ediliyor. Eskiden hiçbir kontrol yoktu: kilitlenmiş, tamamlanmış
     // ya da iptal edilmiş bir döngüye de katılınabiliyor, kapasitesi dolu bir

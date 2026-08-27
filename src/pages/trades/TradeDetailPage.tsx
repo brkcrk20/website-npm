@@ -135,13 +135,32 @@ export const TradeDetailPage: React.FC = () => {
   };
 
   const handleAdvanceStep = async (step: 4 | 5 | 6) => {
+    // Adım 5 tek taraflı bir ilerletme değil, bir onay: takas ancak iki
+    // taraf da onayladığında "doğrulandı" adımına geçiyor.
+    if (step === 5) {
+      const result = await tradeService.confirmReceipt(trade.id);
+
+      if (!result?.trade) {
+        showToast('Onay kaydedilemedi', 'Lütfen tekrar dene.', 'error');
+        return;
+      }
+
+      setTrade(result.trade);
+      showToast(
+        result.bothConfirmed ? 'Teslimat Doğrulandı!' : 'Onayın Kaydedildi',
+        result.bothConfirmed
+          ? 'İki taraf da onayladı, takası tamamlayabilirsin.'
+          : 'Karşı taraf onayladığında takas tamamlanabilecek.',
+        result.bothConfirmed ? 'success' : 'info'
+      );
+      return;
+    }
+
     const updated = await tradeService.advanceTradeStep(trade.id, step);
     if (updated) {
       setTrade(updated);
       if (step === 4) {
         showToast('Teslimat Aşamasına Geçildi', 'Kargo veya buluşma planı aktif.', 'info');
-      } else if (step === 5) {
-        showToast('Teslimat Onaylandı!', 'Karşı taraf onayladığında takas başarıyla tamamlanacak.', 'success');
       } else if (step === 6) {
         showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
         setShowReviewModal(true);

@@ -10,6 +10,50 @@ const ONBOARDING_COMPLETED_KEY = 'swaloop_onboarding_done';
 const AVATARS_BUCKET = 'avatars';
 
 /**
+ * `profiles` tablosundan çekilen kolonlar — `select('*')` YERİNE.
+ *
+ * GÜVENLİK: `phone` ve `email` artık istemci rollerinde (anon/authenticated)
+ * SELECT hakkı olmayan kolonlar (bkz. migration 20260828000000). `*` bu iki
+ * kolonu da kapsadığı için Postgres tüm sorguyu "permission denied for
+ * column phone" ile reddeder. Bu yüzden buradaki açık liste kullanılıyor.
+ *
+ * Kullanıcının kendi telefonu/e-postası artık profilden değil, Supabase
+ * oturumundan (auth.users) okunuyor — `withSessionContact()`.
+ */
+const PROFILE_COLUMNS =
+  'id, full_name, first_name, last_name, avatar_url, bio, city, district, username, created_at, updated_at, is_admin, sms_verification_enabled, interests, wanted_categories' as const;
+
+/**
+ * BAŞKA bir kullanıcının profili için kolon listesi.
+ *
+ * `is_admin` ve `sms_verification_enabled` bilinçli olarak DIŞARIDA:
+ * ilki kimlerin yönetici olduğunu, ikincisi hedefin iki adımlı doğrulama
+ * kullanıp kullanmadığını söyler. İkisi de genel profil kartında
+ * gösterilmiyor; istemeden istemciye taşınmasınlar.
+ */
+const PROFILE_PUBLIC_COLUMNS =
+  'id, full_name, first_name, last_name, avatar_url, bio, city, district, username, created_at, interests, wanted_categories' as const;
+
+/**
+ * Oturumdaki kullanıcının kendi iletişim bilgisini profile ekler.
+ *
+ * `profiles.phone` / `profiles.email` istemciye hiç inmediği için (yukarıya
+ * bakın) kendi numaranı gösterebilmenin tek doğru kaynağı auth oturumudur;
+ * kayıt sırasında zaten oraya yazılıyor.
+ */
+async function withSessionContact(user: UserProfile): Promise<UserProfile> {
+  const { data } = await supabase.auth.getUser();
+
+  if (!data.user || data.user.id !== user.id) return user;
+
+  return {
+    ...user,
+    phone: data.user.phone ? formatPhone(data.user.phone) : user.phone,
+    email: data.user.email ?? user.email,
+  };
+}
+
+/**
  * Kullanıcının seçtiği gerçek profil fotoğrafını Supabase Storage'a
  * ({auth.uid()}/avatar-{random}.webp yoluna) yükler ve public URL'ini
  * döndürür. `uploadListingImages` ile aynı desen — bkz.
@@ -125,6 +169,11 @@ function trustLevelFromScore(
 
 /**
  * Ham `profiles` satırını UserProfile'a çevirir.
+ *
+ * NOT: `row.phone` / `row.email` artık HİÇBİR sorgudan gelmez — bu iki
+ * kolonda istemci rollerinin SELECT hakkı yok (migration 20260828000000).
+ * Kendi numaranı `withSessionContact()` auth oturumundan ekler; karşı
+ * tarafın numarası hiçbir ekranda gösterilmediği için boş kalır.
  *
  * `row` bilerek NULL kabul ediyor: join'lerde karşı tarafın profili
  * gelmeyebilir (satır silinmiş, RLS elemiş ya da PostgREST embed'i boş
@@ -370,7 +419,7 @@ export const authService = {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('id', data.user.id)
       .maybeSingle();
 
@@ -382,7 +431,7 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profile.id);
-    const user = mapProfile(profile, trust);
+    const user = await withSessionContact(mapProfile(profile, trust));
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,
@@ -431,7 +480,7 @@ export const authService = {
 
     const { data: profileRow, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('id', data.user.id)
       .maybeSingle();
 
@@ -468,7 +517,7 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profileRow.id);
-    const user = mapProfile(profileRow, trust);
+    const user = await withSessionContact(mapProfile(profileRow, trust));
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
@@ -502,7 +551,7 @@ export const authService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', authData.user.id)
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .single();
 
     if (error || !data) {
@@ -511,7 +560,7 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(data.id);
-    const user = mapProfile(data, trust);
+    const user = await withSessionContact(mapProfile(data, trust));
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
@@ -584,7 +633,7 @@ export const authService = {
           onConflict: 'id',
         }
       )
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .single();
 
     if (error || !profile) {
@@ -594,7 +643,16 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profile.id);
-    const newUser = mapProfile(profile, trust);
+
+    // Telefon/e-posta `profiles`'tan geri OKUNAMADIĞI için (kolon yetkisi
+    // yok, bkz. PROFILE_COLUMNS) az önce yazılan değerler doğrudan
+    // kullanılıyor. `auth.users.email` yeni bir e-postada doğrulama
+    // beklediği için oturumdan hemen gelmeyebilir.
+    const newUser: UserProfile = {
+      ...(await withSessionContact(mapProfile(profile, trust))),
+      phone: formatPhone(phone),
+      email: data.email.trim(),
+    };
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,
@@ -616,7 +674,7 @@ export const authService = {
 
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .eq('id', authData.user.id)
       .maybeSingle();
 
@@ -625,7 +683,7 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(profile.id);
-    const user = mapProfile(profile, trust);
+    const user = await withSessionContact(mapProfile(profile, trust));
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,
@@ -641,15 +699,14 @@ export const authService = {
    * verisiyle çalışıyordu, gerçek Supabase profiline hiç bağlı değildi.
    */
   async getPublicProfile(userId: string): Promise<UserProfile | null> {
-    // GÜVENLİK: burada `select('*')` KULLANILMAMALI. `profiles` üzerindeki
-    // RLS politikası satır bazlıdır (`profiles_select_all ... using (true)`)
-    // ve Postgres'te kolon bazlı RLS yoktur — `*` ile sorgulandığında
-    // başka bir kullanıcının telefon numarası ve e-postası istemciye
-    // iniyordu. Genel profil kartında bunların hiçbiri gösterilmiyor.
-    // mapProfile eksik alanlar için zaten boş değere düşüyor.
+    // GÜVENLİK: burada `select('*')` KULLANILMAMALI — bkz. PROFILE_COLUMNS.
+    // `phone`/`email` kolonlarında istemci rollerinin SELECT hakkı yok
+    // (20260828000000); `*` sorguyu tümden reddettirir. Genel profil
+    // kartında bu alanların hiçbiri zaten gösterilmiyor; mapProfile eksik
+    // alanlar için boş değere düşüyor.
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('id, full_name, first_name, last_name, avatar_url, bio, city, district, username, created_at, interests, wanted_categories')
+      .select(PROFILE_PUBLIC_COLUMNS)
       .eq('id', userId)
       .maybeSingle();
 
@@ -768,7 +825,7 @@ export const authService = {
       .from('profiles')
       .update(dbUpdates)
       .eq('id', authData.user.id)
-      .select('*')
+      .select(PROFILE_COLUMNS)
       .single();
 
     if (error || !data) {
@@ -777,7 +834,7 @@ export const authService = {
     }
 
     const trust = await getTrustProfileRow(data.id);
-    const user = mapProfile(data, trust);
+    const user = await withSessionContact(mapProfile(data, trust));
 
     localStorage.setItem(
       AUTH_STORAGE_KEY,

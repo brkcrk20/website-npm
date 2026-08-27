@@ -404,16 +404,43 @@ export const adminService = {
     return true;
   },
 
+  /**
+   * İlan moderasyonu.
+   *
+   * DÜZELTİLDİ: `listings` üzerindeki tek UPDATE politikası
+   * `listings_update_own` (auth.uid() = owner_id) idi; yani bu fonksiyon
+   * BAŞKASININ ilanını kaldırmaya çalıştığında RLS satırı sessizce eliyordu.
+   * Supabase bu durumda HATA DÖNDÜRMÜYOR, sadece 0 satır güncelliyor —
+   * fonksiyon `error` boş olduğu için `true` dönüyor, denetim kaydına
+   * "İlan Kaldırıldı" yazılıyor ve ilan yayında kalmaya devam ediyordu.
+   *
+   * İki taraflı düzeltme: (1) admin'e UPDATE izni veren bir politika eklendi
+   * (`listings_update_admin`, migration 20260828000000), (2) burada
+   * güncellenen satır GERÇEKTEN geri okunuyor — 0 satır dönerse işlem
+   * başarısız sayılıyor ve denetim kaydı yazılmıyor.
+   */
   async moderateListing(listingId: string, action: 'approve' | 'remove', reason?: string): Promise<boolean> {
     if (action !== 'remove') return true;
 
     const admin = await getCurrentAdmin();
     if (!admin) return false;
 
-    const { error } = await supabase.from('listings').update({ status: 'removed' }).eq('id', listingId);
+    const { data, error } = await supabase
+      .from('listings')
+      .update({ status: 'removed' })
+      .eq('id', listingId)
+      .select('id');
 
     if (error) {
       console.error('İlan kaldırılamadı:', error);
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      console.error(
+        'İlan kaldırılamadı: hiçbir satır güncellenmedi. İlan silinmiş olabilir ya da ' +
+          'bu oturumun admin yetkisi RLS tarafından tanınmıyor (profiles.is_admin).'
+      );
       return false;
     }
 

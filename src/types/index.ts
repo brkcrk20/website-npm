@@ -193,6 +193,13 @@ export interface TradeOffer {
   updatedAt: string;
   counterOfferFromId?: string;
   timeline: TradeEvent[];
+  /**
+   * "Karşılıklı Onay" adımı (5). Takas ancak İKİ taraf da teslimatı
+   * onayladıktan sonra ilerler — kural veritabanında
+   * (`confirm_trade_receipt`, migration 20260828000000).
+   */
+  isConfirmedByInitiator?: boolean;
+  isConfirmedByReceiver?: boolean;
   isReviewedByInitiator?: boolean;
   isReviewedByReceiver?: boolean;
 }
