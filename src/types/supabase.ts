@@ -292,6 +292,8 @@ export type Database = {
           delivery_options: string[]
           description: string | null
           district: string | null
+          expires_at: string
+          expiry_reminder_at: string | null
           favorite_count: number
           id: string
           latitude: number | null
@@ -300,6 +302,7 @@ export type Database = {
           looking_for_categories: string[]
           model: string | null
           owner_id: string
+          renewed_at: string | null
           slug: string
           status: string
           tags: string[]
@@ -316,6 +319,10 @@ export type Database = {
           delivery_options?: string[]
           description?: string | null
           district?: string | null
+          // Yazılamaz: trg_enforce_listing_expiry_insert her ilana aynı ömrü
+          // verir ve istemciden gelen değeri yok sayar (20260829000000).
+          expires_at?: string
+          expiry_reminder_at?: string | null
           favorite_count?: number
           id?: string
           latitude?: number | null
@@ -324,6 +331,7 @@ export type Database = {
           looking_for_categories?: string[]
           model?: string | null
           owner_id: string
+          renewed_at?: string | null
           slug?: string
           status?: string
           tags?: string[]
@@ -340,6 +348,10 @@ export type Database = {
           delivery_options?: string[]
           description?: string | null
           district?: string | null
+          // Yalnızca renew_listing() üzerinden değişir; doğrudan UPDATE
+          // trg_enforce_listing_expiry_update ile reddedilir.
+          expires_at?: string
+          expiry_reminder_at?: string | null
           favorite_count?: number
           id?: string
           latitude?: number | null
@@ -348,6 +360,7 @@ export type Database = {
           looking_for_categories?: string[]
           model?: string | null
           owner_id?: string
+          renewed_at?: string | null
           slug?: string
           status?: string
           tags?: string[]
@@ -1322,6 +1335,15 @@ export type Database = {
       delete_listing: {
         Args: { p_listing_id: string }
         Returns: string
+      }
+      // 20260829000000_listing_expiry.sql ile eklendi.
+      renew_listing: {
+        Args: { p_listing_id: string }
+        Returns: string
+      }
+      expire_stale_listings: {
+        Args: Record<string, never>
+        Returns: number
       }
     }
     Enums: {

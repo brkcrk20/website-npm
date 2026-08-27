@@ -1,21 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Package, RotateCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { Listing } from '../../types';
+import { expiryLabel, isExpiringSoon } from '../../utils/listingExpiry';
 
 // 18. İLANLARIM
 //
-// Sekmeler: Aktif · Takasta · Tamamlanan. Durum renkle DEĞİL, metinle
-// belirtiliyor (md. 98).
+// Sekmeler: Aktif · Takasta · Tamamlanan · Süresi dolan. Durum renkle DEĞİL,
+// metinle belirtiliyor (md. 98).
 
-type Tab = 'active' | 'in_trade' | 'traded';
+type Tab = 'active' | 'in_trade' | 'traded' | 'expired';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'active', label: 'Aktif' },
   { id: 'in_trade', label: 'Takasta' },
   { id: 'traded', label: 'Tamamlanan' },
+  // Süresi dolan ilan silinmez, buraya düşer ve tek dokunuşla geri alınır
+  // (rapor md. 119).
+  { id: 'expired', label: 'Süresi dolan' },
 ];
 
 export const MyListingsPage: React.FC = () => {
@@ -56,6 +60,24 @@ export const MyListingsPage: React.FC = () => {
         ? `${listing.title} yayından kaldırıldı. Geçmiş takaslarında görünmeye devam edecek.`
         : listing.title,
       'info'
+    );
+    load();
+  };
+
+  const handleRenew = async (listing: Listing) => {
+    const result = await listingService.renewListing(listing.id);
+
+    if (!result.expiresAt) {
+      showToast('İlan yenilenemedi', result.message, 'error');
+      return;
+    }
+
+    showToast(
+      'İlan yenilendi',
+      `${listing.title} yeniden yayında; süresi ${new Date(
+        result.expiresAt
+      ).toLocaleDateString('tr-TR')} tarihine uzatıldı.`,
+      'success'
     );
     load();
   };
@@ -109,12 +131,18 @@ export const MyListingsPage: React.FC = () => {
               <Package className="w-6 h-6" />
             </span>
             <h2 className="text-base text-ink mt-4">
-              {tab === 'active' ? 'Aktif ilanın yok' : 'Burada bir şey yok'}
+              {tab === 'active'
+                ? 'Aktif ilanın yok'
+                : tab === 'expired'
+                  ? 'Süresi dolan ilanın yok'
+                  : 'Burada bir şey yok'}
             </h2>
             <p className="text-xs text-ink-soft mt-1.5 max-w-xs mx-auto">
               {tab === 'active'
                 ? 'Kullanmadığın bir şeyi ilana çıkar; birinin aradığı şey olabilir.'
-                : 'Takasların ilerledikçe ilanların bu sekmelere düşecek.'}
+                : tab === 'expired'
+                  ? 'İlanlar 30 gün yayında kalır. Süresi dolanlar burada birikir, tek dokunuşla geri alırsın.'
+                  : 'Takasların ilerledikçe ilanların bu sekmelere düşecek.'}
             </p>
             {tab === 'active' && (
               <button
@@ -146,9 +174,29 @@ export const MyListingsPage: React.FC = () => {
                     </span>
                     <span className="block text-xs text-ink-soft truncate mt-0.5">
                       ● {TABS.find((t) => t.id === listing.status)?.label ?? listing.status}
+                      {/* Süre etiketi: `expiresAt` bilinmiyorsa (kolon henüz
+                          canlıda yoksa) expiryLabel boş metin döner ve
+                          burada hiçbir şey yazılmaz. */}
+                      {expiryLabel(listing) && (
+                        <span className={isExpiringSoon(listing) ? 'text-danger' : ''}>
+                          {' · '}
+                          {expiryLabel(listing)}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </button>
+
+                {(listing.status === 'expired' || isExpiringSoon(listing)) && (
+                  <button
+                    type="button"
+                    onClick={() => handleRenew(listing)}
+                    className="text-xs font-semibold text-brand-dark hover:text-brand px-3 py-2 cursor-pointer flex items-center gap-1"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    Yenile
+                  </button>
+                )}
 
                 {listing.status === 'active' && (
                   <>

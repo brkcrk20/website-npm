@@ -13,6 +13,7 @@ import {
   Package,
   ShieldCheck,
   ChevronRight,
+  Clock,
 } from 'lucide-react';
 import { listingService } from '../../services/listingService';
 import { messageService } from '../../services/messageService';
@@ -20,6 +21,7 @@ import { needService } from '../../services/needService';
 import { reportService, REPORT_REASONS, ReportReason } from '../../services/reportService';
 import { Listing } from '../../types';
 import { CATEGORIES } from '../../constants';
+import { expiryLabel, isExpiringSoon } from '../../utils/listingExpiry';
 import { useApp } from '../../context/AppContext';
 
 // 10. İLAN DETAY
@@ -277,6 +279,17 @@ export const ProductDetailPage: React.FC = () => {
             {[listing.location.district, listing.location.city].filter(Boolean).join(', ')}
             {listing.location.distanceKm > 0 && ` · ${listing.location.distanceKm} km`}
           </p>
+
+          {/* "Hâlâ takasa açık mı?" (md. 119). Teklif göndermeden önce
+              görülmesi gereken bilgi: ilan birkaç gün içinde düşecekse
+              teklifin cevapsız kalma ihtimali yüksek. Süre bilinmiyorsa
+              (kolon henüz canlıda yoksa) hiçbir şey yazılmaz. */}
+          {isExpiringSoon(listing) && (
+            <p className="flex items-center gap-1.5 text-xs text-danger mt-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              Bu ilanın süresi doluyor: {expiryLabel(listing).toLowerCase()}
+            </p>
+          )}
         </div>
 
         {/* Karşılığında ne arıyor */}

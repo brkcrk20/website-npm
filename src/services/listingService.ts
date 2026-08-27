@@ -270,6 +270,11 @@ function mapListing(row: any): Listing {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 
+    // 20260829000000 canlıya uygulanana kadar bu kolonlar sorgudan hiç
+    // gelmez; o durumda alan `undefined` kalır ve arayüz süreyi göstermez.
+    expiresAt: row.expires_at ?? undefined,
+    renewedAt: row.renewed_at ?? undefined,
+
     viewCount: row.view_count ?? 0,
     favoriteCount: row.favorite_count ?? 0,
     isFavorite: row.is_favorite ?? false,
@@ -286,6 +291,30 @@ function mapListing(row: any): Listing {
  * takasın ya da geçmişin içindeki ilanlar gizlenirse takas ekranı boş
  * görünür ve kullanıcı ne olduğunu anlamaz.
  */
+/**
+ * Süresi dolmuş ilanları keşif/arama sonuçlarından düşürür (rapor md. 119).
+ *
+ * `expire_stale_listings()` bunu zaten yapıyor ama SAATTE BİR çalışıyor:
+ * arada kalan sürede süresi bitmiş bir ilan hâlâ `status = 'active'`
+ * görünür. Sunucu tarafında `expires_at` filtresi kullanılmıyor, çünkü
+ * 20260829000000 canlıya uygulanana kadar o kolon yok ve sorgu tümden
+ * hata verirdi — kolon gelmeden keşif ekranının boş kalması, birkaç saat
+ * fazladan görünen ilandan çok daha kötü.
+ *
+ * Bilinçli olarak SADECE keşif/arama yollarında: takas geçmişindeki ya da
+ * "İlanlarım"daki süresi dolmuş ilan görünmeye devam etmeli (kullanıcı onu
+ * yenileyecek).
+ */
+export function withoutExpired(rows: any[], now: number = Date.now()): any[] {
+  return rows.filter((row) => {
+    if (!row?.expires_at) return true;
+
+    const end = new Date(row.expires_at).getTime();
+
+    return Number.isNaN(end) || end > now;
+  });
+}
+
 async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
   if (!rows.length) return rows;
 
@@ -460,7 +489,7 @@ export const listingService = {
       return [];
     }
 
-    return enrichListings(await withoutBlockedOwners(data ?? []));
+    return enrichListings(withoutExpired(await withoutBlockedOwners(data ?? [])));
   },
 
   async getListingById(
@@ -773,6 +802,38 @@ export const listingService = {
   },
 
   /**
+   * İlanın yayın süresini bugünden itibaren uzatır; süresi dolmuş bir ilanı
+   * yeniden yayına alır (rapor md. 119).
+   *
+   * Neden RPC: `expires_at` istemciden yazılamıyor
+   * (`trg_enforce_listing_expiry_update`) ve `expired -> active` geçişini
+   * yalnızca sistem yapabiliyor. İkisi tek işlemde olmak zorunda, aksi
+   * hâlde ilan "aktif ama süresi geçmiş" hâline düşüp bir sonraki cron
+   * turunda tekrar kapanır.
+   *
+   * Dönen değer: yeni bitiş tarihi (ISO) · başarısızsa `null` ve nedeni
+   * `message` içinde.
+   */
+  async renewListing(
+    id: string
+  ): Promise<{ expiresAt: string | null; message?: string }> {
+    const { data, error } = await supabase.rpc('renew_listing', {
+      p_listing_id: id,
+    });
+
+    if (error) {
+      console.error('İlan yenilenemedi:', error);
+
+      return {
+        expiresAt: null,
+        message: error.message || 'İlan yenilenirken bir sorun oluştu.',
+      };
+    }
+
+    return { expiresAt: (data as string) ?? null };
+  },
+
+  /**
    * Favoriyi açar/kapatır ve YENİ durumu döndürür.
    *
    * `null` = işlem yapılamadı (giriş yok ya da hata). Önceden hata durumunda
@@ -967,7 +1028,7 @@ export const listingService = {
 
     let listings =
       await enrichListings(
-        await withoutBlockedOwners(data ?? [])
+        withoutExpired(await withoutBlockedOwners(data ?? []))
       );
 
     if (
