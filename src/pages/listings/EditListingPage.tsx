@@ -111,17 +111,25 @@ export const EditListingPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!id || !listing) return;
-    if (!window.confirm(`"${listing.title}" ilanı kalıcı olarak silinsin mi?`)) return;
+    // "Kalıcı olarak" denmiyor: takas geçmişinde geçen bir ilan silinmez,
+    // yayından kaldırılır (bkz. listingService.deleteListing).
+    if (!window.confirm(`"${listing.title}" ilanı kaldırılsın mı?`)) return;
 
-    const ok = await listingService.deleteListing(id);
+    const result = await listingService.deleteListing(id);
 
-    if (!ok) {
-      showToast('Silinemedi', 'İlan silinirken bir sorun oluştu.', 'error');
+    if (result.outcome === 'failed') {
+      showToast('Kaldırılamadı', result.message, 'error');
       return;
     }
 
     refreshUserData();
-    showToast('İlan silindi', listing.title, 'info');
+    showToast(
+      'İlan kaldırıldı',
+      result.outcome === 'archived'
+        ? `${listing.title} yayından kaldırıldı. Geçmiş takaslarında görünmeye devam edecek.`
+        : listing.title,
+      'info'
+    );
     navigate('/profil', { replace: true });
   };
 

@@ -13,7 +13,7 @@ pg_ctl -D /tmp/pgtest/data -o "-k /tmp/pgtest -p 5433" start
 
 # 2. Supabase'in bu testler için gereken parçalarını taklit et
 #    (auth.users, auth.uid(), storage.buckets, storage.objects, roller)
-psql -h /tmp/pgtest -p 5433 -U postgres -f supabase/tests/00_supabase_stub.sql
+psql -h /tmp/pgtest -p 5433 -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/00_supabase_stub.sql
 
 # 3. Migration'ları sırayla uygula
 for f in supabase/migrations/*.sql; do
@@ -25,7 +25,9 @@ psql -h /tmp/pgtest -p 5433 -U postgres -f supabase/tests/trade_flow_test.sql
 ```
 
 Test kendi verisini oluşturur ve sonunda `rollback` yapar; veritabanında iz
-bırakmaz.
+bırakmaz. Stub idempotenttir (roller `create role ... if not exists` yerine bir
+`do` bloğuyla açılır), yani aynı PostgreSQL kümesi üzerinde tekrar tekrar
+çalıştırılabilir.
 
 ## Kapsam
 
@@ -47,6 +49,15 @@ bırakmaz.
 | 14 | `accept_trade_offer()`: yalnızca alıcı kabul edebiliyor, tek işlemde takas+olay açılıyor, tekrar çağrı güvenli, teslimat bilgisi taşınıyor |
 | 14b | `conversations.last_message_id` yeni mesajda güncelleniyor, silinince bir öncekine dönüyor |
 | 15 | `public` şemasındaki tüm fonksiyonlarda `search_path` sabitlenmiş |
+| 16 | `profiles.phone` / `profiles.email` `anon` ve `authenticated` rollerinde okunamıyor; `select *` reddediliyor, `phone_exists()` çalışmaya devam ediyor |
+| 17 | Teklifi yalnızca alıcı kabul/reddedebiliyor, yalnızca gönderen geri çekebiliyor; süresi dolmamış teklif elle "expired" yapılamıyor |
+| 18 | `delete_listing()`: teklife girmemiş ilan siliniyor, geçmişi olan arşivleniyor, devam eden takastaki ilan hiç kaldırılamıyor, başkasının ilanına dokunulamıyor |
+| 19 | `reviews.trustworthiness_rating` var ve aralık kısıtına dahil |
+
+6. ve 9. adımlar ayrıca şunları doğruluyor: takas tek taraflı tamamlanamıyor
+(`confirm_trade_receipt()` iki onay bekliyor) ve kilitli bir ilanın durumunu
+sahibi elle değiştiremiyor. 11. adım, döngüye başkasının ya da yayında olmayan
+bir ilanla katılınamadığını kontrol ediyor.
 
 Ayrıca 3. adım (tüm migration'ların sırayla uygulanması) başlı başına bir
 testtir: şemanın sıfırdan kurulabildiğini doğrular. Bu gerçekten bir arıza

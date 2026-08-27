@@ -40,14 +40,23 @@ export const MyListingsPage: React.FC = () => {
   const filtered = listings.filter((listing) => listing.status === tab);
 
   const handleDelete = async (listing: Listing) => {
-    const ok = await listingService.deleteListing(listing.id);
+    const result = await listingService.deleteListing(listing.id);
 
-    if (!ok) {
-      showToast('İlan kaldırılamadı', 'Lütfen tekrar dene.', 'error');
+    // Reddin nedeni (ör. "devam eden bir takasta olan ilan kaldırılamaz")
+    // kullanıcıya olduğu gibi gösteriliyor; "lütfen tekrar dene" demek
+    // yanlış olurdu, tekrar denemek durumu değiştirmiyor.
+    if (result.outcome === 'failed') {
+      showToast('İlan kaldırılamadı', result.message, 'error');
       return;
     }
 
-    showToast('İlan kaldırıldı', listing.title, 'info');
+    showToast(
+      'İlan kaldırıldı',
+      result.outcome === 'archived'
+        ? `${listing.title} yayından kaldırıldı. Geçmiş takaslarında görünmeye devam edecek.`
+        : listing.title,
+      'info'
+    );
     load();
   };
 

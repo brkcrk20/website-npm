@@ -435,6 +435,17 @@ async function getFavoriteListingIds(listingIds: string[]): Promise<Set<string>>
   return new Set((data ?? []).map((row) => row.listing_id));
 }
 
+/**
+ * `deleteListing` sonucu. 'deleted' = satır gerçekten silindi,
+ * 'archived' = takas geçmişi referans verdiği için yayından kaldırıldı.
+ */
+export interface DeleteListingResult {
+  /** 'deleted' = satır silindi · 'archived' = yayından kaldırıldı · 'failed' = reddedildi */
+  outcome: 'deleted' | 'archived' | 'failed';
+  /** Yalnızca 'failed' durumunda dolu: reddin kullanıcıya gösterilecek nedeni. */
+  message?: string;
+}
+
 export const listingService = {
   async getAllListings(): Promise<Listing[]> {
     // BURASI GÜNCELLENDİ: İlanla birlikte profil ve fotoğrafları da çekiyoruz
@@ -491,10 +502,14 @@ export const listingService = {
       return [];
     }
 
+    // Arşivlenen ilanlar ("İlanlarım" ekranında kaldırılmış olanlar) burada
+    // görünmez; satır yalnızca takas geçmişi başlıksız kalmasın diye duruyor
+    // (bkz. deleteListing).
     const { data, error } = await supabase
       .from('listings')
       .select(LISTING_SELECT)
       .eq('owner_id', userId)
+      .neq('status', 'removed')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -718,24 +733,43 @@ export const listingService = {
     return listing;
   },
 
+  /**
+   * İlanı kaldırır.
+   *
+   * Eskiden doğrudan `delete` atılıyordu ve bu, ilana BİR KEZ teklif gelmiş
+   * olması hâlinde HER ZAMAN başarısız oluyordu: `trade_offer_items.listing_id`
+   * kolonu `listings(id)` referansını `on delete` davranışı olmadan tutuyor
+   * (migration 20260818130000), yani Postgres silmeyi foreign key hatasıyla
+   * reddediyordu. Kullanıcı "İlan silinemedi" dışında hiçbir açıklama
+   * görmüyor ve ilanını bir daha asla kaldıramıyordu.
+   *
+   * Karar: takas geçmişinde geçen ilan silinmez, ARŞİVLENİR (status =
+   * 'removed') — aksi hâlde geçmiş takaslar başlıksız kalırdı. Devam eden
+   * bir takastaki ilan ise hiç kaldırılamaz. Kuralın tamamı
+   * `delete_listing()` içinde (bkz. migration 20260828000000), böylece
+   * hangi ekrandan çağrılırsa çağrılsın aynı şekilde işliyor.
+   *
+   * Hata mesajı çağırana taşınıyor: reddin nedeni ("devam eden takas")
+   * kullanıcının görmesi gereken bir bilgi, konsola yazılıp yutulacak bir
+   * ayrıntı değil.
+   */
   async deleteListing(
     id: string
-  ): Promise<boolean> {
-    const { error } = await supabase
-      .from('listings')
-      .delete()
-      .eq('id', id);
+  ): Promise<DeleteListingResult> {
+    const { data, error } = await supabase.rpc('delete_listing', {
+      p_listing_id: id,
+    });
 
     if (error) {
-      console.error(
-        'İlan silinemedi:',
-        error
-      );
+      console.error('İlan kaldırılamadı:', error);
 
-      return false;
+      return {
+        outcome: 'failed',
+        message: error.message || 'İlan kaldırılırken bir sorun oluştu.',
+      };
     }
 
-    return true;
+    return { outcome: (data as 'deleted' | 'archived') ?? 'deleted' };
   },
 
   /**

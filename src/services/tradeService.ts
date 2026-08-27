@@ -100,6 +100,8 @@ type TradeRow = {
   delivery_notes: string | null;
   started_at: string;
   completed_at: string | null;
+  sender_confirmed_at: string | null;
+  receiver_confirmed_at: string | null;
 };
 
 type TradeEventRow = {
@@ -150,6 +152,24 @@ function buildDeliveryDetails(
     ...(locationName ? { locationName } : {}),
     ...(notes ? { notes } : {}),
   };
+}
+
+/** Adım 5 açıklaması: kimin onayladığı, kimin beklendiği. */
+function describeConfirmations(
+  tradeRow: TradeRow | null,
+  initiatorName: string,
+  receiverName: string
+): string {
+  if (!tradeRow) return 'Ürünlerin teslim alındığının doğrulanması.';
+
+  const senderOk = !!tradeRow.sender_confirmed_at;
+  const receiverOk = !!tradeRow.receiver_confirmed_at;
+
+  if (senderOk && receiverOk) return 'İki taraf da teslimatı onayladı.';
+  if (senderOk) return `${initiatorName} onayladı, ${receiverName} bekleniyor.`;
+  if (receiverOk) return `${receiverName} onayladı, ${initiatorName} bekleniyor.`;
+
+  return 'Ürünlerin teslim alındığının doğrulanması.';
 }
 
 function hydrateOffer(
@@ -251,12 +271,20 @@ function hydrateOffer(
       id: `${offerRow.id}-step5`,
       step: 5,
       title: 'Karşılıklı Onay',
-      description: 'Ürünlerin teslim alındığının doğrulanması.',
+      // Bu adım artık gerçekten karşılıklı: takas ancak iki taraf da
+      // `confirm_trade_receipt()` çağırdıktan sonra ilerliyor
+      // (bkz. migration 20260828000000). Eskiden tek taraf tıklayınca
+      // takas "doğrulandı" oluyor ve iki tarafın güven sayacı da artıyordu.
+      description: describeConfirmations(tradeRow, initiator.fullName, receiver.fullName),
       timestamp: fmtDateTime(verifiedEvent?.created_at ?? null),
       actorId: 'both',
       actorName: 'Her İki Taraf',
       status:
-        status === 'verified' || status === 'completed' ? 'completed' : 'pending',
+        status === 'verified' || status === 'completed'
+          ? 'completed'
+          : tradeRow?.sender_confirmed_at || tradeRow?.receiver_confirmed_at
+          ? 'in_progress'
+          : 'pending',
     },
     {
       id: `${offerRow.id}-step6`,
@@ -309,6 +337,10 @@ function hydrateOffer(
     updatedAt: offerRow.updated_at,
     counterOfferFromId: offerRow.parent_offer_id ?? undefined,
     timeline,
+    // Teslimat onayları (rapor: "Karşılıklı Onay" adımı). Arayüz bunlara
+    // bakıp "onayın kaydedildi, karşı taraf bekleniyor" diyebiliyor.
+    isConfirmedByInitiator: !!tradeRow?.sender_confirmed_at,
+    isConfirmedByReceiver: !!tradeRow?.receiver_confirmed_at,
     // DB tarafında review'ların hangi teklife ait olduğunu görmek için ayrı
     // bir sorgu gerekiyor; bu iki alan getTradeById içinde ayrıca dolduruluyor.
     isReviewedByInitiator: undefined,
@@ -754,7 +786,49 @@ export const tradeService = {
     return this.getTradeById(counterOffer.id);
   },
 
+  /**
+   * Adım 5 ("Karşılıklı Onay"): çağıran tarafın teslimat onayını kaydeder.
+   *
+   * Takas ancak İKİ taraf da onayladığında `received` adımına geçer; bunu
+   * `confirm_trade_receipt()` tek işlemde yapıyor (bkz. migration
+   * 20260828000000). Eskiden bu adım tek taraflı bir UPDATE'ti: bir kullanıcı
+   * karşı taraf hiçbir şey onaylamadan takası ilerletip tamamlayabiliyor ve
+   * trg_trades_update_trust_counters İKİ profilin de güven sayacını
+   * artırıyordu.
+   */
+  async confirmReceipt(
+    offerId: string
+  ): Promise<{ trade?: TradeOffer; bothConfirmed: boolean } | undefined> {
+    const tradeRow = await fetchTradeRowByOfferId(offerId);
+
+    if (!tradeRow) {
+      console.error('confirmReceipt: bu teklife bağlı bir trade kaydı yok.');
+      return undefined;
+    }
+
+    const { data, error } = await supabase.rpc('confirm_trade_receipt', {
+      p_trade_id: tradeRow.id,
+    });
+
+    if (error) {
+      console.error('Teslimat onaylanamadı:', error);
+      return undefined;
+    }
+
+    return {
+      trade: await this.getTradeById(offerId),
+      bothConfirmed: data === 'both_confirmed',
+    };
+  },
+
   async advanceTradeStep(tradeId: string, targetStep: 4 | 5 | 6): Promise<TradeOffer | undefined> {
+    // Adım 5 artık bir durum güncellemesi değil, bir ONAY: iki taraf da
+    // onaylamadan takas ilerlemiyor.
+    if (targetStep === 5) {
+      const result = await this.confirmReceipt(tradeId);
+      return result?.trade;
+    }
+
     const tradeRow = await fetchTradeRowByOfferId(tradeId);
     if (!tradeRow) {
       console.error('advanceTradeStep: bu teklife bağlı bir trade kaydı yok.');
@@ -768,6 +842,19 @@ export const tradeService = {
     // ve teslimat hiç gerçekleşmeden iki tarafın güven sayacı artıyordu.
     if (tradeRow.status === 'completed' || tradeRow.status === 'cancelled') {
       console.error('advanceTradeStep: sonuçlanmış bir takas ilerletilemez.', tradeRow.status);
+      return this.getTradeById(tradeId);
+    }
+
+    // Adım 6, iki tarafın da teslimat onayını gerektiriyor (DB'de de zorunlu:
+    // trg_enforce_trade_transition). Burada da bakılıyor ki kullanıcı ham bir
+    // Postgres hatası yerine anlamlı bir sonuç görsün.
+    if (
+      targetStep === 6 &&
+      (!tradeRow.sender_confirmed_at || !tradeRow.receiver_confirmed_at)
+    ) {
+      console.error(
+        'advanceTradeStep: takas ancak iki taraf da teslimatı onayladıktan sonra tamamlanabilir.'
+      );
       return this.getTradeById(tradeId);
     }
 
@@ -786,13 +873,6 @@ export const tradeService = {
     if (targetStep === 4) {
       newStatus = 'delivery_planned';
       eventType = 'delivery_planned';
-    } else if (targetStep === 5) {
-      // trades_status_check DB constraint'i 'verified' değerini kabul
-      // etmiyor (izinli: locked/delivery_planned/in_transit/received/
-      // completed/disputed/cancelled) — DB'ye 'received' yazılır, UI
-      // tarafı bunu hydrateOffer() içinde 'verified' olarak gösterir.
-      newStatus = 'received';
-      eventType = 'verified';
     } else {
       newStatus = 'completed';
       eventType = 'completed';
@@ -868,6 +948,10 @@ export const tradeService = {
       reviewer_id: review.authorId,
       reviewed_user_id: review.targetUserId,
       rating: review.overallRating,
+      // Eskiden bu puan sessizce atılıyordu: DB'de karşılığı olan bir kolon
+      // yoktu ve okurken yerine genel puan gösteriliyordu, yani kullanıcının
+      // verdiği "güvenilirlik" notu hiçbir yere ulaşmıyordu.
+      trustworthiness_rating: review.categories.trustworthiness,
       communication_rating: review.categories.communication,
       item_accuracy_rating: review.categories.itemAccuracy,
       delivery_rating: review.categories.delivery,
@@ -894,10 +978,7 @@ export const tradeService = {
       targetUserId: review.targetUserId,
       overallRating: data.rating,
       categories: {
-        // DB'de ayrı bir "güvenilirlik" (trustworthiness) kolonu yok;
-        // genel puan (rating) ile aynı değer kullanılıyor. Gerekirse
-        // reviews tablosuna trustworthiness_rating kolonu eklenmeli.
-        trustworthiness: data.rating,
+        trustworthiness: data.trustworthiness_rating ?? data.rating,
         communication: data.communication_rating ?? review.categories.communication,
         itemAccuracy: data.item_accuracy_rating ?? review.categories.itemAccuracy,
         delivery: data.delivery_rating ?? review.categories.delivery,
@@ -932,7 +1013,7 @@ async getReviewsForUser(userId: string): Promise<Review[]> {
       targetUserId: row.reviewed_user_id,
       overallRating: row.rating,
       categories: {
-        trustworthiness: row.rating,
+        trustworthiness: row.trustworthiness_rating ?? row.rating,
         communication: row.communication_rating ?? row.rating,
         itemAccuracy: row.item_accuracy_rating ?? row.rating,
         delivery: row.delivery_rating ?? row.rating,

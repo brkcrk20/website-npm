@@ -888,6 +888,7 @@ export type Database = {
           reviewed_user_id: string
           reviewer_id: string
           trade_id: string
+          trustworthiness_rating: number | null
         }
         Insert: {
           comment?: string | null
@@ -900,6 +901,7 @@ export type Database = {
           reviewed_user_id: string
           reviewer_id: string
           trade_id: string
+          trustworthiness_rating?: number | null
         }
         Update: {
           comment?: string | null
@@ -912,6 +914,7 @@ export type Database = {
           reviewed_user_id?: string
           reviewer_id?: string
           trade_id?: string
+          trustworthiness_rating?: number | null
         }
         Relationships: [
           {
@@ -1115,7 +1118,9 @@ export type Database = {
           delivery_scheduled_at: string | null
           id: string
           offer_id: string
+          receiver_confirmed_at: string | null
           receiver_id: string
+          sender_confirmed_at: string | null
           sender_id: string
           started_at: string
           status: string
@@ -1130,7 +1135,9 @@ export type Database = {
           delivery_scheduled_at?: string | null
           id?: string
           offer_id: string
+          receiver_confirmed_at?: string | null
           receiver_id: string
+          sender_confirmed_at?: string | null
           sender_id: string
           started_at?: string
           status?: string
@@ -1145,7 +1152,9 @@ export type Database = {
           delivery_scheduled_at?: string | null
           id?: string
           offer_id?: string
+          receiver_confirmed_at?: string | null
           receiver_id?: string
+          sender_confirmed_at?: string | null
           sender_id?: string
           started_at?: string
           status?: string
@@ -1304,6 +1313,15 @@ export type Database = {
       expire_stale_trade_offers: {
         Args: Record<string, never>
         Returns: number
+      }
+      // 20260828000000_backend_hardening.sql ile eklendi.
+      confirm_trade_receipt: {
+        Args: { p_trade_id: string }
+        Returns: string
+      }
+      delete_listing: {
+        Args: { p_listing_id: string }
+        Returns: string
       }
     }
     Enums: {

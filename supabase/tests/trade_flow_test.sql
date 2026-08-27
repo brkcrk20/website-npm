@@ -158,6 +158,38 @@ $$, 'trades.status kümesi dışına kapalı');
 
 \echo ''
 \echo '=== 6) takas tamamlanınca sayaçlar ve ilan durumları'
+-- Takas artık tek taraflı tamamlanamıyor: iki tarafın da teslimat onayı
+-- (confirm_trade_receipt) gerekiyor. Eskiden tek bir taraf status'u
+-- 'completed' yapıp İKİ profilin de güven sayacını artırabiliyordu.
+select pg_temp.rejects($$
+  update public.trades set status = 'completed', completed_at = now()
+    where id = 'cccccccc-0000-0000-0000-000000000001'
+$$, 'iki taraf onaylamadan takas tamamlanamıyor');
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select pg_temp.ok(
+  public.confirm_trade_receipt('cccccccc-0000-0000-0000-000000000001') = 'waiting',
+  'ilk onaydan sonra takas beklemede');
+
+select pg_temp.ok(
+  (select status from public.trades where id = 'cccccccc-0000-0000-0000-000000000001') = 'locked',
+  'tek taraflı onay takası ilerletmedi');
+
+set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select pg_temp.rejects($$
+  select public.confirm_trade_receipt('cccccccc-0000-0000-0000-000000000001')
+$$, 'takasın tarafı olmayan onay veremiyor');
+
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select pg_temp.ok(
+  public.confirm_trade_receipt('cccccccc-0000-0000-0000-000000000001') = 'both_confirmed',
+  'ikinci onayla iki taraf da onaylamış oldu');
+
+select pg_temp.ok(
+  (select status from public.trades where id = 'cccccccc-0000-0000-0000-000000000001') = 'received',
+  'iki onaydan sonra takas "received" adımına geçti');
+
+set local request.jwt.claim.sub = '';
 update public.trades set status = 'completed', completed_at = now()
   where id = 'cccccccc-0000-0000-0000-000000000001';
 
@@ -231,22 +263,40 @@ set local request.jwt.claim.sub = '';
 
 \echo ''
 \echo '=== 9) iptal edilen takas ilanları geri yayına alıyor mu?'
-update public.listings set status = 'in_trade';
+-- 6. adımdaki ilanlar artık 'traded'; onları elle geri 'in_trade' yapmak
+-- (eski test kurulumu) yeni durum tetikleyicisi tarafından reddediliyor —
+-- bu senaryo için iki yeni ilan açılıyor.
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-000000000011', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Gitar', 'good', 'active'),
+  ('aaaaaaaa-0000-0000-0000-000000000012', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'Amfi', 'good', 'active');
 
 insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
   ('bbbbbbbb-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', 'in_person');
 insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
-  ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'offered'),
-  ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'requested');
+  ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000011', '11111111-1111-1111-1111-111111111111', 'offered'),
+  ('bbbbbbbb-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000012', '22222222-2222-2222-2222-222222222222', 'requested');
 update public.trade_offers set status = 'accepted' where id = 'bbbbbbbb-0000-0000-0000-000000000002';
 
 insert into public.trades (id, offer_id, sender_id, receiver_id, status) values
   ('cccccccc-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'locked');
 
+select pg_temp.ok(
+  (select bool_and(status = 'in_trade') from public.listings
+    where id in ('aaaaaaaa-0000-0000-0000-000000000011', 'aaaaaaaa-0000-0000-0000-000000000012')),
+  'takas açılınca yeni ilanlar da kilitlendi');
+
+-- Kilitli ilanın sahibi kilidi kendi eliyle çözemez (rapor 30): eskiden
+-- `listings_update_own` politikası buna izin veriyordu ve aynı ilan ikinci
+-- bir kişiye teklif edilebiliyordu.
+select pg_temp.rejects($$
+  update public.listings set status = 'active' where id = 'aaaaaaaa-0000-0000-0000-000000000011'
+$$, 'kilitli ilanın durumunu sahibi değiştiremiyor');
+
 update public.trades set status = 'cancelled' where id = 'cccccccc-0000-0000-0000-000000000002';
 
 select pg_temp.ok(
-  (select bool_and(status = 'active') from public.listings),
+  (select bool_and(status = 'active') from public.listings
+    where id in ('aaaaaaaa-0000-0000-0000-000000000011', 'aaaaaaaa-0000-0000-0000-000000000012')),
   'iptalden sonra ilanlar tekrar active');
 
 select pg_temp.ok(
@@ -283,12 +333,25 @@ select pg_temp.ok(
   'yeni döngünün varsayılan durumu "matching" (eskiden "active" idi ve KPI sorgusuyla uyuşmuyordu)');
 
 insert into public.loop_participants (loop_id, user_id, offering_listing_id, role) values
-  ('dddddddd-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000001', 'creator');
+  ('dddddddd-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000011', 'creator');
 
 select pg_temp.rejects($$
   insert into public.loop_participants (loop_id, user_id, offering_listing_id, role) values
-    ('dddddddd-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000001', 'member')
+    ('dddddddd-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000011', 'member')
 $$, 'aynı kullanıcı bir döngüye iki kez katılamıyor');
+
+-- Döngüye BAŞKASININ ilanıyla katılma (trade_offer_items'ta kapatılan
+-- açığın döngüdeki eşi): joinLoop() ilanın sahibini hiç kontrol etmiyordu.
+select pg_temp.rejects($$
+  insert into public.loop_participants (loop_id, user_id, offering_listing_id, role) values
+    ('dddddddd-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'aaaaaaaa-0000-0000-0000-000000000011', 'member')
+$$, 'döngüye başkasının ilanıyla katılınamıyor');
+
+-- Takas edilmiş / yayında olmayan bir ilan döngüye konamaz.
+select pg_temp.rejects($$
+  insert into public.loop_participants (loop_id, user_id, offering_listing_id, role) values
+    ('dddddddd-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'aaaaaaaa-0000-0000-0000-000000000002', 'member')
+$$, 'yayında olmayan ilan döngüye konamıyor');
 
 update public.loop_participants set status = 'completed'
   where loop_id = 'dddddddd-0000-0000-0000-000000000001';
@@ -329,17 +392,25 @@ $$, 'tamamlanmış takas geri alınamıyor');
 
 insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
   ('bbbbbbbb-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'pending', 'in_person');
-insert into public.trades (id, offer_id, sender_id, receiver_id, status) values
-  ('cccccccc-0000-0000-0000-000000000004', 'bbbbbbbb-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'received');
+-- Bu takas doğrudan 'received' olarak açılıyor (adım sırası testi için);
+-- tamamlanabilmesi için iki tarafın onayı da kayıtlı olmalı.
+insert into public.trades (id, offer_id, sender_id, receiver_id, status, sender_confirmed_at, receiver_confirmed_at) values
+  ('cccccccc-0000-0000-0000-000000000004', 'bbbbbbbb-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'received', now(), now());
 
 select pg_temp.rejects($$
   update public.trades set status = 'delivery_planned' where id = 'cccccccc-0000-0000-0000-000000000004'
 $$, 'takas adımı geriye alınamıyor');
 
+-- Anlaşmazlık açılıp kapanabilmeli: takas ya tamamlanır ya iptal edilir.
+update public.trades set status = 'disputed' where id = 'cccccccc-0000-0000-0000-000000000004';
+select pg_temp.rejects($$
+  update public.trades set status = 'in_transit' where id = 'cccccccc-0000-0000-0000-000000000004'
+$$, 'anlaşmazlıktaki takas kaldığı yerden devam edemiyor');
+
 update public.trades set status = 'completed' where id = 'cccccccc-0000-0000-0000-000000000004';
 select pg_temp.ok(
   (select status from public.trades where id = 'cccccccc-0000-0000-0000-000000000004') = 'completed',
-  'ileri adım kabul ediliyor');
+  'anlaşmazlık "takas geçerli" diye kapatılabiliyor (eskiden hiçbir çıkış yolu yoktu)');
 
 
 \echo ''
@@ -415,6 +486,159 @@ select pg_temp.ok(
       )
   ),
   'public şemasındaki tüm fonksiyonlarda search_path sabit');
+
+
+\echo ''
+\echo '=== 16) profiles.phone / profiles.email istemci rollerine kapalı'
+-- 20260825000000 bunu "BİLİNEN KALAN BOŞLUK" olarak bırakmıştı: RLS satır
+-- bazlı olduğu için anon anahtarla `select=*` atan biri bütün telefon
+-- numaralarını okuyabiliyordu. Kolon bazlı GRANT ile kapatıldı.
+set local role authenticated;
+
+select pg_temp.rejects($$
+  select phone from public.profiles limit 1
+$$, 'authenticated rolü phone kolonunu okuyamıyor');
+
+select pg_temp.rejects($$
+  select email from public.profiles limit 1
+$$, 'authenticated rolü email kolonunu okuyamıyor');
+
+select pg_temp.rejects($$
+  select * from public.profiles limit 1
+$$, 'select * artık reddediliyor (gizli kolonlar dahil olduğu için)');
+
+select pg_temp.ok(
+  (select count(*) from public.profiles) >= 3,
+  'güvenli kolonlar okunmaya devam ediyor');
+
+reset role;
+set local role anon;
+
+select pg_temp.rejects($$
+  select phone from public.profiles limit 1
+$$, 'anon rolü phone kolonunu okuyamıyor');
+
+reset role;
+
+-- Kayıt akışındaki "bu numara kayıtlı mı" kontrolü hâlâ çalışıyor.
+select pg_temp.ok(
+  public.phone_exists('+905550000001') and not public.phone_exists('+905559999999'),
+  'phone_exists() numarayı sızdırmadan kontrol etmeye devam ediyor');
+
+
+\echo ''
+\echo '=== 17) teklifi kim yanıtlayabilir'
+insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
+  ('bbbbbbbb-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', 'in_person'),
+  ('bbbbbbbb-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', 'in_person');
+
+-- Gönderen, accept_trade_offer()'ı atlayıp doğrudan UPDATE ile de kendi
+-- teklifini "kabul edilmiş" gösteremez.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select pg_temp.rejects($$
+  update public.trade_offers set status = 'accepted' where id = 'bbbbbbbb-0000-0000-0000-000000000006'
+$$, 'teklifi gönderen doğrudan UPDATE ile de kabul edemiyor');
+
+select pg_temp.rejects($$
+  update public.trade_offers set status = 'rejected' where id = 'bbbbbbbb-0000-0000-0000-000000000006'
+$$, 'teklifi gönderen kendi teklifini reddedemiyor');
+
+-- Gönderen teklifini geri çekebilir.
+update public.trade_offers set status = 'cancelled' where id = 'bbbbbbbb-0000-0000-0000-000000000006';
+select pg_temp.ok(
+  (select status from public.trade_offers where id = 'bbbbbbbb-0000-0000-0000-000000000006') = 'cancelled',
+  'teklifi gönderen geri çekebiliyor');
+
+-- Alıcı, teklifi gönderen adına geri çekemez ama reddedebilir.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select pg_temp.rejects($$
+  update public.trade_offers set status = 'cancelled' where id = 'bbbbbbbb-0000-0000-0000-000000000007'
+$$, 'alıcı teklifi gönderen adına geri çekemiyor');
+
+update public.trade_offers set status = 'rejected' where id = 'bbbbbbbb-0000-0000-0000-000000000007';
+select pg_temp.ok(
+  (select status from public.trade_offers where id = 'bbbbbbbb-0000-0000-0000-000000000007') = 'rejected',
+  'alıcı teklifi reddedebiliyor');
+
+-- Süresi dolmamış bir teklif elle "expired" yapılamaz.
+insert into public.trade_offers (id, sender_id, receiver_id, status, expires_at) values
+  ('bbbbbbbb-0000-0000-0000-000000000008', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', now() + interval '10 hours');
+select pg_temp.rejects($$
+  update public.trade_offers set status = 'expired' where id = 'bbbbbbbb-0000-0000-0000-000000000008'
+$$, 'süresi dolmamış teklif "expired" yapılamıyor');
+set local request.jwt.claim.sub = '';
+
+
+\echo ''
+\echo '=== 18) delete_listing(): arşivleme ve devam eden takas koruması'
+-- Eskiden ilan silme, teklife konu olmuş her ilanda ham bir foreign key
+-- hatasıyla başarısız oluyordu (trade_offer_items.listing_id, on delete
+-- davranışı olmadan tanımlı) — kullanıcı ilanını BİR DAHA HİÇ kaldıramıyordu.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-000000000021', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Tripod', 'good', 'active');
+
+select pg_temp.ok(
+  public.delete_listing('aaaaaaaa-0000-0000-0000-000000000021') = 'deleted',
+  'hiç teklife girmemiş ilan gerçekten siliniyor');
+
+select pg_temp.ok(
+  not exists (select 1 from public.listings where id = 'aaaaaaaa-0000-0000-0000-000000000021'),
+  'silinen ilan tabloda kalmadı');
+
+-- Başkasının ilanı kaldırılamaz.
+select pg_temp.rejects($$
+  select public.delete_listing('aaaaaaaa-0000-0000-0000-000000000012')
+$$, 'başkasının ilanı kaldırılamıyor');
+
+-- 14. adımdaki teklif (bbbbbbbb-…-05) 'aaaaaaaa-…-01' ilanını kapsıyor ve
+-- takası hâlâ açık: bu ilan kaldırılamaz.
+select pg_temp.rejects($$
+  select public.delete_listing('aaaaaaaa-0000-0000-0000-000000000001')
+$$, 'devam eden takastaki ilan kaldırılamıyor');
+
+update public.trades set status = 'cancelled' where offer_id = 'bbbbbbbb-0000-0000-0000-000000000005';
+
+select pg_temp.ok(
+  public.delete_listing('aaaaaaaa-0000-0000-0000-000000000001') = 'archived',
+  'teklif geçmişi olan ilan siliniyor değil arşivleniyor');
+
+select pg_temp.ok(
+  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-000000000001') = 'removed',
+  'arşivlenen ilan "removed" oldu ve takas geçmişi bozulmadı');
+
+-- Döngüde geçen ilan da referanslıdır: `loop_participants.offering_listing_id`
+-- aynı şekilde `on delete` davranışı olmadan tanımlı. 11. adımdaki döngü
+-- 'aaaaaaaa-…-11' ilanını taşıyor ve hâlâ açık.
+select pg_temp.rejects($$
+  select public.delete_listing('aaaaaaaa-0000-0000-0000-000000000011')
+$$, 'devam eden döngüdeki ilan kaldırılamıyor');
+
+update public.loops set status = 'completed' where id = 'dddddddd-0000-0000-0000-000000000001';
+
+select pg_temp.ok(
+  public.delete_listing('aaaaaaaa-0000-0000-0000-000000000011') = 'archived',
+  'döngü geçmişi olan ilan da siliniyor değil arşivleniyor');
+set local request.jwt.claim.sub = '';
+
+
+\echo ''
+\echo '=== 19) reviews.trustworthiness_rating'
+select pg_temp.ok(
+  exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'reviews'
+      and column_name = 'trustworthiness_rating'
+  ),
+  'güvenilirlik puanı için kolon var (eskiden kullanıcının verdiği puan atılıyordu)');
+
+select pg_temp.rejects($$
+  insert into public.reviews (trade_id, reviewer_id, reviewed_user_id, rating, trustworthiness_rating)
+  values ('cccccccc-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111',
+          '22222222-2222-2222-2222-222222222222', 5, 9)
+$$, 'aralık dışı güvenilirlik puanı reddediliyor');
+
 
 
 \echo ''

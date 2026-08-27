@@ -18,17 +18,42 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 `20260825000000_phone_privacy_and_message_integrity.sql` CLI çalışmadığı için
 **Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
 
-**`20260827000000_backend_integrity_fixes.sql` HENÜZ UYGULANMADI.** Bu dosya
-şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları, bir teklife tek
-takas, değerlendirme kuralları, `increment_listing_view()`,
-`accept_trade_offer()`, `conversations.last_message_id`). Uygulanmadan önce
-uygulamanın şu kısımları çalışmaz:
+**`20260827000000_backend_integrity_fixes.sql` ve
+`20260828000000_backend_hardening.sql` HENÜZ UYGULANMADI.**
+
+`20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
+bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
+`accept_trade_offer()`, `conversations.last_message_id`).
+
+`20260828000000` kod tarafında hâlâ "varsayım" olan kuralları kısıta
+çeviriyor: `profiles.phone`/`profiles.email` artık istemci rollerinde
+okunamıyor, ilan kilidi sahibi tarafından çözülemiyor, ilan kaldırma
+`delete_listing()` üzerinden arşivleniyor, teklifi yalnızca alıcı yanıtlıyor,
+takas iki tarafın onayı olmadan tamamlanamıyor.
+
+**İKİSİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`trade_status_rank()` ve `enforce_trade_transition()` üzerine kuruluyor.
+
+Uygulanmadan önce uygulamanın şu kısımları çalışmaz:
 
 | Kod | Uygulanmazsa |
 | --- | --- |
 | `listingService.incrementViewCount` | `increment_listing_view() does not exist` — görüntülenme sayacı artmaz (sessizce loglanır) |
 | `tradeService.acceptOffer` | `accept_trade_offer() does not exist` — teklif kabul edilemez |
 | `messageService.getConversations` | `last_message` embed'i çözülemez — konuşma listesi boş döner |
+| `listingService.deleteListing` | `delete_listing() does not exist` — ilan kaldırılamaz |
+| `tradeService.confirmReceipt` | `confirm_trade_receipt() does not exist` — teslimat onaylanamaz, takas 5. adımda kalır |
+| `authService` profil sorguları | Çalışır ama `phone`/`email` hâlâ herkese açık kalır (kapatılan boşluk açık kalır) |
+
+> **`profiles` kolon yetkisi hakkında.** `20260828000000`, `profiles`
+> üzerindeki tablo seviyesi SELECT hakkını `anon`/`authenticated`
+> rollerinden alıp yerine `phone` ve `email` DIŞINDAKİ kolonlar için
+> kolon bazlı bir grant koyuyor. Sonucu: `select=*` bu tabloda artık
+> "permission denied for column phone" veriyor. Servis katmanı bu yüzden
+> açık kolon listesi kullanıyor (`authService.PROFILE_COLUMNS`).
+> **`profiles`'a ileride kolon eklerseniz** aynı migration'da
+> `grant select (yeni_kolon) on public.profiles to anon, authenticated;`
+> satırını da yazın, yoksa o kolon istemcide görünmez.
 
 Uygulamadan önce dosyayı okuyun: içinde geriye dönük **veri düzeltmesi** yapan
 ifadeler var (aynı teklife bağlı fazla `trades` satırlarının, tekrar eden
@@ -107,23 +132,36 @@ Sonucu inceledikten sonra düzeltin:
 update public.listings set status = 'active' where id in ( ... );
 ```
 
-## İsteğe bağlı: süresi geçen teklifleri otomatik kapatma
+## Süresi geçen teklifleri otomatik kapatma
 
-`expire_stale_trade_offers()` fonksiyonu hazır ama zamanlanmış çalışmıyor.
-Elle:
+`20260828000000` bunu kendisi kurmayı deniyor: pg_cron mevcutsa
+`swaloop-expire-offers` adıyla 15 dakikada bir çalışan bir iş açıyor. Migration
+çıktısında hangisinin olduğu yazıyor:
+
+```
+NOTICE:  pg_cron: swaloop-expire-offers 15 dakikada bir çalışacak.
+NOTICE:  pg_cron yok; expire_stale_trade_offers() elle ... çağrılmalı.
+```
+
+İkinci mesajı gördüyseniz pg_cron'u etkinleştirip (Supabase Studio → Database
+→ Extensions) migration'ın o bloğunu tekrar çalıştırın, ya da işi elle kurun:
+
+```sql
+select cron.schedule(
+  'swaloop-expire-offers', '*/15 * * * *',
+  $$select public.expire_stale_trade_offers()$$
+);
+```
+
+Tek seferlik elle çalıştırma:
 
 ```sql
 select public.expire_stale_trade_offers();
 ```
 
-pg_cron etkinleştirilirse (Supabase Studio → Database → Extensions):
-
-```sql
-select cron.schedule(
-  'expire-offers', '*/15 * * * *',
-  $$select public.expire_stale_trade_offers()$$
-);
-```
+İş kurulmazsa kural tamamen kaybolmaz — süresi dolmuş bir teklif kabul
+edilemez (`enforce_trade_offer_transition`) — ama teklif listede sonsuza kadar
+"bekliyor" görünür.
 
 ## Frontend ortam değişkenleri
 

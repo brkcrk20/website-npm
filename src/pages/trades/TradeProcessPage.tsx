@@ -72,11 +72,19 @@ export const TradeProcessPage: React.FC = () => {
         showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
       }
     } else if (currentStep === 4) {
-      const updated = await tradeService.advanceTradeStep(trade.id, 5);
+      // Adım 5 karşılıklı: onayın kaydediliyor, takas ancak karşı taraf da
+      // onayladığında ilerliyor (bkz. tradeService.confirmReceipt).
+      const result = await tradeService.confirmReceipt(trade.id);
       setIsAdvancing(false);
-      if (updated) {
-        setTrade(updated);
-        showToast('Teslimat Gerçekleşti', 'Ürün teslim alındı, lütfen onaylayınız.', 'info');
+      if (result?.trade) {
+        setTrade(result.trade);
+        if (result.bothConfirmed) {
+          showToast('Teslimat Doğrulandı', 'İki taraf da onayladı, takası tamamlayabilirsin.', 'success');
+        } else {
+          showToast('Onayın Kaydedildi', 'Karşı tarafın onayı bekleniyor.', 'info');
+        }
+      } else {
+        showToast('Onay kaydedilemedi', 'Lütfen tekrar dene.', 'error');
       }
     } else if (currentStep === 5) {
       const updated = await tradeService.advanceTradeStep(trade.id, 6);
