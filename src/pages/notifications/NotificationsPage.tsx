@@ -11,13 +11,15 @@ import {
   Star,
   ShieldCheck,
   Check,
+  Clock,
+  CalendarX,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 // 13. BİLDİRİMLER
 //
 // İkonlar DB'deki notifications.type değerleriyle eşleşir
-// (migration 20260820100000).
+// (migration 20260820100000, süre bildirimleri 20260829000000).
 
 const ICONS: Record<string, React.ElementType> = {
   trade_offer: Repeat,
@@ -26,6 +28,8 @@ const ICONS: Record<string, React.ElementType> = {
   need_matched: Search,
   message: MessageSquare,
   review_request: Star,
+  listing_expiring: Clock,
+  listing_expired: CalendarX,
   badge: ShieldCheck,
 };
 

@@ -53,6 +53,7 @@ bırakmaz. Stub idempotenttir (roller `create role ... if not exists` yerine bir
 | 17 | Teklifi yalnızca alıcı kabul/reddedebiliyor, yalnızca gönderen geri çekebiliyor; süresi dolmamış teklif elle "expired" yapılamıyor |
 | 18 | `delete_listing()`: teklife girmemiş ilan siliniyor, geçmişi olan arşivleniyor, devam eden takastaki ilan hiç kaldırılamıyor, başkasının ilanına dokunulamıyor |
 | 19 | `reviews.trustworthiness_rating` var ve aralık kısıtına dahil |
+| 20 | İlan süresi: varsayılan 30 gün, istemcinin verdiği `expires_at` yok sayılıyor, süre doğrudan güncellenemiyor, `expire_stale_listings()` önce uyarıyor sonra düşürüyor, `renew_listing()` yalnızca sahibine açık, iptal edilen takastan dönen ilana 7 gün nefes payı |
 
 6. ve 9. adımlar ayrıca şunları doğruluyor: takas tek taraflı tamamlanamıyor
 (`confirm_trade_receipt()` iki onay bekliyor) ve kilitli bir ilanın durumunu

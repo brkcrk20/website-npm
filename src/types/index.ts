@@ -113,9 +113,21 @@ export interface Listing {
   // lookingFor'un YERİNE geçmez, onu tamamlar (bkz. rapor md. 20).
   lookingForCategories: CategoryId[];
   deliveryOptions: ('in_person' | 'cargo' | 'safe_point')[];
-  status: 'active' | 'in_trade' | 'traded' | 'paused' | 'removed';
+  // DB karşılığı: `listings_status_check` (20260829000000). 'expired' yalnızca
+  // süre işi tarafından yazılır, kullanıcı elle bu duruma geçemez.
+  status: 'active' | 'in_trade' | 'traded' | 'paused' | 'expired' | 'removed';
   createdAt: string;
   updatedAt: string;
+  // İlanın yayında kalacağı son an (md. 119). Her ilan 30 günle başlar,
+  // sahibi renew_listing() ile uzatır. Süre dolunca ilan silinmez, `expired`
+  // olur ve keşiften düşer.
+  //
+  // İSTEĞE BAĞLI olmasının sebebi: 20260829000000 canlıya uygulanana kadar
+  // `listings.expires_at` kolonu yok, yani sorgular bu alanı boş döndürür.
+  // Arayüz bu durumda süreyi HİÇ göstermez (uydurma bir tarih göstermez).
+  expiresAt?: string;
+  // Son yenileme anı; hiç yenilenmediyse null.
+  renewedAt?: string;
   viewCount: number;
   favoriteCount: number;
   interestedUsersCount?: number;
@@ -359,6 +371,8 @@ export type NotificationType =
   | 'need_matched'
   | 'message'
   | 'review_request'
+  | 'listing_expiring'
+  | 'listing_expired'
   | 'loop'
   | 'badge'
   | 'system';

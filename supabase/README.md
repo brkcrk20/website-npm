@@ -18,8 +18,9 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 `20260825000000_phone_privacy_and_message_integrity.sql` CLI çalışmadığı için
 **Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
 
-**`20260827000000_backend_integrity_fixes.sql` ve
-`20260828000000_backend_hardening.sql` HENÜZ UYGULANMADI.**
+**`20260827000000_backend_integrity_fixes.sql`,
+`20260828000000_backend_hardening.sql` ve
+`20260829000000_listing_expiry.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -31,8 +32,14 @@ okunamıyor, ilan kilidi sahibi tarafından çözülemiyor, ilan kaldırma
 `delete_listing()` üzerinden arşivleniyor, teklifi yalnızca alıcı yanıtlıyor,
 takas iki tarafın onayı olmadan tamamlanamıyor.
 
-**İKİSİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
-`trade_status_rank()` ve `enforce_trade_transition()` üzerine kuruluyor.
+`20260829000000` ilanlara ömür veriyor (rapor md. 119): her ilan 30 gün
+yayında kalıyor, bitmeden 3 gün önce sahibi uyarılıyor, süre dolunca ilan
+`expired` oluyor (silinmiyor) ve `renew_listing()` ile geri alınıyor.
+
+**ÜÇÜ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`trade_status_rank()` ve `enforce_trade_transition()` üzerine;
+`20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
+ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.
 
 Uygulanmadan önce uygulamanın şu kısımları çalışmaz:
 
@@ -44,6 +51,8 @@ Uygulanmadan önce uygulamanın şu kısımları çalışmaz:
 | `listingService.deleteListing` | `delete_listing() does not exist` — ilan kaldırılamaz |
 | `tradeService.confirmReceipt` | `confirm_trade_receipt() does not exist` — teslimat onaylanamaz, takas 5. adımda kalır |
 | `authService` profil sorguları | Çalışır ama `phone`/`email` hâlâ herkese açık kalır (kapatılan boşluk açık kalır) |
+| `listingService.renewListing` | `renew_listing() does not exist` — "Yenile" düğmesi hata verir |
+| İlan süresi (md. 119) | `listings.expires_at` kolonu yok; arayüz süreyi HİÇ göstermez, ilanlar sonsuza kadar yayında kalır |
 
 > **`profiles` kolon yetkisi hakkında.** `20260828000000`, `profiles`
 > üzerindeki tablo seviyesi SELECT hakkını `anon`/`authenticated`
@@ -158,6 +167,22 @@ Tek seferlik elle çalıştırma:
 ```sql
 select public.expire_stale_trade_offers();
 ```
+
+`20260829000000` aynı deseni ilanlar için kuruyor: `swaloop-expire-listings`
+saatte bir (`7 * * * *`) `public.expire_stale_listings()` çağırıyor.
+
+```sql
+select cron.schedule(
+  'swaloop-expire-listings', '7 * * * *',
+  $$select public.expire_stale_listings()$$
+);
+```
+
+> **Bu işi kurmak teklif işinden daha kritik.** Süresi dolmuş bir teklif
+> kabul edilmeye çalışıldığında `enforce_trade_offer_transition` yine de
+> reddediyor — yani iş kurulmasa da kural bir yerde işliyor. İlan tarafında
+> böyle bir ikinci kapı YOK: `expire_stale_listings()` hiç çağrılmazsa ilanlar
+> sonsuza kadar `active` kalır ve md. 119 kâğıt üzerinde kalır.
 
 İş kurulmazsa kural tamamen kaybolmaz — süresi dolmuş bir teklif kabul
 edilemez (`enforce_trade_offer_transition`) — ama teklif listede sonsuza kadar

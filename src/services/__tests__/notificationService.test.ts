@@ -8,26 +8,63 @@ import type { NotificationType, TradeCancellationReason } from '../../types';
 // "violates check constraint" ile çöker. Bu testler o sözleşmeyi bağlar
 // (tradeService.roleContract testiyle aynı desen).
 
+const MIGRATIONS_DIR = path.resolve(__dirname, '../../../supabase/migrations');
+
 function migrationSql(): string {
-  const dir = path.resolve(__dirname, '../../../supabase/migrations');
   const file = fs
-    .readdirSync(dir)
+    .readdirSync(MIGRATIONS_DIR)
     .find((f) => f.includes('notifications_and_trade_cancellation'));
 
   expect(file, 'bildirim migration dosyası bulunamadı').toBeTruthy();
 
-  return fs.readFileSync(path.join(dir, file as string), 'utf-8');
+  return fs.readFileSync(path.join(MIGRATIONS_DIR, file as string), 'utf-8');
+}
+
+/**
+ * `notifications.type` kısıtı birden fazla migration'da tanımlanabilir:
+ * 20260820100000 tabloyu kurarken inline yazdı, 20260829000000 süre
+ * bildirimlerini eklerken constraint'i düşürüp yeniden kurdu. Canlıda geçerli
+ * olan EN SON tanımdır, bu yüzden dosyalar sıralanıp sonuncusu okunuyor —
+ * aksi hâlde test, kod ile canlı arasındaki farkı değil, kod ile TARİHÎ bir
+ * tanım arasındaki farkı ölçerdi.
+ */
+function notificationTypeValues(): string[] {
+  const marker = 'check (type in (';
+
+  let block: string | null = null;
+
+  for (const file of fs.readdirSync(MIGRATIONS_DIR).sort()) {
+    const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8');
+
+    let at = sql.lastIndexOf(marker);
+
+    // `check (type in (...))` başka bir tabloda da geçebilir (ör. reports).
+    // Kısıttan hemen öncesinde `notifications` geçmesi şartı, yanlış tablonun
+    // kısıtını okumayı engelliyor.
+    while (at !== -1) {
+      if (sql.slice(Math.max(0, at - 200), at).includes('notifications')) {
+        block = sql.slice(at);
+        break;
+      }
+
+      at = sql.lastIndexOf(marker, at - 1);
+    }
+  }
+
+  expect(block, 'notifications.type kısıtı hiçbir migration\'da bulunamadı').toBeTruthy();
+
+  return (
+    (block as string)
+      .slice(0, (block as string).indexOf('))'))
+      .match(/'([a-z_]+)'/g)
+      ?.map((v) => v.replace(/'/g, ''))
+      .sort() ?? []
+  );
 }
 
 describe('notifications.type: kod <-> DB sözleşmesi', () => {
   it('NotificationType union ile DB CHECK constraint birebir aynıdır', () => {
-    const sql = migrationSql();
-    const block = sql.slice(sql.indexOf('type text not null check (type in ('));
-    const values = block
-      .slice(0, block.indexOf('))'))
-      .match(/'([a-z_]+)'/g)
-      ?.map((v) => v.replace(/'/g, ''))
-      .sort();
+    const values = notificationTypeValues();
 
     // TypeScript union'ı derleme zamanında silindiği için burada elle
     // yazılıyor; yeni bir tip eklenirse bu satır da güncellenmeli ve
@@ -35,6 +72,8 @@ describe('notifications.type: kod <-> DB sözleşmesi', () => {
     const codeValues: NotificationType[] = [
       'badge',
       'counter_offer',
+      'listing_expired',
+      'listing_expiring',
       'loop',
       'message',
       'need_matched',

@@ -642,5 +642,130 @@ $$, 'aralık dışı güvenilirlik puanı reddediliyor');
 
 
 \echo ''
+\echo '=== 20) ilan süresi (md. 119)'
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-0000000000f1', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Süreli ilan', 'good', 'active');
+
+select pg_temp.ok(
+  (select expires_at from public.listings where id = 'aaaaaaaa-0000-0000-0000-0000000000f1')
+    between now() + interval '29 days' and now() + interval '31 days',
+  'yeni ilan varsayılan ömürle (30 gün) açılıyor');
+
+-- İstemci `expires_at` göndermeye kalkarsa yok sayılır: aksi hâlde kural
+-- yalnızca arayüzde olurdu.
+insert into public.listings (id, owner_id, category_id, title, condition, status, expires_at) values
+  ('aaaaaaaa-0000-0000-0000-0000000000f2', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Sonsuz ilan', 'good', 'active', now() + interval '10 years');
+
+select pg_temp.ok(
+  (select expires_at from public.listings where id = 'aaaaaaaa-0000-0000-0000-0000000000f2')
+    < now() + interval '31 days',
+  'istemcinin verdiği expires_at yok sayılıyor');
+
+select pg_temp.rejects($$
+  update public.listings set expires_at = now() + interval '10 years'
+    where id = 'aaaaaaaa-0000-0000-0000-0000000000f1'
+$$, 'expires_at doğrudan güncellenemiyor');
+
+select pg_temp.rejects($$
+  update public.listings set status = 'expired'
+    where id = 'aaaaaaaa-0000-0000-0000-0000000000f1'
+$$, 'ilan elle "expired" yapılamıyor');
+
+-- Süreyi geriye çekmek yalnızca sistem yolundan mümkün; test burada
+-- bilinçli olarak o yolu kullanıyor (cron'un göreceği durumu kurmak için).
+set local swaloop.listing_lifecycle = 'on';
+update public.listings set expires_at = now() - interval '1 hour'
+  where id = 'aaaaaaaa-0000-0000-0000-0000000000f1';
+update public.listings set expires_at = now() + interval '2 days'
+  where id = 'aaaaaaaa-0000-0000-0000-0000000000f2';
+set local swaloop.listing_lifecycle = 'off';
+
+select pg_temp.ok(
+  public.expire_stale_listings() = 1,
+  'süresi dolan ilan sayısı doğru dönüyor');
+
+select pg_temp.ok(
+  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-0000000000f1') = 'expired',
+  'süresi dolan ilan "expired" oldu (silinmedi)');
+
+select pg_temp.ok(
+  exists (
+    select 1 from public.notifications
+    where type = 'listing_expired' and listing_id = 'aaaaaaaa-0000-0000-0000-0000000000f1'
+  ),
+  'süresi dolunca sahibine bildirim gitti');
+
+-- Yaklaşan süre uyarısı: 2 gün kalan ilan uyarılıyor, ama yalnızca bir kez.
+select pg_temp.ok(
+  (select count(*) from public.notifications
+    where type = 'listing_expiring' and listing_id = 'aaaaaaaa-0000-0000-0000-0000000000f2') = 1,
+  'süresi yaklaşan ilan için uyarı bildirimi gitti');
+
+select public.expire_stale_listings();
+
+select pg_temp.ok(
+  (select count(*) from public.notifications
+    where type = 'listing_expiring' and listing_id = 'aaaaaaaa-0000-0000-0000-0000000000f2') = 1,
+  'aynı ilan için ikinci uyarı gönderilmiyor');
+
+-- Süresi dolan ilan elle yayına alınamaz (expires_at geçmişte kalırdı).
+select pg_temp.rejects($$
+  update public.listings set status = 'active'
+    where id = 'aaaaaaaa-0000-0000-0000-0000000000f1'
+$$, 'süresi dolan ilan elle yayına alınamıyor');
+
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select pg_temp.rejects($$
+  select public.renew_listing('aaaaaaaa-0000-0000-0000-0000000000f1')
+$$, 'başkasının ilanı yenilenemiyor');
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select pg_temp.ok(
+  public.renew_listing('aaaaaaaa-0000-0000-0000-0000000000f1')
+    between now() + interval '29 days' and now() + interval '31 days',
+  'yenileme süreyi 30 gün ileri alıyor');
+
+select pg_temp.ok(
+  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-0000000000f1') = 'active',
+  'yenilenen ilan tekrar yayında');
+
+select pg_temp.ok(
+  (select expiry_reminder_at is null and renewed_at is not null
+     from public.listings where id = 'aaaaaaaa-0000-0000-0000-0000000000f1'),
+  'yenilemede uyarı bayrağı sıfırlanıyor (yeni dönemde tekrar uyarılsın)');
+
+set local request.jwt.claim.sub = '';
+
+-- Takasta kilitli kalan ilan, takas iptal edilince aynı gün düşmemeli.
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-0000000000f3', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Kilitli ilan', 'good', 'active'),
+  ('aaaaaaaa-0000-0000-0000-0000000000f4', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'Karşı ilan', 'good', 'active');
+
+insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
+  ('bbbbbbbb-0000-0000-0000-0000000000f1', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'accepted', 'in_person');
+
+insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
+  ('bbbbbbbb-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-0000000000f3', '11111111-1111-1111-1111-111111111111', 'offered'),
+  ('bbbbbbbb-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-0000000000f4', '22222222-2222-2222-2222-222222222222', 'requested');
+
+insert into public.trades (id, offer_id, sender_id, receiver_id, status) values
+  ('cccccccc-0000-0000-0000-0000000000f1', 'bbbbbbbb-0000-0000-0000-0000000000f1', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'locked');
+
+set local swaloop.listing_lifecycle = 'on';
+update public.listings set expires_at = now() - interval '5 days'
+  where id in ('aaaaaaaa-0000-0000-0000-0000000000f3', 'aaaaaaaa-0000-0000-0000-0000000000f4');
+set local swaloop.listing_lifecycle = 'off';
+
+update public.trades set status = 'cancelled', cancellation_reason = 'no_agreement'
+  where id = 'cccccccc-0000-0000-0000-0000000000f1';
+
+select pg_temp.ok(
+  (select bool_and(status = 'active' and expires_at > now() + interval '6 days')
+     from public.listings
+    where id in ('aaaaaaaa-0000-0000-0000-0000000000f3', 'aaaaaaaa-0000-0000-0000-0000000000f4')),
+  'iptal edilen takastan dönen ilana en az 7 gün nefes payı veriliyor');
+
+
+\echo ''
 \echo '✅ tüm veritabanı testleri geçti'
 rollback;
