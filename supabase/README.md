@@ -11,12 +11,31 @@ npx supabase login                      # tarayıcıda token alır
 npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Settings → General
 ```
 
-## Durum: tüm migration'lar uygulandı
+## Durum
 
-`supabase/migrations/` altındaki migration'ların tamamı canlı projeye
-uygulandı. Son ikisi (`20260824000000_drop_co2_impact_tracking.sql` ve
-`20260825000000_phone_privacy_and_message_integrity.sql`) CLI çalışmadığı
-için **Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
+`20260825000000`'e kadar olan migration'ların tamamı canlı projeye uygulandı.
+`20260824000000_drop_co2_impact_tracking.sql` ve
+`20260825000000_phone_privacy_and_message_integrity.sql` CLI çalışmadığı için
+**Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
+
+**`20260827000000_backend_integrity_fixes.sql` HENÜZ UYGULANMADI.** Bu dosya
+şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları, bir teklife tek
+takas, değerlendirme kuralları, `increment_listing_view()`,
+`accept_trade_offer()`, `conversations.last_message_id`). Uygulanmadan önce
+uygulamanın şu kısımları çalışmaz:
+
+| Kod | Uygulanmazsa |
+| --- | --- |
+| `listingService.incrementViewCount` | `increment_listing_view() does not exist` — görüntülenme sayacı artmaz (sessizce loglanır) |
+| `tradeService.acceptOffer` | `accept_trade_offer() does not exist` — teklif kabul edilemez |
+| `messageService.getConversations` | `last_message` embed'i çözülemez — konuşma listesi boş döner |
+
+Uygulamadan önce dosyayı okuyun: içinde geriye dönük **veri düzeltmesi** yapan
+ifadeler var (aynı teklife bağlı fazla `trades` satırlarının, tekrar eden
+değerlendirmelerin ve kendine yazılmış değerlendirmelerin silinmesi; kümenin
+dışına düşmüş `status` değerlerinin normalize edilmesi). Bunlar kısıtları
+eklemeden önce zorunlu, ama ne sildiğini görmek isterseniz karşılık gelen
+`select` sorgularını önce elle çalıştırın.
 
 > **ÖNEMLİ — migration geçmişi senkron değil.** Studio'dan elle çalıştırılan
 > SQL, `supabase_migrations.schema_migrations` tablosuna kayıt DÜŞMEZ. Yani

@@ -72,6 +72,11 @@ export const ProductDetailPage: React.FC = () => {
 
       if (data) {
         needService.getSeekersForListing(data).then((seekers) => setSeekerCount(seekers.length));
+        // Görüntülenme sayacı: kolon baştan beri vardı ve aşağıda
+        // gösteriliyordu ama hiçbir yerden artırılmıyordu, bu yüzden her
+        // ilan hep "0 görüntülenme" idi. İlan sahibinin kendi görüntülemesi
+        // sunucu tarafında elenir.
+        listingService.incrementViewCount(data.id);
       } else {
         setSeekerCount(0);
       }
@@ -113,6 +118,14 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleFavoriteToggle = async () => {
     const next = await listingService.toggleFavorite(listing.id);
+
+    // null = işlem yapılamadı (giriş yok / hata); sessizce "çıkarıldı"
+    // göstermek yerine gerçek durumu söylüyoruz.
+    if (next === null) {
+      showToast('Favori güncellenemedi', 'Bunun için giriş yapmalısın.', 'error');
+      return;
+    }
+
     setIsFavorite(next);
     showToast(next ? 'Favorilere eklendi' : 'Favorilerden çıkarıldı', listing.title, 'info');
   };

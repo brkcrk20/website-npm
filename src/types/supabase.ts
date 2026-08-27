@@ -150,6 +150,7 @@ export type Database = {
           active_trade_offer_id: string | null
           created_at: string
           id: string
+          last_message_id: string | null
           participant_one_id: string
           participant_two_id: string
           related_listing_id: string | null
@@ -159,6 +160,7 @@ export type Database = {
           active_trade_offer_id?: string | null
           created_at?: string
           id?: string
+          last_message_id?: string | null
           participant_one_id: string
           participant_two_id: string
           related_listing_id?: string | null
@@ -168,6 +170,7 @@ export type Database = {
           active_trade_offer_id?: string | null
           created_at?: string
           id?: string
+          last_message_id?: string | null
           participant_one_id?: string
           participant_two_id?: string
           related_listing_id?: string | null
@@ -179,6 +182,13 @@ export type Database = {
             columns: ["active_trade_offer_id"]
             isOneToOne: false
             referencedRelation: "trade_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_last_message_id_fkey"
+            columns: ["last_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -1281,6 +1291,19 @@ export type Database = {
       phone_exists: {
         Args: { check_phone: string }
         Returns: boolean
+      }
+      // 20260827000000_backend_integrity_fixes.sql ile eklendi.
+      accept_trade_offer: {
+        Args: { p_offer_id: string }
+        Returns: string
+      }
+      increment_listing_view: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
+      expire_stale_trade_offers: {
+        Args: Record<string, never>
+        Returns: number
       }
     }
     Enums: {

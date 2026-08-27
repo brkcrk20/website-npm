@@ -242,7 +242,14 @@ function mapListing(row: any): Listing {
       district: row.district ?? '',
       lat: row.latitude ?? 0,
       lng: row.longitude ?? 0,
-      distanceKm: row.distance_km ?? 0,
+      // "Mesafe ya gerçektir ya da yoktur" (README). Önceden burada sabit 0
+      // dönülüyordu: hiçbir sorgu `distance_km` üretmediği için HER ilan
+      // "0 km uzakta" görünüyor, mesafe filtreleri de (SwipeMatchPage,
+      // searchListings) hiçbir şeyi elemiyordu. Artık yalnızca hem ilanın
+      // hem de kullanıcının koordinatı biliniyorsa doluyor
+      // (bkz. enrichListings → viewerCoords), aksi hâlde undefined kalıyor
+      // ve arayüz mesafeyi hiç göstermiyor.
+      distanceKm: typeof row.distance_km === 'number' ? row.distance_km : undefined,
     },
 
     lookingFor: row.looking_for ?? '',
@@ -289,6 +296,46 @@ async function withoutBlockedOwners(rows: any[]): Promise<any[]> {
   const blocked = new Set(blockedIds);
 
   return rows.filter((row) => !blocked.has(row.owner_id));
+}
+
+/**
+ * İki koordinat arasındaki kuş uçuşu mesafe (km) — haversine.
+ * Dış bir servise/pakete ihtiyaç duymaz; ilan listeleri için yeterince
+ * hassastır (birkaç metre hata).
+ */
+export function haversineKm(
+  aLat: number,
+  aLng: number,
+  bLat: number,
+  bLng: number
+): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)) * 10) / 10;
+}
+
+/**
+ * Mesafe hesabında kullanılacak "benim konumum".
+ *
+ * Konum izni verilmemişse null kalır ve hiçbir ilana mesafe yazılmaz —
+ * uydurma bir değer göstermek yerine mesafe hiç gösterilmez.
+ */
+let viewerCoords: { lat: number; lng: number } | null = null;
+
+export function setViewerCoords(coords: { lat: number; lng: number } | null): void {
+  viewerCoords = coords;
+}
+
+export function getViewerCoords(): { lat: number; lng: number } | null {
+  return viewerCoords;
 }
 
 export async function enrichListings(rows: any[]): Promise<Listing[]> {
@@ -345,13 +392,47 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
     }
   }
 
+  // Favoriler tek sorguda topluca çekiliyor. Önceden `is_favorite` hiçbir
+  // sorguda doldurulmuyordu: kullanıcı bir ilanı favorilere eklese bile
+  // sayfayı yenileyince kalp boş görünüyordu, hatta /favoriler ekranındaki
+  // ilanlarda bile favori işareti çıkmıyordu.
+  const favoriteIds = await getFavoriteListingIds(rows.map((row) => row.id));
+
   return rows.map((row) => ({
     ...row,
     category_slug:
       categoryMap.get(row.category_id) ?? row.category_id,
     owner_trust_score: trustScoreMap.get(row.owner_id) ?? 5,
     owner_is_verified: verifiedMap.get(row.owner_id) ?? false,
+    is_favorite: favoriteIds.has(row.id),
+    distance_km:
+      viewerCoords && typeof row.latitude === 'number' && typeof row.longitude === 'number'
+        ? haversineKm(viewerCoords.lat, viewerCoords.lng, row.latitude, row.longitude)
+        : undefined,
   })).map(mapListing);
+}
+
+/** Verilen ilanlardan hangileri oturumdaki kullanıcının favorisinde? */
+async function getFavoriteListingIds(listingIds: string[]): Promise<Set<string>> {
+  if (!listingIds.length) return new Set();
+
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  if (!userId) return new Set();
+
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('listing_id')
+    .eq('user_id', userId)
+    .in('listing_id', listingIds);
+
+  if (error) {
+    console.error('Favori listesi alınamadı:', error);
+    return new Set();
+  }
+
+  return new Set((data ?? []).map((row) => row.listing_id));
 }
 
 export const listingService = {
@@ -657,9 +738,17 @@ export const listingService = {
     return true;
   },
 
+  /**
+   * Favoriyi açar/kapatır ve YENİ durumu döndürür.
+   *
+   * `null` = işlem yapılamadı (giriş yok ya da hata). Önceden hata durumunda
+   * da `false` dönüyordu; çağıran taraf bunu "favoriden çıkarıldı" sanıp
+   * kalbi boşaltıyor, kullanıcı hiçbir hata görmeden işlemin başarılı
+   * olduğunu sanıyordu.
+   */
   async toggleFavorite(
     id: string
-  ): Promise<boolean> {
+  ): Promise<boolean | null> {
     const {
       data: userData,
     } = await supabase.auth.getUser();
@@ -672,7 +761,7 @@ export const listingService = {
         'Favori işlemi için giriş gerekli.'
       );
 
-      return false;
+      return null;
     }
 
     const {
@@ -697,7 +786,7 @@ export const listingService = {
           error
         );
 
-        return false;
+        return null;
       }
 
       return false;
@@ -717,7 +806,7 @@ export const listingService = {
         error
       );
 
-      return false;
+      return null;
     }
 
     return true;
@@ -851,15 +940,41 @@ export const listingService = {
       maxDistance !== undefined &&
       maxDistance > 0
     ) {
+      // Mesafesi BİLİNMEYEN ilanlar elenmez (README: "konum izni
+      // verilmemişse mesafe filtresi, konumu bilinmeyen ilanları elemez").
       listings =
         listings.filter(
           (listing) =>
-            listing.location
-              .distanceKm <=
-            maxDistance
+            listing.location.distanceKm === undefined ||
+            listing.location.distanceKm <= maxDistance
         );
     }
 
     return listings;
+  },
+
+  /**
+   * İlan görüntülenme sayacını artırır.
+   *
+   * `listings.view_count` kolonu baştan beri vardı ve ilan kartında
+   * gösteriliyordu ama HİÇBİR kod yolu onu artırmıyordu: her ilan sonsuza
+   * kadar "0 görüntülenme" idi. İstemciden doğrudan UPDATE atılamaz
+   * (listings_update_own politikası yalnızca ilan sahibine izin verir, o da
+   * kendi sayacını istediği kadar şişirebilirdi), bu yüzden sunucu
+   * tarafındaki `increment_listing_view()` fonksiyonu üzerinden gidiliyor.
+   *
+   * Sessizce başarısız olur: sayaç artırılamadı diye ilan detay sayfası
+   * açılmazlık etmemeli.
+   */
+  async incrementViewCount(listingId: string): Promise<void> {
+    if (!listingId) return;
+
+    const { error } = await supabase.rpc('increment_listing_view', {
+      p_listing_id: listingId,
+    });
+
+    if (error) {
+      console.warn('Görüntülenme sayacı artırılamadı:', error);
+    }
   },
 };

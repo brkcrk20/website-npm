@@ -175,7 +175,13 @@ export const adminService = {
         .gte('created_at', startOfLastMonth)
         .lt('created_at', startOfThisMonth),
       supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-      supabase.from('trades').select('id', { count: 'exact', head: true }).neq('status', 'completed'),
+      // "Aktif takas" = henüz sonuçlanmamış takas. Önceden `neq('completed')`
+      // kullanılıyordu; bu, iptal edilmiş ve anlaşmazlıktaki takasları da
+      // "devam ediyor" gibi sayıyordu.
+      supabase
+        .from('trades')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['locked', 'delivery_planned', 'in_transit', 'received']),
       supabase.from('trades').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
       supabase
         .from('trades')
@@ -188,7 +194,14 @@ export const adminService = {
         .eq('status', 'completed')
         .gte('completed_at', startOfLastMonth)
         .lt('completed_at', startOfThisMonth),
-      supabase.from('loops').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      // DÜZELTİLDİ: `status = 'active'` diye bir döngü durumu hiç yok.
+      // loopService yalnızca matching/locked/in_delivery/completed/cancelled
+      // yazıyor ('active' yalnızca eski şemanın default'uydu, artık o da
+      // 'matching'), bu yüzden bu KPI her zaman 0 dönüyordu.
+      supabase
+        .from('loops')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['matching', 'locked', 'in_delivery']),
       supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 

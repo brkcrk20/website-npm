@@ -13,17 +13,51 @@ import {
   Info,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { getCurrentCoords } from '../../services/geoLocationService';
 
 export const NearbyMapPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentLocation } = useApp();
+  const { currentLocation, setCurrentLocation } = useApp();
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<string | null>(null);
   const [activeRadius, setActiveRadius] = useState<number>(5);
 
+  // "Yakınımdakiler" ekranı mesafenin tek anlamlı olduğu yer; konumu burada
+  // bir kez isteyip AppContext'e yazıyoruz. enrichListings mesafeyi buradan
+  // okur — izin verilmezse mesafe hiç gösterilmez, liste yine çalışır.
   useEffect(() => {
-    listingService.getAllListings().then(setAllListings);
-  }, []);
+    let cancelled = false;
+
+    const load = () => {
+      if (!cancelled) listingService.getAllListings().then(setAllListings);
+    };
+
+    if (currentLocation.lat === undefined) {
+      getCurrentCoords()
+        .then((position) => {
+          if (cancelled) return;
+          setCurrentLocation({
+            ...currentLocation,
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          });
+        })
+        .catch(() => {
+          // Konum izni yok/başarısız: mesafe gösterilmez, liste yine yüklenir.
+          load();
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLocation.lat, currentLocation.lon]);
 
   const safeMeetingSpots = [
     {
@@ -239,7 +273,9 @@ export const NearbyMapPage: React.FC = () => {
                       {listing.title}
                     </p>
                     <span className="text-[11px] text-stone-400 block">
-                      {listing.location.district} • {listing.location.distanceKm} km uzakta
+                      {listing.location.district}
+                      {listing.location.distanceKm !== undefined &&
+                        ` • ${listing.location.distanceKm} km uzakta`}
                     </span>
                   </div>
                 </div>

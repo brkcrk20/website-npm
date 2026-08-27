@@ -1,4 +1,4 @@
-import { Loop, LoopParticipant, CategoryId } from '../types';
+import { Loop, LoopParticipant, CategoryId, Listing } from '../types';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import { enrichListings } from './listingService';
@@ -86,22 +86,45 @@ type LoopRow = {
   participants?: LoopParticipantRow[];
 };
 
-async function hydrateLoop(row: LoopRow): Promise<Loop> {
+/**
+ * Döngü listesini, döngü sayısından BAĞIMSIZ sabit sayıda istekle hidratlar.
+ *
+ * Önceki hâlinde her döngü kendi `enrichListings` çağrısını yapıyordu; o da
+ * içinde kategori + güven puanı + favori sorguları attığı için 10 döngülü bir
+ * liste onlarca gereksiz istek üretiyordu.
+ */
+async function hydrateLoops(rows: LoopRow[]): Promise<Loop[]> {
+  if (!rows.length) return [];
+
+  const listingRowById = new Map<string, any>();
+  for (const row of rows) {
+    for (const p of row.participants ?? []) {
+      if (p.offering_listing_id && p.listing && !listingRowById.has(p.offering_listing_id)) {
+        listingRowById.set(p.offering_listing_id, p.listing);
+      }
+    }
+  }
+
+  const enriched = await enrichListings([...listingRowById.values()]);
+  const listingsById = new Map(enriched.map((l) => [l.id, l]));
+
+  return rows.map((row) => hydrateLoop(row, listingsById));
+}
+
+function hydrateLoop(row: LoopRow, listingsById: Map<string, Listing>): Loop {
   // Yalnızca bir ilan seçmiş (offering_listing_id dolu) katılımcılar tam
   // olarak "hazır" sayılır — henüz ilan seçmemiş bir katılım satırı olursa
   // (ör. gelecekte eklenecek "önce katıl, ilanı sonra seç" akışı) dairesel
   // zincir hesaplamasını bozmaması için bunlar dışarıda bırakılıyor.
   const readyRows = (row.participants ?? [])
-    .filter((p) => p.offering_listing_id && p.listing)
+    .filter((p) => p.offering_listing_id && listingsById.has(p.offering_listing_id))
     .sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime());
 
-  const offeringListings = await enrichListings(readyRows.map((p) => p.listing));
-
   const base: Omit<LoopParticipant, 'givesToUserId' | 'receivesFromUserId' | 'receivingListing'>[] =
-    readyRows.map((p, idx) => ({
+    readyRows.map((p) => ({
       userId: p.user_id,
       user: mapProfile(p.user),
-      offeringListing: offeringListings[idx],
+      offeringListing: listingsById.get(p.offering_listing_id as string) as Listing,
       hasConfirmed: p.status === 'confirmed' || p.status === 'delivered' || p.status === 'completed',
       status: normalizeParticipantStatus(p.status),
     }));
@@ -142,7 +165,7 @@ export const loopService = {
       return [];
     }
 
-    return Promise.all(((data ?? []) as unknown as LoopRow[]).map(hydrateLoop));
+    return hydrateLoops((data ?? []) as unknown as LoopRow[]);
   },
 
   async getLoopById(id: string): Promise<Loop | undefined> {
@@ -157,7 +180,8 @@ export const loopService = {
       return undefined;
     }
 
-    return hydrateLoop(data as unknown as LoopRow);
+    const [loop] = await hydrateLoops([data as unknown as LoopRow]);
+    return loop;
   },
 
   /**
@@ -208,6 +232,9 @@ export const loopService = {
 
     if (participantError) {
       console.error('Döngü katılımcısı eklenemedi:', participantError);
+      // Kurucusu olmayan bir döngü satırı yetim kalır ve listede sonsuza
+      // kadar "0 katılımcı" olarak görünürdü; geri alınıyor.
+      await supabase.from('loops').delete().eq('id', loopRow.id);
       return undefined;
     }
 
@@ -220,6 +247,37 @@ export const loopService = {
    * otomatik olarak 'locked'e çevirir.
    */
   async joinLoop(loopId: string, userId: string, listingId: string): Promise<Loop | undefined> {
+    // Katılmadan önce döngünün gerçekten katılıma açık ve dolu olmadığı
+    // kontrol ediliyor. Eskiden hiçbir kontrol yoktu: kilitlenmiş, tamamlanmış
+    // ya da iptal edilmiş bir döngüye de katılınabiliyor, kapasitesi dolu bir
+    // döngü sınırsız büyüyebiliyordu (max_participants yalnızca katıldıktan
+    // SONRA, kilitleme kararı için okunuyordu).
+    const { data: loopRow, error: loopError } = await supabase
+      .from('loops')
+      .select('status, max_participants')
+      .eq('id', loopId)
+      .maybeSingle();
+
+    if (loopError || !loopRow) {
+      console.error('Döngü bulunamadı:', loopError);
+      return undefined;
+    }
+
+    if (loopRow.status !== 'matching') {
+      console.error('Bu döngü artık katılıma açık değil:', loopRow.status);
+      return undefined;
+    }
+
+    const { count: currentCount } = await supabase
+      .from('loop_participants')
+      .select('id', { count: 'exact', head: true })
+      .eq('loop_id', loopId);
+
+    if (loopRow.max_participants && (currentCount ?? 0) >= loopRow.max_participants) {
+      console.error('Bu döngü dolu.');
+      return undefined;
+    }
+
     const participantInsert: TablesInsert<'loop_participants'> = {
       loop_id: loopId,
       user_id: userId,
@@ -237,18 +295,12 @@ export const loopService = {
       return undefined;
     }
 
-    const { data: loopRow } = await supabase
-      .from('loops')
-      .select('max_participants')
-      .eq('id', loopId)
-      .maybeSingle();
-
     const { count } = await supabase
       .from('loop_participants')
       .select('id', { count: 'exact', head: true })
       .eq('loop_id', loopId);
 
-    if (loopRow?.max_participants && (count ?? 0) >= loopRow.max_participants) {
+    if (loopRow.max_participants && (count ?? 0) >= loopRow.max_participants) {
       const lockUpdate: TablesUpdate<'loops'> = { status: 'locked' };
       await supabase.from('loops').update(lockUpdate).eq('id', loopId);
     }

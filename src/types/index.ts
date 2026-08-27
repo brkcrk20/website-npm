@@ -100,7 +100,10 @@ export interface Listing {
   location: {
     city: string;
     district: string;
-    distanceKm: number;
+    // İsteğe bağlı: yalnızca hem ilanın hem de kullanıcının koordinatı
+    // biliniyorsa hesaplanır (bkz. listingService.enrichListings). Bilinmiyorsa
+    // arayüzde mesafe HİÇ gösterilmez — 0 km diye bir varsayılan yoktur.
+    distanceKm?: number;
     safeMeetingPoint?: string;
     lat?: number;
     lng?: number;
