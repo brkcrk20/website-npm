@@ -119,6 +119,57 @@ Görseller gerçekten küçültülüyor (README bunu iddia ediyordu ama kodda
 yoktu). `og:image` üretildi. Kapak fotoğrafı artık her yenilemede
 değişmiyor. Konumsuz ilanların (0,0)'a çakılması durduruldu.
 
+### İkinci geçiş: uydurmanın kalan yuvaları
+
+İlk geçişten sonra kod tabanı 20 boyutta yeniden tarandı ve bulgular tek
+tek doğrulandı (18'i gerçek çıktı). Kalan uydurmalar aynı yerde
+toplanıyordu: **kullanıcının gerçek dünyada karar verdiği anlar.**
+
+- **Sahte güvenli buluşma noktaları.** "Yakınımdakiler" bir harita
+  TAKLİDİYDİ: ilan pinleri sabit yüzdelere konuyordu, "3 Doğrulanmış
+  Güvenli Buluşma Noktası" bileşenin içine elle yazılmıştı, "8 aktif takas
+  planlandı" diye bir sayaç hiç var olmadı ve 2/5/10 km düğmeleri hiçbir
+  şeyi süzmüyordu. Ekran gerçek mesafe ve şehre göre süzülen öneri listesi
+  üstüne yeniden kuruldu; noktalar "doğrulanmış" değil "önerilen", denetim
+  yapılmadığı açıkça yazılı.
+- **Buluşma yeri olarak sabit bir İstanbul adresi.** Takas detayında yer
+  bilinmiyorken "Kadıköy Güvenli Takas Noktası (Metro Çıkışı)" yazıyordu.
+- **Uydurma eşleşme yüzdesi.** Kaydırma ekranı "%89 Uyumluluk" gösteriyordu;
+  sayı 75'ten başlayıp birkaç sabit ekleme ile üretiliyor, kullanıcının ne
+  aradığına hiç bakmıyordu. Dahası "KARŞILIKLI EŞLEŞME YAKALANDI!" diyordu
+  — karşı taraf hiçbir şey yapmamıştı. Artık ürünün gerçek eşleştirme
+  motoru kullanılıyor ve sayı yerine gerekçe gösteriliyor.
+- **Kazanılmamış rozet.** Her takasta koşulsuz "'İlk Takasım' rozeti
+  profilinize eklendi" yazıyordu. Artık eşik tam o takasta aşıldıysa
+  gösteriliyor.
+- **Dört boyut, tek sayının dört kopyası.** Değerlendirmede dört ayrı DB
+  sütununa aynı yıldız yazılıyordu; artık dört ayrı satır var.
+- **Kalkanlı "5.0 güven puanı"** ilan sayfasında koşulsuz gösteriliyordu
+  (DB varsayılanı 5). Diğer ekranların kuralı buraya da kondu.
+- **Ölü rozet verisi** (`INITIAL_BADGES`: uydurma kazanma tarihleri, hiç
+  ölçülmeyen "15 dakikada yanıt" rozeti) ve `PAPERCLIP_STAGES` silindi;
+  ulaşılamayan iki döngü rozeti kaldırıldı; rozet ikonları lucide oldu.
+
+Ulaşılamayan ve çalışmayan yollar:
+
+- Takasa kapalı bir ilana teklif gönderilebiliyordu; teklif gidiyor, karşı
+  taraf kabul EDEMİYOR ve iki taraf da nedenini bilmiyordu.
+- İhtiyaçlarda `fulfilled` durumu vardı ama onu yazan düğme yoktu:
+  aradığını bulan kullanıcının tek seçeneği silmekti.
+- "Bu ürünü arayan N kişi var" düğmesi kullanıcının KENDİ ihtiyaç
+  listesine götürüyordu.
+- Yönetici panelinde kaldırılmış özelliklerin bölümleri ("Loop'lar",
+  "Etkinlikler", "Topluluk") ve kalıcı olarak 0 olan "Aktif Loop" KPI'ı.
+
+Eşleştirmenin girdileri:
+
+- Kayıt ekranı "ne arıyorsun?" diye soruyor, cevabı motorun HİÇ okumadığı
+  bir sütuna yazıyordu; kullanıcı hemen ardından /kesfet'te aynı soruyla
+  yeniden karşılaşıyordu. Cevap artık gerçek ihtiyaca dönüşüyor.
+- `listings.tags` kolonu vardı, motor okuyordu, ama hiçbir form yazmadığı
+  için canlıdaki her ilanda boştu. İlan formuna tek satırlık opsiyonel
+  etiket alanı eklendi.
+
 **Doğrulama:** her commit'te `npm run lint` + `npm test` + `npm run build`;
 migration'lar sıfırdan kurulan yerel PostgreSQL 16'da uygulanıp iki SQL
 test paketiyle (93 + 31 kontrol) denendi; arayüz Chromium ile iki temada

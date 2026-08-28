@@ -395,6 +395,9 @@ bir ürün yaratmak olur.
 
 > Bu liste her turda güncellenir. Aşağıdaki 1, 5, 6 ve 7 numaralı maddeler
 > **backend/frontend gözden geçirme turunda** kapatıldı; kalanlar açık.
+> 11-15 arası maddeler aynı turun gözden geçirme çıktısından geldi:
+> bulundular, doğrulandılar, ama bu turun konusu (uydurulmuş veri,
+> güvenlik, gezinme) dışında kaldıkları için bilerek ertelendiler.
 
 1. ~~**İlan süresi / "hâlâ takasa açık mı?"** (md. 119)~~ — **yapıldı**
    (`20260829000000_listing_expiry.sql`). Her ilan 30 gün yayında kalıyor,
@@ -411,7 +414,11 @@ bir ürün yaratmak olur.
    ol". Bildirim altyapısı hazır, sadece `follows` tablosu + trigger gerekir.
 4. **Kategoriye özel alanlar** (md. 111): telefon → marka/model/depolama,
    bisiklet → kadro ölçüsü. Eşleştirmeyi güçlendirir ama ilan formunu
-   uzatmamak şart (md. 112).
+   uzatmamak şart (md. 112). NOT: ucuz yarısı yapıldı — ilan formuna tek
+   satırlık serbest **etiket** alanı eklendi, böylece `listings.tags` (ve
+   onu okuyan eşleştirme motoru) canlıda ilk kez dolu. Kategoriye özel
+   alanlar, hangi iki kategorinin en çok teklif çektiği canlı veriden
+   görülünce yapılmalı.
 5. ~~**Tasarım dili uygulaması** (§7)~~ — **yapıldı.** Tokenlar koda
    uygulandı (1254 ham palet kullanımı çevrildi), koyu tema gerçekten
    çalışır hâle geldi ve kontrast iki temada da ölçülerek WCAG AA'ya
@@ -434,6 +441,37 @@ bir ürün yaratmak olur.
    durumunu göstermesi.
 10. **Gerçek sayfalama.** `getAllListings()` artık açık bir sınırla
     çalışıyor (120); sonsuz kaydırma ayrı bir iş.
+11. **Uygulama dışı bildirim (Web Push).** Bildirimler yalnızca uygulama
+    açıkken görülüyor; `notifications` tablosunun dışına çıkan hiçbir kanal
+    yok. Teklifin ömrü 48 saat, yani uygulamayı iki gün açmayan kullanıcı
+    teklifi kaçırıyor. Gerekenler: `manifest.webmanifest`, bir service
+    worker'ın `push`/`notificationclick` işleyicisi, `push_subscriptions`
+    tablosu (kendi satırına RLS) ve `notifications` üzerinde bir trigger.
+    İzin ilk açılışta DEĞİL, kullanıcının ilk teklifinden sonra istenmeli.
+    SMS ve bildirim tercihleri bu işin parçası değil.
+12. **Şehirde arama.** `DiscoverPage` ilanları Türkiye genelinden çekiyor
+    ve şehir süzgeci hiçbir ekranda yok; kategori eşleşmesi tek başına
+    eşiği geçtiği için "sana uygun" listesinde başka şehirden ilan
+    çıkabiliyor. `getAllListings()`'e `city` seçeneği + keşif ve arama
+    ekranlarına "Şehrimde / Türkiye geneli" ikilisi. Şehirde sonuç yoksa
+    Türkiye geneline düşülmeli ve bu SÖYLENMELİ. Puanlama ağırlıkları
+    değişmemeli (mesafe belirleyici değil, md. 35).
+13. **Buluşma planı girdileri.** `tradeService.createTradeOffer`
+    `deliveryDetails`i kabul ediyor ve yazıyor (testi de var) ama hiçbir
+    ekran göndermiyor; bu yüzden takas detayında buluşma yeri ve tarihi hep
+    boş. Teklif ekranına iki opsiyonel alan (ne zaman / nerede) yeter;
+    `safe_point` seçiliyse `SAFE_MEETING_POINTS`ten şehre göre bir liste.
+    Çift taraflı öneri/onay akışı sonraki iş.
+14. **Doğru başarı metrikleri.** `AdminKPI` toplam kullanıcı ve aktif ilan
+    sayıyor; §8'in ölçmemizi istediği iki şey (tamamlanan takas sayısı ve
+    **ilk takasa ulaşma süresi**) ile dört huni oranı panelde yok. Günlük
+    huni görünümü + ilk takas gecikmesi için iki okuma görünümü, sonra
+    panelde üst şeride bu üçü.
+15. **Sitemap.** `public/robots.txt` `/ilan/<slug>`'ı "organik trafiğin ana
+    kapısı" diye işaretliyor ama ne `sitemap.xml` var ne de robots'ta
+    `Sitemap:` satırı. Build sonrası üretilen basit bir sitemap ucuz;
+    bot'lara özel ön-render ayrı ve pahalı bir karar, organik trafik
+    oluşmadan yapılmamalı.
 
 ## 7. Tasarım dili (md. 62-72, 98-103)
 
