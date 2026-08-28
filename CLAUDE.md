@@ -8,15 +8,19 @@ bekletilmez — depoda durup hayata geçmemiş iş, yapılmamış iştir.
 
 Her iş için sıra şudur:
 
-1. Değişiklik yapılır.
-2. `npm run lint`, `npm test`, `npm run build` üçü de çalıştırılır.
+1. `git fetch origin main` — iş **her zaman** `main`'in ucundan başlar.
+2. Değişiklik yapılır.
+3. `npm run lint`, `npm test`, `npm run build` üçü de çalıştırılır.
    **Otomatik uygulamak, doğrulamadan uygulamak demek değildir** — üçü de
    temiz değilse iş uygulanmaz.
-3. `main`'e uygulanır (PR açılır ve hemen merge edilir, kayıt kalsın diye).
-4. `claude/takas-app-development-56eqh1` dalı `main` ile aynı commit'e
-   ileri sarılır.
+4. Commit doğrudan `main`'e gönderilir: `git push origin HEAD:main`.
+   **PR açılmaz, merge commit üretilmez** (sebebi aşağıda: "Neden PR yok").
+   Push ileri sarma değilse durulur — `main` bu arada ilerlemiş demektir,
+   1. adıma dönülür.
+5. Kullanıcının checkout'undaki dal aynı commit'e ileri sarılır:
+   `git push origin main:claude/takas-app-development-56eqh1`
 
-4. adım isteğe bağlı değil. Kullanıcının checkout'u o dalda; iki ref aynı
+5. adım isteğe bağlı değil. Kullanıcının checkout'u o dalda; iki ref aynı
 commit'te tutulmazsa kullanıcı yapılan işi kendi editöründe göremez ve
 hatların yeniden ayrışması başlar (aşağıdaki olaya bakın). İş, ancak `main`
 ile o dal aynı commit'i gösterdiğinde bitmiş sayılır.
@@ -24,10 +28,35 @@ ile o dal aynı commit'i gösterdiğinde bitmiş sayılır.
 Sonuç bildirilirken hangi commit'e uygulandığı ve doğrulama çıktısı
 (lint / test / build) birlikte söylenir.
 
+## Neden PR yok
+
+Önceki kural "PR açılır ve hemen merge edilir" diyordu. Her merge geçmişe
+bir merge commit ve grafikte ikinci bir şerit ekledi; on dört PR sonunda
+kullanıcının kaynak denetimi grafiği tek mavi hat olmaktan çıkıp iç içe
+geçmiş renkli şeritlere döndü. Kayıt tutmanın bedeli okunamayan bir geçmiş
+oldu.
+
+Bunun yerine geçmiş **düz** tutulur: commit'ler doğrudan `main`'in ucuna
+eklenir, `main` hiçbir zaman merge ile ilerlemez. Kayıt commit mesajının
+kendisinde durur. Bir dalda çalışıldıysa `main`'e ileri sarılarak taşınır
+(gerekirse `git rebase origin/main`), merge edilerek değil.
+
+Zaten çatallanmış eski geçmiş olduğu gibi bırakılır; onu düzeltmek geçmişi
+yeniden yazmak olurdu ve kullanıcının checkout'unu bozardı. Kural bundan
+sonrası içindir.
+
+## Dal biriktirilmez
+
+İş `main`'e ulaştıktan sonra o iş için açılmış `claude/*` dalı uzaktan
+silinir. Yaşayan tek kalıcı ref çifti `main` ile kullanıcının checkout'u
+olan `claude/takas-app-development-56eqh1`'dir; ikisi her zaman aynı
+commit'i gösterir.
+
 ## Tek hat: `main`
 
 **Tüm iş `main` üzerinden yürür.** Bir dalda çalışıldıysa, iş biter bitmez
-`main`'e merge edilir ve dal `main` ile aynı noktaya getirilir.
+`main`'in ucuna ileri sarılır ve kullanıcının dalı da aynı noktaya
+getirilir.
 
 Bunun sebebi somut bir olay: `claude/takas-app-development-56eqh1` dalı ile
 `main`, `bc7fd93` commit'inde ayrıldı ve fark edilmeden 1,5 gün paralel
@@ -56,6 +85,20 @@ git status -sb            # "behind" yazıyorsa önce pull
 Değişiklik `main`'e ulaşmadıysa iş bitmemiştir. Kullanıcı kendi
 editöründe yalnızca kendi checkout'undaki dalı görür; başka bir dala
 push edilen commit onun ekranında **görünmez**.
+
+### Kullanıcının kendi makinesinde
+
+Depoyu ilk kurarken bir kez:
+
+```
+git config pull.rebase true
+git config push.default current
+```
+
+`pull.rebase` olmadan, dal bir kez ayrıştığında VS Code'un "Değişiklikleri
+Eşitle" düğmesi `fatal: Need to specify how to reconcile divergent
+branches` ile düşer ve commit atılamaz hâle gelir. Bu ayar yerel commit'leri
+uzaktakinin üstüne dizerek düğmeyi çalışır tutar.
 
 ## Deponun adı
 
