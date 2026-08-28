@@ -4,7 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
 import { messageService } from '../../services/messageService';
-import { Listing } from '../../types';
+import { needService, scoreNeedAgainstListing, MATCH_THRESHOLD } from '../../services/needService';
+import { Listing, Need } from '../../types';
 import { CATEGORIES } from '../../constants';
 import {
   ArrowLeft,
@@ -31,12 +32,18 @@ export const SwipeMatchPage: React.FC = () => {
 
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [userMyListings, setUserMyListings] = useState<Listing[]>([]);
+  // Kullanıcının açık ihtiyaçları. Kutlama ekranı ancak GERÇEK bir
+  // eşleşme varsa çıkıyor ve nedenini bunlardan alıyor.
+  const [myNeeds, setMyNeeds] = useState<Need[]>([]);
 
   useEffect(() => {
     listingService
       .getAllListings()
       .then((all) => setAllListings(all.filter((l) => l.user.id !== currentUser.id)));
     listingService.getUserListings(currentUser.id).then(setUserMyListings);
+    needService
+      .getUserNeeds(currentUser.id)
+      .then((needs) => setMyNeeds(needs.filter((n) => n.status === 'active')));
   }, [currentUser.id]);
 
   // Match preferences state
@@ -69,19 +76,36 @@ export const SwipeMatchPage: React.FC = () => {
   const [matchedItem, setMatchedItem] = useState<{
     targetListing: Listing;
     myListing: Listing;
-    matchScore: number;
+    needTitle: string;
+    reasons: string[];
   } | null>(null);
 
   const currentListing = filteredListings[currentIndex];
   const defaultMyListing = userMyListings[0] || allListings[0];
 
-  // Helper to calculate match score between target and user's items
-  const getMatchAffinity = (target: Listing) => {
-    let score = 75;
-    if (target.location.distanceKm !== undefined && target.location.distanceKm <= 5) score += 10;
-    if (target.user.isVerified) score += 5;
-    if (target.user.trustScore >= 4.7) score += 5;
-    return Math.min(score, 98);
+  // EŞLEŞME YÜZDESİ UYDURULMUYOR.
+  //
+  // Burada eskiden `getMatchAffinity` vardı: 75'ten başlayıp yakınsa +10,
+  // "doğrulanmış" ise +5, güven puanı 4.7 üstüyse +5 ekleyip 98'de kesen
+  // bir sayı. Kullanıcının ne aradığına, elinde ne olduğuna, karşı tarafın
+  // ne istediğine HİÇ bakmıyordu — ama ekranda "eşyalarınız %89 oranında
+  // örtüşüyor" diye çıkıyordu. 'super' kaydırmada sayı doğrudan 99'du.
+  //
+  // Yerine ürünün gerçek eşleştirme motoru kullanılıyor: kullanıcının açık
+  // ihtiyaçları bu ilana karşı puanlanıyor ve kullanıcıya sayı değil,
+  // motorun kendi GEREKÇELERİ ("Aradığın kategoride", "Aradığın
+  // kelimelerle eşleşiyor: bisiklet") gösteriliyor.
+  const bestNeedMatch = (target: Listing) => {
+    let best: { needTitle: string; score: number; reasons: string[] } | null = null;
+
+    for (const need of myNeeds) {
+      const { score, reasons } = scoreNeedAgainstListing(need, target, currentUser.city);
+      if (score >= MATCH_THRESHOLD && (!best || score > best.score)) {
+        best = { needTitle: need.title, score, reasons };
+      }
+    }
+
+    return best;
   };
 
   // Perform Swipe Action
@@ -91,18 +115,24 @@ export const SwipeMatchPage: React.FC = () => {
     setHistory((prev) => [...prev, { listing: currentListing, action }]);
 
     if (action === 'like' || action === 'super') {
-      const matchScore = getMatchAffinity(currentListing);
+      setSwipedMatches((prev) => [currentListing, ...prev]);
 
-      // Trigger Match Celebration if score is high or user likes
-      if (matchScore >= 80 || action === 'super') {
-        setSwipedMatches((prev) => [currentListing, ...prev]);
+      const match = bestNeedMatch(currentListing);
+
+      if (match) {
+        // Gerçek bir eşleşme: kullanıcının açık bir ihtiyacı bu ilanı
+        // tutuyor. Kutlama ekranı yalnızca bu durumda çıkıyor.
         setMatchedItem({
           targetListing: currentListing,
           myListing: defaultMyListing,
-          matchScore: action === 'super' ? 99 : matchScore,
+          needTitle: match.needTitle,
+          reasons: match.reasons,
         });
       } else {
-        showToast('Takas İsteği Kaydedildi', `${currentListing.title} beğendiklerinize eklendi.`, 'success');
+        // Hiçbir yere KAYDEDİLMİYOR: aşağıdaki liste sayfa yenilenince
+        // sıfırlanan React state'i. Eskiden "Takas İsteği Kaydedildi"
+        // deniyordu; ne bir istek gidiyordu ne de bir şey kaydediliyordu.
+        showToast('Beğendin', 'Teklif vermek için listeden ilana git.', 'info');
       }
     } else {
       showToast('Pas Geçildi', undefined, 'info');
@@ -284,12 +314,21 @@ export const SwipeMatchPage: React.FC = () => {
               </div>
             )}
 
-            {/* Top Badges (Category & Distance & Match Score) */}
-            <div className="relative top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
-              <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-emerald-300 text-[11px] font-bold border border-emerald-500/30 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                %{getMatchAffinity(currentListing)} Uyumluluk
-              </span>
+            {/* Kartın üstünde her ilan için "%89 Uyumluluk" yazıyordu ve o
+                sayı uydurmaydı. Artık rozet, yalnızca kullanıcının AÇIK bir
+                ihtiyacı bu ilanı tuttuğunda çıkıyor ve neyi tuttuğunu
+                söylüyor. */}
+            <div className="relative top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none z-10">
+              {(() => {
+                const match = bestNeedMatch(currentListing);
+                if (!match) return <span />;
+                return (
+                  <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-emerald-300 text-[11px] font-bold border border-emerald-500/30 flex items-center gap-1 min-w-0">
+                    <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="truncate">Aradığın: {match.needTitle}</span>
+                  </span>
+                );
+              })()}
 
               <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-stone-200 text-[11px] font-medium border border-stone-700 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-emerald-400" />
@@ -469,17 +508,25 @@ export const SwipeMatchPage: React.FC = () => {
             <div className="absolute -top-20 -left-20 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-20 -right-20 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
 
+            {/* "KARŞILIKLI EŞLEŞME YAKALANDI!" yazıyordu — karşı taraf
+                hiçbir şey yapmamıştı. Kullanıcıya, bir yabancının da onu
+                beğendiği söyleniyordu. Artık yalnızca kendi ihtiyacının
+                tuttuğu söyleniyor ve nedeni gösteriliyor. */}
             <div className="space-y-1">
               <span className="text-xs font-black text-amber-400 tracking-widest uppercase flex items-center justify-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                KARŞILIKLI EŞLEŞME YAKALANDI!
+                ARADIĞIN ŞEY
               </span>
               <h2 className="text-2xl font-black text-white font-display">
-                Harika bir Takas Uyumu
+                "{matchedItem.needTitle}" ile eşleşiyor
               </h2>
-              <p className="text-xs text-stone-300">
-                {matchedItem.targetListing.user.fullName} ile eşyalarınız %{matchedItem.matchScore} oranında örtüşüyor.
-              </p>
+              {matchedItem.reasons.length > 0 && (
+                <ul className="text-xs text-stone-300 space-y-0.5 pt-1">
+                  {matchedItem.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Side-by-Side Items Display */}
@@ -643,7 +690,12 @@ export const SwipeMatchPage: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-stone-800">
               <div className="flex items-center gap-2">
                 <Repeat className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">Eşleşen İlanlar ({swipedMatches.length})</h3>
+                {/* "Eşleşen İlanlar" değil: bu liste React state'inde
+                    duruyor, sayfa yenilenince kayboluyor ve karşı tarafın
+                    bundan haberi yok. */}
+                <h3 className="text-base font-bold text-white">
+                  Bu oturumda beğendiklerin ({swipedMatches.length})
+                </h3>
               </div>
               <button
                 type="button"
