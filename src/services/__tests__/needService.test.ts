@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { scoreNeedAgainstListing, tokenize, MATCH_THRESHOLD } from '../needService';
+import { scoreNeedAgainstListing, tokenize, wordsMatch, MATCH_THRESHOLD } from '../needService';
 import type { Listing, Need } from '../../types';
 
 const listing = {
@@ -26,7 +26,48 @@ describe('tokenize', () => {
   });
 });
 
+describe('wordsMatch — Türkçe ekler eşleşmeyi bozmamalı', () => {
+  // Regresyon: skorlayıcı tam eşitlik (Set.has) arıyordu. "bisiklet"
+  // arayan kullanıcı "Bisikletim" başlıklı ilanda HİÇ kelime eşleşmesi
+  // alamıyordu — üstelik DB ön filtresi (title.ilike.%bisiklet%) o ilanı
+  // zaten getirmiş oluyordu.
+  it('iyelik ve hâl eklerini tolere eder', () => {
+    expect(wordsMatch('bisiklet', 'bisikletim')).toBe(true);
+    expect(wordsMatch('bisiklet', 'bisikleti')).toBe(true);
+    expect(wordsMatch('bisikletim', 'bisiklet')).toBe(true);
+    expect(wordsMatch('kamera', 'kamerası')).toBe(true);
+  });
+
+  it('son ünsüz yumuşamasını yakalar (kitap→kitabı, renk→rengi)', () => {
+    expect(wordsMatch('kitap', 'kitabı')).toBe(true);
+    expect(wordsMatch('renk', 'rengi')).toBe(true);
+    expect(wordsMatch('ağaç', 'ağacı')).toBe(true);
+    expect(wordsMatch('kanat', 'kanadı')).toBe(true);
+  });
+
+  it('sadece baş harfleri tutan alakasız kelimeleri eşleştirmez', () => {
+    expect(wordsMatch('araba', 'arabesk')).toBe(false);
+    expect(wordsMatch('kol', 'koltuk')).toBe(false);
+    expect(wordsMatch('masa', 'maske')).toBe(false);
+  });
+});
+
 describe('scoreNeedAgainstListing', () => {
+  it('ekli bir başlıkta da kelime eşleşmesi bulur', () => {
+    const suffixed = {
+      title: 'Bisikletim takasa açık',
+      description: '',
+      categoryId: 'sports',
+      tags: [],
+      location: { city: 'İstanbul', district: 'Kadıköy', distanceKm: 1 },
+    } as unknown as Listing;
+
+    const { score, reasons } = scoreNeedAgainstListing(need('bisiklet'), suffixed);
+
+    expect(score).toBeGreaterThan(0);
+    expect(reasons.join(' ')).toContain('bisiklet');
+  });
+
   it('kategori eşleşmesi tek başına eşik değerin üstünde bir skor üretir', () => {
     const { score, reasons } = scoreNeedAgainstListing(need('Aynasız gövde', 'photography'), listing);
 

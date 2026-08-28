@@ -96,6 +96,67 @@ export function tokenize(text: string): string[] {
     .filter((word) => word.length >= 3 && !STOP_WORDS.has(word));
 }
 
+/**
+ * İki kelime aynı şeyi mi anlatıyor?
+ *
+ * Türkçe eklemeli bir dil: "bisiklet" aradığını yazan kullanıcı,
+ * "Bisikletim", "bisikleti", "bisikletle" başlıklı ilanları kaçırmamalı.
+ * Eşleştirme daha önce tam eşitlik arıyordu (`Set.has`), yani bu ilanların
+ * HİÇBİRİ kelime eşleşmesi saymıyordu.
+ *
+ * Bu, aynı zamanda bir tutarsızlıktı: veritabanı ön filtresi
+ * `title.ilike.%bisiklet%` ile bu ilanları ZATEN getiriyordu, ama istemci
+ * tarafındaki skorlayıcı sonra onları "kelime eşleşmesi yok" diye eliyordu.
+ * Sorgu "ilgili" derken skorlayıcı "değil" diyordu.
+ *
+ * Kural:
+ *   * birebir aynıysa → eşleşir
+ *   * biri diğeriyle başlıyorsa ve kısa olan en az 4 harfse → eşleşir
+ *     ("bisiklet" ⊂ "bisikletim")
+ *   * en az 5 harflik ortak bir önek varsa → eşleşir
+ *
+ * Karşılaştırma öncesinde son ünsüz YUMUŞATILIYOR. Türkçe'de ünlüyle
+ * başlayan ek alan sözcüklerin sonundaki sert ünsüz yumuşar:
+ * kitap→kitabı, renk→rengi, ağaç→ağacı, kanat→kanadı. Bu yapılmazsa
+ * "kitap" arayan "Kitabım" ilanını bulamaz — ortak önek yalnızca "kita"
+ * (4 harf) kalır ve eşiği geçmez.
+ *
+ * 4-5 harf alt sınırı bilinçli: daha kısası "araba"yı "arabesk"e,
+ * "kol"u "koltuk"a bağlar. Bu bir morfolojik çözümleyici değil ama ilan
+ * başlıkları için fazlasıyla yeterli ve açıklanabilir kalıyor (md. 39).
+ */
+const FINAL_SOFTENING: Record<string, string> = { p: 'b', ç: 'c', t: 'd', k: 'ğ' };
+
+function soften(word: string): string {
+  const last = word[word.length - 1];
+
+  // "n"den sonraki k, ğ'ye değil g'ye yumuşar: renk→rengi, denk→dengi.
+  if (last === 'k') {
+    return word.slice(0, -1) + (word[word.length - 2] === 'n' ? 'g' : 'ğ');
+  }
+
+  const softened = FINAL_SOFTENING[last];
+
+  return softened ? word.slice(0, -1) + softened : word;
+}
+
+export function wordsMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+
+  // "renk" → "reng" ve "rengi" böylece ortak "reng" önekinde buluşur.
+  const sa = soften(a);
+  const sb = soften(b);
+
+  const [short, long] = sa.length <= sb.length ? [sa, sb] : [sb, sa];
+
+  if (short.length >= 4 && long.startsWith(short)) return true;
+
+  let shared = 0;
+  while (shared < short.length && sa[shared] === sb[shared]) shared++;
+
+  return shared >= 5;
+}
+
 export function mapNeed(row: NeedRow): Need {
   return {
     id: row.id,
@@ -133,13 +194,17 @@ export function scoreNeedAgainstListing(
   }
 
   const needWords = tokenize(need.title);
-  const listingWords = new Set([
+  const listingWords = [
     ...tokenize(listing.title),
     ...(listing.tags ?? []).flatMap(tokenize),
     ...tokenize(listing.description ?? ''),
-  ]);
+  ];
 
-  const hits = needWords.filter((word) => listingWords.has(word));
+  // Tam eşitlik yerine Türkçe eklere dayanıklı karşılaştırma
+  // (bkz. wordsMatch): "bisiklet" arayan "Bisikletim"i bulmalı.
+  const hits = needWords.filter((word) =>
+    listingWords.some((listingWord) => wordsMatch(word, listingWord))
+  );
 
   if (needWords.length && hits.length) {
     score += Math.round((hits.length / needWords.length) * 40);
