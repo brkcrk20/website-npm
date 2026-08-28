@@ -10,7 +10,20 @@ export const OtpVerificationPage: React.FC = () => {
   const { setCurrentUser, showToast } = useApp();
 
   const state =
-    (location.state as { phone?: string; isExisting?: boolean; passwordVerified?: boolean }) || {};
+    (location.state as {
+      phone?: string;
+      isExisting?: boolean;
+      passwordVerified?: boolean;
+      from?: string;
+    }) || {};
+
+  // Giriş sonrası dönülecek yer. Yalnızca uygulama içi bir yol kabul
+  // ediliyor: "//" ile başlayan bir değer başka bir siteye açık
+  // yönlendirme olurdu (bkz. PhoneAuthPage'deki aynı kontrol).
+  const from =
+    state.from && state.from.startsWith('/') && !state.from.startsWith('//')
+      ? state.from
+      : '/kesfet';
   // Numara YALNIZCA bir önceki adımdan gelir. Önceden burada sabit bir demo
   // numarası (+90 532 890 12 34) varsayılan olarak duruyordu: sayfa
   // yenilendiğinde ya da /dogrulama adresine doğrudan girildiğinde router
@@ -58,12 +71,6 @@ export const OtpVerificationPage: React.FC = () => {
     }
   };
 
-  const handleAutoFillDemo = () => {
-    const demoCode = '246810';
-    setOtp(demoCode.split(''));
-    verifyCode(demoCode);
-  };
-
   const verifyCode = async (code: string) => {
     setIsVerifying(true);
     const res = await authService.verifyOtp(phone, code);
@@ -75,7 +82,7 @@ export const OtpVerificationPage: React.FC = () => {
         navigate('/profil-olustur', { state: { phone } });
       } else {
         if (res.user) setCurrentUser(res.user);
-        navigate('/kesfet');
+        navigate(from, { replace: true });
       }
       return;
     }
@@ -92,7 +99,11 @@ export const OtpVerificationPage: React.FC = () => {
     return <Navigate to="/giris" replace />;
   }
 
-  const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'demo', '0', 'backspace'];
+  // 'demo' tuşu kaldırıldı: SABİT bir kodu ('246810') doğrulamaya gönderen
+  // bir düğmeydi. Canlıda hiçbir işe yaramıyor (gerçek kod o değil), ama
+  // güvenlik ekranında "DEMO" yazan bir tuş duruyor ve uygulamanın bir
+  // zamanlar sabit bir doğrulama kodu kabul ettiğini duyuruyordu.
+  const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'spacer', '0', 'backspace'];
   const KEY_LETTERS: Record<string, string> = {
     '2': 'ABC',
     '3': 'DEF',
@@ -175,17 +186,8 @@ export const OtpVerificationPage: React.FC = () => {
       <div className="bg-canvas border-t border-line mt-8">
         <div className="max-w-md mx-auto grid grid-cols-3 gap-px bg-line">
           {keypad.map((key) => {
-            if (key === 'demo') {
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={handleAutoFillDemo}
-                  className="h-16 bg-canvas text-[10px] font-bold text-ink-faint hover:bg-surface transition-colors cursor-pointer"
-                >
-                  DEMO
-                </button>
-              );
+            if (key === 'spacer') {
+              return <div key={key} className="h-16 bg-canvas" aria-hidden="true" />;
             }
 
             if (key === 'backspace') {

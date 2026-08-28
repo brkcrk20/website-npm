@@ -13,7 +13,7 @@ const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — bkz. avatars bucket f
 export const CreateProfilePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setCurrentUser, showToast } = useApp();
+  const { setCurrentUser, showToast, refreshUserData } = useApp();
 
   const state = (location.state as { phone?: string }) || {};
   const phone = state.phone || '+90 532 890 12 34';
@@ -158,6 +158,10 @@ export const CreateProfilePage: React.FC = () => {
     }
 
     setCurrentUser(result.user);
+    // Oturum durumunu 'needs-profile'dan 'ready'ye taşır. Yapılmazsa
+    // RequireAuth kullanıcıyı bu ekrana geri gönderir (profil oluştu ama
+    // AppContext bunu bilmiyor).
+    await refreshUserData();
 
     // KAYITTA SORULAN SORUNUN CEVABI KULLANILIYOR.
     //

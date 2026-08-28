@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -11,6 +11,22 @@ interface PhoneAuthPageProps {
 export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
   const navigate = useNavigate();
   const { setCurrentUser, showToast } = useApp();
+  const location = useLocation();
+
+  // GİRİŞ SONRASI NEREYE?
+  //
+  // `RequireAuth` korumalı bir sayfadan buraya gönderirken `from`'u
+  // taşıyordu ama OKUYAN tek satır yoktu: paylaşılan bir ilan
+  // bağlantısından "Teklif ver"e basan kullanıcı giriş yaptıktan sonra
+  // Keşfet'e düşüyor ve ilanı yeniden aramak zorunda kalıyordu — dönüşüm
+  // hunisinin tam ortasında kayıp.
+  //
+  // `from` state'ten geliyor ve state kullanıcı tarafından üretilebilir;
+  // bu yüzden yalnızca UYGULAMA İÇİ bir yol kabul ediliyor ("//" ile
+  // başlayan değerler başka bir siteye açık yönlendirme olurdu).
+  const rawFrom = (location.state as { from?: string } | null)?.from;
+  const from =
+    rawFrom && rawFrom.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : '/kesfet';
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -104,14 +120,14 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
     if (result.requiresOtp) {
       showToast('Ek Doğrulama Gerekli', 'Hesap ayarların gereği SMS kodu gönderildi.', 'info');
       navigate('/dogrulama', {
-        state: { phone, isExisting: true, passwordVerified: true },
+        state: { phone, isExisting: true, passwordVerified: true, from },
       });
       return;
     }
 
     if (result.user) setCurrentUser(result.user);
     showToast('Giriş Başarılı!', 'Tekrar hoş geldin.', 'success');
-    navigate('/kesfet');
+    navigate(from, { replace: true });
   };
 
   const handleSubmit = isRegister ? handleRegisterSubmit : handleLoginSubmit;

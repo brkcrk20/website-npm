@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { UserProfile, Listing, TradeOffer, NotificationItem } from '../types';
 import { authService } from '../services/authService';
+import { GUEST_USER } from '../constants/guestUser';
 import { supabase } from '../lib/supabase';
 import { listingService, setViewerCoords } from '../services/listingService';
 import { tradeService } from '../services/tradeService';
@@ -16,9 +17,20 @@ interface ToastMessage {
   description?: string;
 }
 
+// Oturumun TEK kaynağı. Rota koruması eskiden her gezinmede kendi başına
+// `getUser()` çağırıyordu; hem gereksiz ağ isteğiydi hem de "oturum var
+// ama profil yok" durumunu hiç ayırt etmiyordu.
+//
+//   checking      → henüz bilinmiyor (ilk açılış)
+//   anon          → Supabase oturumu yok
+//   needs-profile → oturum var, profil satırı YOK (kayıt yarıda kalmış)
+//   ready         → oturum ve profil var
+export type SessionState = 'checking' | 'anon' | 'needs-profile' | 'ready';
+
 interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: React.Dispatch<React.SetStateAction<UserProfile>>;
+  sessionState: SessionState;
   // lat/lon isteğe bağlıdır ve yalnızca konum GERÇEKTEN çözümlendiğinde
   // (GPS ya da adres araması) dolar. İlan mesafeleri buna göre hesaplanır;
   // koordinat yoksa hiçbir ilanda mesafe gösterilmez.
@@ -72,6 +84,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile>(authService.getCurrentUser());
+  const [sessionState, setSessionState] = useState<SessionState>('checking');
   const [currentLocation, setCurrentLocation] = useState<{
     city: string;
     district: string;
@@ -94,11 +107,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    // Uygulama açıldığında Supabase'den güncel kullanıcıyı kontrol et
+    // Uygulama açıldığında Supabase'den güncel kullanıcıyı kontrol et.
+    //
+    // "Oturum var mı?" ve "profil var mı?" AYRI sorular. OTP doğrulanınca
+    // Supabase oturumu açılıyor ama profil henüz yok; kullanıcı adres
+    // çubuğundan /kesfet'e gidip ADI BOŞ bir profille geziniyor ve ilan
+    // verince yabancı anahtar hatası alıyordu.
     const checkUserSession = async () => {
+      const hasSession = await authService.hasActiveSession();
+
+      if (!hasSession) {
+        authService.clearCachedUser();
+        setCurrentUser(GUEST_USER);
+        setSessionState('anon');
+        return;
+      }
+
       const user = await authService.getCurrentUserFromSupabase();
+
       if (user) {
         setCurrentUser(user);
+        setSessionState('ready');
+      } else {
+        setSessionState('needs-profile');
       }
     };
     checkUserSession();
@@ -111,7 +142,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // değişimleri anında yansıyor.
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        setCurrentUser(authService.getCurrentUser());
+        // Önbellek DE düşürülüyor: eskiden burada `getCurrentUser()`
+        // çağrılıyordu ve o da tam olarak düşürülmemiş önbelleği okuyordu,
+        // yani çıkış yapan kullanıcının adı/avatarı/isAdmin bayrağı ekranda
+        // kalmaya devam ediyordu.
+        authService.clearCachedUser();
+        setCurrentUser(GUEST_USER);
+        setSessionState('anon');
         return;
       }
 
@@ -266,14 +303,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const user = await authService.getCurrentUserFromSupabase();
     if (user) {
       setCurrentUser(user);
+      setSessionState('ready');
     } else {
-      setCurrentUser(authService.getCurrentUser());
+      // Profil okunamadıysa ÖNBELLEĞE düşmüyoruz: önbellek tam da bu
+      // durumda yanıltıcı (oturum bitmiş olabilir).
+      setCurrentUser(GUEST_USER);
     }
   };
 
   const logoutUser = async () => {
     await authService.logout();
-    setCurrentUser(authService.getCurrentUser());
+    setCurrentUser(GUEST_USER);
+    setSessionState('anon');
     showToast('Çıkış Yapıldı', 'Hesabınızdan güvenli bir şekilde çıkış yapıldı.', 'info');
   };
 
@@ -298,6 +339,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         setCurrentUser,
+        sessionState,
         currentLocation,
         setCurrentLocation,
         notifications,

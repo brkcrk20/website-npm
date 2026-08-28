@@ -977,11 +977,30 @@ export const authService = {
   /**
    * GERÇEK Supabase oturumu var mı? (localStorage'daki önbellek DEĞİL.)
    * Route koruması bunu kullanır — bkz. components/auth/RequireAuth.tsx.
+   *
+   * `getUser()` DEĞİL `getSession()`: `getUser()` her çağrıda Supabase'e AĞ
+   * İSTEĞİ atıyor. Rota koruması bunu her gezinmede çalıştırdığı için
+   * metroda bir saniyelik kopma, oturumu GEÇERLİ olan kullanıcıyı /giris'e
+   * fırlatıyordu. `getSession()` yereli okur ve supabase-js süresi dolmuş
+   * token'ı kendi yeniler.
    */
   async hasActiveSession(): Promise<boolean> {
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = await supabase.auth.getSession();
 
-    return !error && !!data.user;
+    return !error && !!data.session;
+  },
+
+  /**
+   * Önbellekteki kullanıcıyı düşürür.
+   *
+   * Supabase oturumu kendiliğinden düştüğünde (token yenilenemedi, oturum
+   * sunucuda iptal edildi) `swaloop_auth_user` silinmiyordu ve
+   * `getCurrentUser()` tam da o eski kaydı okuyordu: kullanıcı çıkmış
+   * olmasına rağmen adı, avatarı ve `isAdmin` bayrağı ekranda kalmaya
+   * devam ediyordu.
+   */
+  clearCachedUser() {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
   },
 
   isOnboardingDone(): boolean {
