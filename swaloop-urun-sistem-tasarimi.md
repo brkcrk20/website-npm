@@ -393,45 +393,89 @@ bir ürün yaratmak olur.
 
 ## 6. Sıradaki adımlar (öncelik sırasıyla)
 
+> Bu liste her turda güncellenir. Aşağıdaki 1, 5, 6 ve 7 numaralı maddeler
+> **backend/frontend gözden geçirme turunda** kapatıldı; kalanlar açık.
+
 1. ~~**İlan süresi / "hâlâ takasa açık mı?"** (md. 119)~~ — **yapıldı**
    (`20260829000000_listing_expiry.sql`). Her ilan 30 gün yayında kalıyor,
    bitmeden 3 gün önce sahibine bildirim gidiyor, süre dolunca ilan siliniyor
    değil `expired` oluyor ve "İlanlarım → Süresi dolan" sekmesinden tek
    dokunuşla yenileniyor (`renew_listing()`). Süre istemciden yazılamıyor.
-2. **Zamanlama (pg_cron).** `expire_stale_trade_offers()` ve
-   `expire_stale_listings()` hazır; ikisinin cron işini de migration kurmayı
-   deniyor ama pg_cron kapalıysa kurulamıyor. İlan tarafında bu işin
-   kurulması ZORUNLU: teklifteki gibi "kabul anında yine kontrol edilir"
-   güvencesi yok, iş çalışmazsa hiçbir ilan düşmez
-   (bkz. `supabase/README.md`).
+2. **Zamanlama (pg_cron) — HÂLÂ AÇIK VE ZORUNLU.**
+   `expire_stale_trade_offers()` ve `expire_stale_listings()` hazır;
+   ikisinin cron işini de migration kurmayı deniyor ama pg_cron kapalıysa
+   kurulamıyor. İlan tarafında bu işin kurulması ZORUNLU: teklifteki gibi
+   "kabul anında yine kontrol edilir" güvencesi yok, iş çalışmazsa hiçbir
+   ilan düşmez (bkz. `supabase/README.md`).
 3. **Kullanıcı takip** (md. 43/86): "bu kişinin yeni ilanlarından haberdar
    ol". Bildirim altyapısı hazır, sadece `follows` tablosu + trigger gerekir.
 4. **Kategoriye özel alanlar** (md. 111): telefon → marka/model/depolama,
    bisiklet → kadro ölçüsü. Eşleştirmeyi güçlendirir ama ilan formunu
    uzatmamak şart (md. 112).
-5. **Tasarım dili uygulaması** (§7): renk paleti, font ağırlıkları, radius
-   ve kart oranı kararları belgelendi ama koda uygulanmadı.
-6. **Admin paneli hâlâ kısmen mock** (rapor.txt §2) — şikayetler artık
-   gerçek veriyle geliyor, ama KPI'lar ve denetim kaydı gözden geçirilmeli.
-7. **`og:image`** (rapor.txt §3): link paylaşımlarında kart görselsiz.
+5. ~~**Tasarım dili uygulaması** (§7)~~ — **yapıldı.** Tokenlar koda
+   uygulandı (1254 ham palet kullanımı çevrildi), koyu tema gerçekten
+   çalışır hâle geldi ve kontrast iki temada da ölçülerek WCAG AA'ya
+   çıkarıldı. Ayrıntı §7'de.
+6. ~~**Admin paneli hâlâ kısmen mock**~~ — **artık değil.** `adminService`
+   KPI, şikayet, anlaşmazlık ve denetim kaydının tamamını Supabase'ten
+   okuyor/yazıyor; `rapor.txt` §2'deki bu madde eskimişti. Kalan tek iş
+   panelin görsel olarak tasarım sisteminin dışında olması (kasıtlı koyu
+   slate teması) — düşük öncelikli.
+7. ~~**`og:image`**~~ — **yapıldı** (`public/og-image.png`, kaynağı
+   `public/og-image.source.html`). twitter:card etiketleri de eklendi.
 8. **FAZ 3'e hazırlık:** 3 kişilik döngüler (md. 48-50) — ihtiyaç verisi
-   artık var, döngü araması bu veri üzerinde kurulabilir.
+   artık var, döngü araması bu veri üzerinde kurulabilir. NOT: döngü/
+   topluluk EKRANLARI bu turda kaldırıldı (erişilemez ve uydurma
+   verilerdi); `loopService.ts` ve `loops` tabloları duruyor, FAZ 3
+   geldiğinde arayüz yeniden yazılır.
+9. **Sayfa bazlı hata durumları.** Servis hataları artık kullanıcıya
+   görünüyor (`src/lib/serviceError.ts` + AppContext) ama bu bir ara
+   çözüm: doğrusu her listenin kendi "yüklenemedi / tekrar dene"
+   durumunu göstermesi.
+10. **Gerçek sayfalama.** `getAllListings()` artık açık bir sınırla
+    çalışıyor (120); sonsuz kaydırma ayrı bir iş.
 
 ## 7. Tasarım dili (md. 62-72, 98-103)
 
-Bu bölüm henüz **uygulanmadı**, karar olarak kayıtlıdır:
+Bu bölüm **uygulandı** (backend/frontend gözden geçirme turu). Tek kaynak
+`src/index.css`; ekranlar ham Tailwind paleti yerine tokenları kullanıyor.
 
-- **Renk:** Primary `#16A36A`, Dark `#17211D`, Background `#F7F8F6`,
-  Card `#FFFFFF`, Secondary `#64706A`, Border `#E5E9E6`. Yeşil marka
-  rengidir, "çevreci uygulama" işareti değil — her yeri yeşile boyamayın.
-- **Font:** başlık Outfit, gövde Plus Jakarta Sans (mevcut seçim korunuyor).
+- **Renk (açık tema):** brand `#278651`, brand-dark `#1d6640`,
+  brand-soft `#e8f5ee`, canvas `#f6f7f5`, surface `#ffffff`,
+  line `#e6e9e6`, ink `#16231d`, ink-soft `#4d5652`, ink-faint `#6a746f`.
+  Yeşil marka rengidir, "çevreci uygulama" işareti değil — her yeri
+  yeşile boyamayın.
+
+  > Değerler gözle değil **ölçülerek** seçildi. Önceki palet WCAG AA'yı
+  > altı yerde kaçırıyordu; en önemlisi uygulamanın en yaygın metin çifti
+  > olan ikincil metin/kart (4.42, gereken 4.5) ve birincil butondaki
+  > beyaz metin (3.40). Artık 16 metin/zemin çiftinin tamamı iki temada da
+  > ≥ 4.5:1.
+
+- **Koyu tema:** `html.dark` bloğunda aynı tokenların koyu karşılıkları.
+  Bileşenlerde `dark:` yazmak GEREKMEZ — `bg-surface` / `text-ink` /
+  `border-line` kullanan her ekran otomatik döner. Marka zemini üstündeki
+  metin `--color-on-brand` ile gelir (açıkta beyaz, koyuda koyu mürekkep;
+  beyaz metin açık yeşilin üstünde 2.76'da kalıyordu).
+- **Font:** başlık Outfit, gövde Plus Jakarta Sans.
   Ağırlıklar: başlık 700, alt başlık 600, gövde 400, buton 600.
-- **Radius:** kart 12-16px, buton 12-14px, avatar tam yuvarlak.
+- **Radius:** kart 16px (`sw-card`), buton 12px (`sw-btn`), çip tam
+  yuvarlak, avatar tam yuvarlak.
 - **Gölge:** az; border + hafif shadow yeterli.
 - **İkon:** yalnızca `lucide-react`. Emoji ikon, gradient ikon, 3D ikon yok.
 - **Fotoğraf:** ilan kartlarında 4:3, en az 1 fotoğraf, ideal 3-5.
+  Yükleme sırasında uzun kenar 1600 px'e (avatarlarda 512 px) indirilir.
+- **Durum renkleri:** takas durumu rozetleri **dört anlamsal ton**
+  kullanır — nötr (sıra karşı tarafta), marka (ilerliyor), sönük
+  (kapandı), tehlike (sorun). Önceki sürüm 14 durum için sekiz ayrı renk
+  ailesi kullanıyordu; mor bir rozetin kullanıcıya söylediği bir şey yok.
+  Her duruma ayrıca ikon eşlik eder: renk tek başına durum belirtmez
+  (md. 98).
 - **Erişilebilirlik:** 44×44px dokunma alanı, renk tek başına durum
-  belirtmez, reduced motion, kontrast.
+  belirtmez, kontrast ölçülü (yukarıda), kartlar gerçek `<a>`/`<button>`.
+
+**Kapsam dışı bırakılanlar:** `AdminDashboardPage` (kasıtlı koyu slate
+teması) ve `SwipeMatchPage` (kasıtlı koyu ekran) tokenlara taşınmadı.
 
 İlan kartında bulunmayacaklar (md. 17): CO₂, su, enerji, puan, rozet,
 seviye, uzun açıklama, maddi değer. Kartın tek işi şu soruyu yanıtlamak:

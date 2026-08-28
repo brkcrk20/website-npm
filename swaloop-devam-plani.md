@@ -4,7 +4,129 @@ Bu dosya deponun kendisinde tutulur; yeni bir oturumda bu dosya + deponun
 güncel `main` dalı ile devam edilir. (Eskiden bir `proje.zip` kopyası da
 tutuluyordu; canlı kodla ayrışıp kafa karıştırdığı için kaldırıldı.)
 
-## Bu turda yapılanlar (ürün/sistem tasarım raporu turu)
+## Bu turda yapılanlar (backend + frontend gözden geçirme turu)
+
+Kod tabanının tamamı 14 boyutta incelendi (RLS güvenliği, tetikleyici
+mantığı, tip sözleşmeleri, servis hata yolları, takas akışı, ihtiyaç
+eşleştirme, mock veri, tasarım sistemi, gezinme, UX durumları,
+erişilebilirlik, performans, dil/metin, ürün boşlukları). Bulgular
+çelişkili iki hakemden geçirilerek doğrulandı.
+
+Ana tema: **uydurulmuş veri.** Uygulama, elinde olmayan bilgiyi
+kullanıcıya varmış gibi gösteriyordu — ve bir takas uygulamasında bu, en
+pahalı hata türü.
+
+### Uydurulmuş veri temizliği
+
+- **Güven puanı.** `TrustCard` her alanı için uydurma varsayılan
+  tutuyordu (4.8 puan, "Doğrulanmış Üye", 14 takas, %98 yanıt, 12
+  değerlendirme ve hiç alınmamış üç övgü). Aynı `?? 4.8` kalıbı yedi ayrı
+  yerde vardı. Üstelik gerçek veriyle bile bozuktu: `trust_score` DB
+  varsayılanı 5 ve `trustLevelFromScore(5)` = "Topluluk Lideri" — yani
+  sıfır takaslı yeni üye en üst seviyede görünüyordu.
+  Yeni tek kaynak `src/utils/trustDisplay.ts`: **puan ya gerçektir ya da
+  gösterilmez.**
+- **`response_rate` hiç ölçülmüyordu** (kolon varsayılanı 1, onu yazan tek
+  bir trigger/servis yok): herkes sonsuza kadar "%100 yanıt oranı"
+  görüyordu. Arayüzden ve tiplerden kaldırıldı.
+- **Dört boyutlu değerlendirme sahteydi**: alt puanlar ekranda sabit "5/5"
+  yazıyordu ve gönderilen kayıt her zaman 5/5/5/5 idi. Artık gerçekten
+  seçilebiliyor.
+- **Kullanıcının yazmadığı yorumlar**: boş bırakılan yorum yerine "Harika
+  bir takastı…" yazılıyordu; `TradeSuccessPage`'te bu metin ÖN DOLU
+  geliyordu. İkisi de kaldırıldı.
+- **Sahte misafir kullanıcı**: oturum yoksa `mockData.CURRENT_USER`
+  dönülüyordu — "Berke Çelik", 4.88 puan, 7 takas. Yerine dürüst boş
+  profil (`src/constants/guestUser.ts`). `mockData.ts` (877 satır) silindi.
+- **Stok fotoğraflar**: ilan formundaki "Örnek Ürün Görselleri" beş sabit
+  Unsplash fotoğrafını gerçek bir ilana ekleyebiliyordu; avatarı olmayan
+  herkes aynı yabancının yüzüyle görünüyordu. İkisi de yerel nötr SVG
+  yer tutucularla değişti (`src/utils/placeholders.ts`).
+
+### Güvenlik (dört yeni migration, hepsi yerel PostgreSQL 16'da denendi)
+
+- `20260830000000` — **takas onayı sahtelenebiliyordu.** Tek bir
+  `PATCH /rest/v1/trades` isteği onay damgalarını uydurup takası tek
+  taraflı "tamamlandı" yapabiliyordu: karşı tarafın ilanı kalıcı olarak
+  `traded` oluyor, iki tarafın güven sayacı artıyor ve saldırgan hiç
+  olmamış bir takas üzerinden değerlendirme yazabiliyordu. Ayrıca teklifin
+  `receiver_id`'si sonradan değiştirilip teklif kendi kendine kabul
+  edilebiliyordu.
+- `20260831000000` — **`push_notification()` herkese açıktı.** `anon` dahi
+  herhangi bir kullanıcıya istediği bağlantıyı taşıyan sahte bildirim
+  yazabiliyordu; oysa tasarım dokümanı bunu güvence olarak sayıyor.
+  Ayrıca: sohbetin karşı tarafı değiştirilip özel yazışma üçüncü kişiye
+  açılabiliyor, kabul edilmiş teklifin kalemleri silinip karşı tarafın
+  ilanı sonsuza kadar `in_trade` bırakılabiliyor, şikayet kaydına uydurma
+  yönetici kararı yazılabiliyordu.
+- `20260902000000` — **aynı ilan iki takasa birden kilitlenebiliyordu**
+  (yerel olarak doğrulandı): kullanıcı aynı ürünü iki kişiye söz vermiş
+  oluyor, biri mutlaka mağdur oluyordu.
+- `20260903000000` — bildirim ile ekrandaki eşleşme farklı kurallar
+  kullanıyordu; "Bir bisiklet arıyorum" ihtiyacındaki "bir" kelimesi
+  "Birinci el kitap" ile eşleşiyordu.
+
+Ayrıca `20260901000000`: `categories` tablosunu dolduran hiçbir şey yoktu,
+sıfırdan kurulan her ortamda ilan verme tamamen çalışmıyordu.
+
+**Sekiz migration da hâlâ uygulanmadı — `supabase/README.md`'ye bakın.**
+
+### Tasarım dili ve koyu tema
+
+Koyu tema **bozuktu**: tokenların koyu karşılığı hiç tanımlanmamıştı ve
+uygulamada `dark:` yalnızca 6 dosyada vardı. "Koyu" seçen kullanıcıda dış
+kabuk kararıyor, içerik bembeyaz kalıyordu. Tema artık tek yerden dönüyor;
+1254 ham palet kullanımı tokenlara çevrildi. Kontrast iki temada da
+ölçüldü ve 16 metin/zemin çiftinin tamamı WCAG AA'yı geçiyor.
+
+### Gezinme
+
+"Takaslarım" — takasın tamamlandığı, yani ürünün ölçtüğü tek şeyin
+gerçekleştiği ekran — alt menüde YOKTU; Profil → "Takas Geçmişim" (yanlış
+etiket) üzerinden iki dokunuşla ulaşılıyordu. "Aradıklarım" da yoktu.
+Yeni sıra: **Ana Sayfa · Aradıklarım · + · Takaslarım · Mesajlar**.
+Profil üst bardaki avatara taşındı.
+
+Erişilemez ve uydurma bölümler kaldırıldı (Döngüler, Kırmızı Ataş,
+Gizemli Kutu, Topluluk, Etkinlikler) — beşine de hiçbir menüden
+ulaşılamıyordu, topluluk lider tablosu beş uydurma kişiden oluşuyordu.
+Geçmişte duruyorlar; FAZ 3/4 gelince `git revert`.
+
+### Eşleştirme motoru
+
+- Tam eşitlik aranıyordu: "bisiklet" arayan "Bisikletim"i BULAMIYORDU —
+  üstelik DB ön filtresi o ilanı zaten getiriyordu.
+- Türkçe klavye kullanmayan herkes görünmezdi:
+  `'BISIKLET'.toLocaleLowerCase('tr')` → `'bısıklet'`.
+- Motor, ihtiyacını iyi anlatan kullanıcıyı cezalandırıyordu (uzun metin =
+  düşük skor).
+- Engellenen kullanıcıların ilanları eşleşmelerde çıkıyordu.
+
+### Sessiz hatalar
+
+Servis katmanında 120 hata yolu vardı, hepsi yalnızca konsola yazıyordu;
+sayfaların 35'inden 33'ünde `catch` yok. Ağ koptuğunda ekranda "Henüz ilan
+yok" yazıyor, kullanıcı bunu boşluk sanıyordu. Artık hem sunucu hataları
+hem işlenmemiş söz reddi kullanıcıya bildiriliyor.
+
+### Diğer
+
+`/yardim` rotası hiç yoktu (Ayarlar'daki bağlantı sessizce ana sayfaya
+atıyordu) — gerçek bir Yardım & Güvenlik sayfası yazıldı. Dil değiştirici
+kaldırıldı (252 çeviri anahtarı var ama `t()` yalnızca 17 kez, 2 dosyada
+çağrılıyordu). İlan kartları artık gerçek `<a>` (klavye + arama motoru).
+Görseller gerçekten küçültülüyor (README bunu iddia ediyordu ama kodda
+yoktu). `og:image` üretildi. Kapak fotoğrafı artık her yenilemede
+değişmiyor. Konumsuz ilanların (0,0)'a çakılması durduruldu.
+
+**Doğrulama:** her commit'te `npm run lint` + `npm test` + `npm run build`;
+migration'lar sıfırdan kurulan yerel PostgreSQL 16'da uygulanıp iki SQL
+test paketiyle (93 + 31 kontrol) denendi; arayüz Chromium ile iki temada
+ekran görüntüleriyle doğrulandı.
+
+---
+
+## Önceki turda yapılanlar (ürün/sistem tasarım raporu turu)
 
 152 maddelik ürün/sistem tasarım raporu koda uygulanmaya başlandı. Raporun
 madde madde kod karşılığı, faz planı ve açık maddeler artık ayrı bir dosyada:
