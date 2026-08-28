@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { ArrowLeft, Delete } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -11,7 +11,13 @@ export const OtpVerificationPage: React.FC = () => {
 
   const state =
     (location.state as { phone?: string; isExisting?: boolean; passwordVerified?: boolean }) || {};
-  const phone = state.phone || '+90 532 890 12 34';
+  // Numara YALNIZCA bir önceki adımdan gelir. Önceden burada sabit bir demo
+  // numarası (+90 532 890 12 34) varsayılan olarak duruyordu: sayfa
+  // yenilendiğinde ya da /dogrulama adresine doğrudan girildiğinde router
+  // state'i kaybolduğu için doğrulama sessizce O numaraya yapılıyor,
+  // kullanıcı ekranda kendi numarasını görmediği hâlde sürekli "Hatalı Kod"
+  // alıyordu. Numara yoksa artık en baştan başlanıyor.
+  const phone = state.phone ?? '';
   const isExisting = state.isExisting || false;
   const passwordVerified = state.passwordVerified || false;
 
@@ -71,10 +77,20 @@ export const OtpVerificationPage: React.FC = () => {
         if (res.user) setCurrentUser(res.user);
         navigate('/kesfet');
       }
-    } else {
-      showToast('Hatalı Kod', 'Lütfen SMS ile gelen 6 haneli kodu kontrol ediniz (Demo: 246810).', 'error');
+      return;
     }
+
+    // Supabase'in gerçek sebebi gösteriliyor: kodun süresi dolmuş olabilir,
+    // SMS sağlayıcısı tanımsız olabilir, istek kotaya takılmış olabilir.
+    // Hepsi eskiden tek bir "Hatalı Kod" cümlesine düşüyordu.
+    showToast('Doğrulanamadı', res.error ?? 'Lütfen SMS ile gelen 6 haneli kodu kontrol edin.', 'error');
+    setOtp(['', '', '', '', '', '']);
   };
+
+  // Numara olmadan bu sayfanın yapabileceği hiçbir şey yok.
+  if (!phone) {
+    return <Navigate to="/giris" replace />;
+  }
 
   const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'demo', '0', 'backspace'];
   const KEY_LETTERS: Record<string, string> = {
@@ -133,7 +149,13 @@ export const OtpVerificationPage: React.FC = () => {
             <button
               type="button"
               onClick={async () => {
-                await authService.sendOtp(phone);
+                const res = await authService.sendOtp(phone);
+
+                if (!res.success) {
+                  showToast('Kod Gönderilemedi', res.error ?? 'SMS gönderilemedi.', 'error');
+                  return;
+                }
+
                 setTimer(56);
                 showToast('Kod tekrar gönderildi', undefined, 'info');
               }}

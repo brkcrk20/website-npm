@@ -31,9 +31,9 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
 
     setIsSubmitting(true);
     const check = await authService.checkPhoneRegistered(phone);
-    setIsSubmitting(false);
 
     if (check.exists) {
+      setIsSubmitting(false);
       showToast(
         'Bu Numara Zaten Kayıtlı',
         'Bu telefon numarasına ait bir hesap bulunmaktadır. Lütfen giriş yapınız.',
@@ -43,9 +43,22 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
       return;
     }
 
+    // Kontrol yapılamadıysa (RPC hatası) kayıt durdurulmuyor — numara zaten
+    // kayıtlıysa OTP adımı bunu kendisi yakalar. Ama sebep sessizce
+    // yutulmuyor: sonraki adımda bir hata çıkarsa kullanıcı bunun bağlantılı
+    // olabileceğini görsün.
+    if (check.error) {
+      showToast('Numara Kontrol Edilemedi', check.error, 'warning');
+    }
+
+    // `isSubmitting` SMS gönderimi boyunca da açık kalıyor. Önceden burada
+    // kapatılıyordu; buton yeniden etkinleşip aynı numaraya arka arkaya OTP
+    // isteği gönderilebiliyor, bu da Supabase'in SMS kotasına takılıyordu.
     const otpResult = await authService.sendOtp(phone);
+    setIsSubmitting(false);
+
     if (!otpResult.success) {
-      showToast('Kod Gönderilemedi', otpResult.error || 'SMS gönderiminde bir hata oluştu.', 'error');
+      showToast('Kod Gönderilemedi', otpResult.error ?? 'SMS gönderiminde bir hata oluştu.', 'error');
       return;
     }
 
@@ -74,7 +87,17 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
     setIsSubmitting(false);
 
     if (!result.success) {
-      showToast('Giriş Başarısız', result.error || 'Telefon numarası veya şifre hatalı.', 'error');
+      showToast('Giriş Başarısız', result.error ?? 'Telefon numarası veya şifre hatalı.', 'error');
+      return;
+    }
+
+    // Şifre doğru ama profil hiç oluşturulmamış: kayıt yarıda kalmış.
+    // Oturum açık olduğu için kullanıcı kaldığı adımdan devam edebilir —
+    // önceden bu durum "Kullanıcı profili bulunamadı." hatasıyla kalıcı bir
+    // çıkmaza dönüşüyordu (giriş de kayıt da ilerlemiyordu).
+    if (result.needsProfile) {
+      showToast('Profilini Tamamla', 'Kaydın yarım kalmış, kaldığın yerden devam edelim.', 'info');
+      navigate('/profil-olustur', { state: { phone } });
       return;
     }
 
