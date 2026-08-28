@@ -506,6 +506,35 @@ export const tradeService = {
     return hydrateOffers(data as unknown as TradeOfferRow[]);
   },
 
+  /**
+   * Kullanıcıyı bekleyen (henüz yanıtlanmamış) gelen teklif sayısı.
+   *
+   * Alt menüdeki "Takaslarım" rozeti için. Ürünün ölçtüğü tek şey
+   * tamamlanan takas sayısı; bir teklifin yanıtsız kalması o sayacın
+   * durduğu yerdir. Bu rozet "biri senden cevap bekliyor"u ekranın
+   * sürekli görünen bir yerine taşıyor.
+   *
+   * `head: true` ile satır indirilmez, yalnızca sayı döner — teklif
+   * listesinin tamamını (ilanlar + profiller + görseller ile birlikte)
+   * çekmeye gerek yok.
+   */
+  async getPendingIncomingOfferCount(userId: string): Promise<number> {
+    if (!userId) return 0;
+
+    const { count, error } = await supabase
+      .from('trade_offers')
+      .select('id', { count: 'exact', head: true })
+      .eq('receiver_id', userId)
+      .eq('status', 'pending');
+
+    if (error) {
+      console.error('Bekleyen teklif sayısı alınamadı:', error);
+      return 0;
+    }
+
+    return count ?? 0;
+  },
+
   async getUserOutgoingTrades(userId: string): Promise<TradeOffer[]> {
     const { data, error } = await supabase
       .from('trade_offers')

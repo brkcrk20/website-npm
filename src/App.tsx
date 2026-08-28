@@ -53,13 +53,6 @@ const TrustScorePage = lazy(() => import('./pages/profile/TrustScorePage').then(
 const SettingsPage = lazy(() => import('./pages/profile/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const MyListingsPage = lazy(() => import('./pages/listings/MyListingsPage').then((m) => ({ default: m.MyListingsPage })));
 
-// Loops & Community Pages
-const LoopsPage = lazy(() => import('./pages/loops/LoopsPage').then((m) => ({ default: m.LoopsPage })));
-const PaperclipPage = lazy(() => import('./pages/loops/PaperclipPage').then((m) => ({ default: m.PaperclipPage })));
-const MysterySwapPage = lazy(() => import('./pages/loops/MysterySwapPage').then((m) => ({ default: m.MysterySwapPage })));
-const CommunityPage = lazy(() => import('./pages/community/CommunityPage').then((m) => ({ default: m.CommunityPage })));
-const EventsPage = lazy(() => import('./pages/community/EventsPage').then((m) => ({ default: m.EventsPage })));
-
 // Trade Steps & Admin Pages
 const TradeProcessPage = lazy(() => import('./pages/trades/TradeProcessPage').then((m) => ({ default: m.TradeProcessPage })));
 const TradeSuccessPage = lazy(() => import('./pages/trades/TradeSuccessPage').then((m) => ({ default: m.TradeSuccessPage })));
@@ -114,7 +107,7 @@ export default function App() {
 
                 {/* Needs — "Aradıklarım" */}
                 <Route path="/aradiklarim" element={<RequireAuth><NeedsPage /></RequireAuth>} />
-                <Route path="/ihtiyaclarim" element={<RequireAuth><NeedsPage /></RequireAuth>} />
+                <Route path="/ihtiyaclarim" element={<Navigate to="/aradiklarim" replace />} />
 
                 {/* Listings */}
                 <Route path="/ilan/:id" element={<ProductDetailPage />} />
@@ -124,11 +117,14 @@ export default function App() {
                 {/* Trades */}
                 <Route path="/takaslarim" element={<RequireAuth><TradeOffersPage /></RequireAuth>} />
                 <Route path="/takas-istekleri" element={<RequireAuth><TradeRequestsPage /></RequireAuth>} />
-                <Route path="/istekler" element={<RequireAuth><TradeRequestsPage /></RequireAuth>} />
+                <Route path="/istekler" element={<Navigate to="/takas-istekleri" replace />} />
                 <Route path="/eslesme" element={<SwipeMatchPage />} />
-                <Route path="/takas-eslesme" element={<SwipeMatchPage />} />
-                <Route path="/kaydir" element={<SwipeMatchPage />} />
-                <Route path="/swipe" element={<SwipeMatchPage />} />
+                {/* Takma adlar kanonik adrese yönlendiriliyor: aynı ekranın
+                    dört ayrı adresi olması hangisinin paylaşılacağını
+                    belirsizleştiriyordu. */}
+                <Route path="/takas-eslesme" element={<Navigate to="/eslesme" replace />} />
+                <Route path="/kaydir" element={<Navigate to="/eslesme" replace />} />
+                <Route path="/swipe" element={<Navigate to="/eslesme" replace />} />
                 <Route path="/teklif-ver" element={<RequireAuth><MakeOfferPage /></RequireAuth>} />
                 <Route path="/teklif/:id" element={<RequireAuth><TradeDetailPage /></RequireAuth>} />
                 <Route path="/karsi-teklif/:id" element={<RequireAuth><CounterOfferPage /></RequireAuth>} />
@@ -154,17 +150,19 @@ export default function App() {
                 <Route path="/ayarlar" element={<RequireAuth><SettingsPage /></RequireAuth>} />
                 <Route path="/ilanlarim" element={<RequireAuth><MyListingsPage /></RequireAuth>} />
 
-                {/* Loops & Community */}
-                <Route path="/donguler" element={<LoopsPage />} />
-                <Route path="/loop" element={<LoopsPage />} />
-                <Route path="/takas-yolculugum" element={<PaperclipPage />} />
-                <Route path="/yolculuk" element={<PaperclipPage />} />
-                <Route path="/paperclip" element={<PaperclipPage />} />
-                <Route path="/kirmizi-atas" element={<PaperclipPage />} />
-                <Route path="/mystery-swap" element={<MysterySwapPage />} />
-                <Route path="/gizemli-kutu" element={<MysterySwapPage />} />
-                <Route path="/topluluk" element={<CommunityPage />} />
-                <Route path="/etkinlikler" element={<EventsPage />} />
+                {/* KALDIRILDI — Döngüler / Kırmızı Ataş / Gizemli Kutu /
+                    Topluluk / Etkinlikler.
+                    Beşi de arayüzden ERİŞİLEMEZ durumdaydı: hiçbir menü, buton
+                    ya da bağlantı bu rotalara gitmiyordu (tek istisna,
+                    kendisi de erişilemez olan LoopsPage'in Kırmızı Ataş'a
+                    verdiği bağlantıydı). İçerikleri tamamen uydurmaydı —
+                    Kırmızı Ataş ve Gizemli Kutu %100 mock, Etkinlikler sabit
+                    veri, Topluluk'taki lider tablosu ise beş uydurma kişi
+                    ("Zeynep Kaya, 6 takas") ve sabit 1. sıra. Tasarım
+                    dokümanı §5 topluluğu FAZ 4'e koyuyor ve "moderasyon
+                    altyapısı olmadan topluluk açmak ikinci bir ürün
+                    yaratmak olur" diyor. Geçmişte duruyor: FAZ 3/4 gelince
+                    `git revert` ile geri alınabilir. */}
 
                 {/* Admin & About */}
                 <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboardPage /></RequireAuth>} />

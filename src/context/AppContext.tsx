@@ -48,6 +48,10 @@ interface AppContextType {
   // teklif/değerlendirme bildirimleri mesaj rozetini kabartıyordu.
   unreadMessageCount: number;
   refreshUnreadMessageCount: () => Promise<void>;
+  // Yanıt bekleyen gelen teklif sayısı. Alt menüdeki "Takaslarım" rozeti:
+  // yanıtsız kalan teklif, tamamlanan takas sayacının durduğu yerdir.
+  pendingOfferCount: number;
+  refreshPendingOfferCount: () => Promise<void>;
   refreshUserData: () => Promise<void>;
   logoutUser: () => Promise<void>;
   toasts: ToastMessage[];
@@ -172,6 +176,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshUnreadMessageCount();
   }, [refreshUnreadMessageCount]);
 
+  const [pendingOfferCount, setPendingOfferCount] = useState<number>(0);
+
+  const refreshPendingOfferCount = useCallback(async () => {
+    setPendingOfferCount(await tradeService.getPendingIncomingOfferCount(currentUser.id));
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    refreshPendingOfferCount();
+  }, [refreshPendingOfferCount]);
+
   const markNotificationAsRead = (id: string) => {
     // Önce arayüzü güncelle (bildirime tıklayan kullanıcı beklemesin),
     // sonra DB'ye yaz.
@@ -245,6 +259,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         favoritesCount,
         unreadMessageCount,
         refreshUnreadMessageCount,
+        pendingOfferCount,
+        refreshPendingOfferCount,
         refreshUserData,
         logoutUser,
         toasts,

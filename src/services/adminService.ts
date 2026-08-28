@@ -1,6 +1,7 @@
 import { AdminKPI, AdminAuditLog, Report, Dispute } from '../types';
 import { supabase } from '../lib/supabase';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
+import { DEFAULT_AVATAR } from '../utils/placeholders';
 
 // =============================================================================
 // GERÇEK VERİYE BAĞLANDI (bkz. supabase/migrations/20260819090000_create_admin_tables.sql)
@@ -75,7 +76,7 @@ function minimalUserProfile(row: any): Dispute['initiator'] {
     id: row?.id ?? '',
     phone: '',
     fullName: row?.full_name ?? 'Bilinmeyen Kullanıcı',
-    avatarUrl: row?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    avatarUrl: row?.avatar_url || DEFAULT_AVATAR,
     city: row?.city ?? '',
     district: row?.district ?? '',
     memberSince: '',

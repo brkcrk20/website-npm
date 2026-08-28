@@ -9,8 +9,7 @@ import { blockService } from './blockService';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImagesToWebp } from '../utils/imageToWebp';
 
-const DEFAULT_IMAGE =
-  'https://images.unsplash.com/photo-1523275335684-37898b6bafeb?w=800&auto=format&fit=crop&q=80';
+import { DEFAULT_LISTING_IMAGE as DEFAULT_IMAGE } from '../utils/placeholders';
 
 const LISTING_IMAGES_BUCKET = 'listing-images';
 
@@ -176,8 +175,7 @@ async function getCategorySlug(
   return data?.slug ?? categoryUuid;
 }
 
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80';
+import { DEFAULT_AVATAR } from '../utils/placeholders';
 
 function mapListing(row: any): Listing {
   const categoryId = row.category_slug ?? row.category_id;

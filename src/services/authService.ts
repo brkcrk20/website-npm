@@ -1,5 +1,6 @@
 import { UserProfile, CategoryId } from '../types';
-import { CURRENT_USER } from '../data/mockData';
+import { GUEST_USER } from '../constants/guestUser';
+import { DEFAULT_AVATAR } from '../utils/placeholders';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImageToWebp } from '../utils/imageToWebp';
@@ -315,9 +316,7 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
     firstName: row.first_name ?? undefined,
     lastName: row.last_name ?? undefined,
     email: row.email ?? undefined,
-    avatarUrl:
-      row.avatar_url ||
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    avatarUrl: row.avatar_url || DEFAULT_AVATAR,
     city: row.city ?? '',
     district: row.district ?? '',
     bio: row.bio ?? undefined,
@@ -914,7 +913,7 @@ export const authService = {
       }
     }
 
-    return CURRENT_USER;
+    return GUEST_USER;
   },
 
   /**

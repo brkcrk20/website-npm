@@ -3,20 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import {
   ChevronRight,
   Package,
-  Search,
   Heart,
-  History,
   ShieldCheck,
   Award,
   Settings,
+  HelpCircle,
   Share2,
   Edit3,
   Star,
+  Sprout,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
 import { tradeService } from '../../services/tradeService';
-import { needService } from '../../services/needService';
+import { trustSummary } from '../../utils/trustDisplay';
 
 // 15. PROFİL
 //
@@ -30,7 +30,6 @@ export const ProfilePage: React.FC = () => {
   const { currentUser, showToast } = useApp();
 
   const [listingCount, setListingCount] = useState(0);
-  const [needCount, setNeedCount] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
@@ -38,20 +37,32 @@ export const ProfilePage: React.FC = () => {
       setListingCount(items.filter((l) => l.status === 'active').length);
     });
     tradeService.getReviewsForUser(currentUser.id).then((items) => setReviewCount(items.length));
-    needService
-      .getUserNeeds(currentUser.id)
-      .then((items) => setNeedCount(items.filter((n) => n.status === 'active').length));
   }, [currentUser.id]);
 
   const trust = currentUser.trustProfile;
+  const trustInfo = trustSummary(trust);
 
+  // Menü sırası, kullanıcının bu ekranda gerçekten aradığı şeye göre:
+  // önce sahip olduğu içerik (ilan/favori), sonra kendi siciline dair
+  // bilgiler, en sonda ayarlar ve yardım.
+  //
+  // "Takas Geçmişim" ve "Aradıklarım" buradan çıktı: ikisi de artık alt
+  // menüde kendi sekmesinde. Üstelik "Takas Geçmişim" yanlış bir etiketti —
+  // o ekran çoğu zaman DEVAM EDEN takasları gösteriyor.
+  //
+  // Güven puanı yalnızca gerçekten varsa sayı gösterir; yoksa "Yeni üye"
+  // (bkz. src/utils/trustDisplay.ts).
   const menu = [
     { icon: Package, label: 'İlanlarım', value: `${listingCount}`, path: '/ilanlarim' },
-    { icon: Search, label: 'Aradıklarım', value: `${needCount}`, path: '/aradiklarim' },
     { icon: Heart, label: 'Favorilerim', path: '/favoriler' },
-    { icon: History, label: 'Takas Geçmişim', path: '/takaslarim' },
-    { icon: ShieldCheck, label: 'Güven Puanım', value: trust.score.toFixed(1), path: '/guven-puani' },
+    {
+      icon: ShieldCheck,
+      label: 'Güven Puanım',
+      value: trustInfo.isRated ? trustInfo.scoreText : 'Yeni üye',
+      path: '/guven-puani',
+    },
     { icon: Award, label: 'Rozetlerim', path: '/rozetlerim' },
+    { icon: HelpCircle, label: 'Yardım & Güvenlik', path: '/yardim' },
     { icon: Settings, label: 'Ayarlar', path: '/ayarlar' },
   ];
 
@@ -72,11 +83,22 @@ export const ProfilePage: React.FC = () => {
                 {[currentUser.district, currentUser.city].filter(Boolean).join(', ') ||
                   'Konum belirtilmedi'}
               </p>
-              <p className="flex items-center gap-1 text-xs font-semibold text-ink mt-1.5">
-                <Star className="w-3.5 h-3.5 text-star fill-star" />
-                {trust.score.toFixed(1)}
-                <span className="font-normal text-ink-soft">güven puanı</span>
-              </p>
+              {/* Değerlendirilmemiş kullanıcıda "5.0 güven puanı" yazmak
+                  yanıltıcıydı: ham skorun DB varsayılanı 5. */}
+              {trustInfo.isRated ? (
+                <p className="flex items-center gap-1 text-xs font-semibold text-ink mt-1.5">
+                  <Star className="w-3.5 h-3.5 text-star fill-star" />
+                  {trustInfo.scoreText}
+                  <span className="font-normal text-ink-soft">
+                    · {trust.reviewCount} değerlendirme
+                  </span>
+                </p>
+              ) : (
+                <p className="flex items-center gap-1 text-xs font-semibold text-ink-soft mt-1.5">
+                  <Sprout className="w-3.5 h-3.5" />
+                  Yeni üye
+                </p>
+              )}
             </div>
           </div>
 
