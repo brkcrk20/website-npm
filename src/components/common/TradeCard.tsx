@@ -1,9 +1,36 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TradeOffer } from '../../types';
+import { TradeOffer, Listing } from '../../types';
 import { tradeStatusBadge } from '../../utils/tradeStatus';
-import { ArrowLeftRight, Check, X, Clock, ShieldCheck, CornerUpRight } from 'lucide-react';
-import { CircularExchangeIcon } from './SwaloopLogo';
+import { ArrowLeftRight, ImageOff } from 'lucide-react';
+import { TrustCard } from './TrustCard';
+
+/**
+ * Takas kartındaki ürün küçük görseli.
+ *
+ * Fotoğrafı olmayan ilan için eskiden SABİT bir Unsplash fotoğrafı
+ * gösteriliyordu — yani kullanıcı, teklif edilen ürün diye hiç alakasız
+ * bir stok fotoğrafı görüyordu. Fotoğraf yoksa doğru davranış, fotoğraf
+ * olmadığını söylemektir.
+ */
+const ItemThumb: React.FC<{ listing?: Listing }> = ({ listing }) => {
+  const src = listing?.images?.[0];
+
+  if (!src) {
+    return (
+      <span className="w-16 h-16 rounded-lg mb-1.5 bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400">
+        <ImageOff className="w-5 h-5" />
+        <span className="sr-only">Fotoğraf eklenmemiş</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="w-16 h-16 rounded-lg overflow-hidden bg-stone-100 mb-1.5 block">
+      <img src={src} alt="" loading="lazy" className="w-full h-full object-cover" />
+    </span>
+  );
+};
 
 interface TradeCardProps {
   trade: TradeOffer;
@@ -47,10 +74,9 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-stone-900">{otherUser.fullName}</span>
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded font-semibold">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                {(otherUser.trustProfile?.score ?? 4.8).toFixed(1)}
-              </span>
+              {/* Puanı olmayan kullanıcıya "4.8" yazmak yerine gerçek
+                  durumu göster (bkz. src/utils/trustDisplay.ts). */}
+              <TrustCard trustProfile={otherUser.trustProfile} variant="compact" />
             </div>
             <span className="text-[11px] text-stone-400">
               {new Date(trade.createdAt).toLocaleDateString('tr-TR', {
@@ -77,17 +103,7 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
             {isIncoming ? 'İstenen Ürünün' : 'Teklif Ettiğin Ürün'}
           </span>
-          <div className="w-16 h-16 rounded-lg overflow-hidden bg-stone-200 mb-1.5">
-            <img
-              src={
-                isIncoming
-                  ? requestedItem?.images[0] || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=200'
-                  : offeredItem?.images[0] || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=200'
-              }
-              alt="Ürün 1"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <ItemThumb listing={isIncoming ? requestedItem : offeredItem} />
           <span className="text-xs font-bold text-stone-800 line-clamp-1">
             {isIncoming ? requestedItem?.title : offeredItem?.title}
           </span>
@@ -103,17 +119,7 @@ export const TradeCard: React.FC<TradeCardProps> = ({
           <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
             {isIncoming ? 'Teklif Edilen Ürün' : 'İstediğin Ürün'}
           </span>
-          <div className="w-16 h-16 rounded-lg overflow-hidden bg-stone-200 mb-1.5">
-            <img
-              src={
-                isIncoming
-                  ? offeredItem?.images[0] || 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200'
-                  : requestedItem?.images[0] || 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200'
-              }
-              alt="Ürün 2"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <ItemThumb listing={isIncoming ? offeredItem : requestedItem} />
           <span className="text-xs font-bold text-stone-800 line-clamp-1">
             {isIncoming ? offeredItem?.title : requestedItem?.title}
           </span>

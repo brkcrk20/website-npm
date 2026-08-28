@@ -50,25 +50,33 @@ export interface UserProfile {
   // Varsayılan false: normal girişte sadece telefon + şifre yeterlidir.
   smsVerificationEnabled: boolean;
   trustProfile: TrustProfile;
+  // NOT: "yanıt oranı" ve "ortalama yanıt süresi" bu nesneden kaldırıldı.
+  // İkisi de hiçbir yerde ÖLÇÜLMÜYORDU: `trust_profiles.response_rate`
+  // kolonunun varsayılanı 1 ve onu güncelleyen tek bir trigger ya da
+  // servis çağrısı yok. Arayüzde herkes sonsuza kadar "%100 yanıt oranı"
+  // görüyordu. Ölçülmeyen bir metrik gösterilmez.
   stats: {
     totalTrades: number;
     activeListings: number;
     completedLoops: number;
     totalItemsReused: number;
-    responseRatePercent: number;
-    avgResponseTimeMinutes: number;
     cancellationRatePercent: number;
   };
 }
 
 export interface TrustProfile {
-  score: number; // 0.00 to 5.00
-  level: 'Başlangıç' | 'Güvenilir' | 'Çok Güvenilir' | 'Topluluk Lideri' | 'Güvenilir Üye' | 'Doğrulanmış Üye';
+  // 0.00 - 5.00. DB'deki `trust_profiles.trust_score` varsayılanı 5'tir;
+  // yani HİÇ takas yapmamış bir kullanıcının da ham skoru 5 görünür. Bu
+  // sayı bu yüzden tek başına gösterilmez — önce `isRated` sorulur
+  // (bkz. src/utils/trustDisplay.ts).
+  score: number;
+  // 'Yeni üye' = henüz değerlendirilecek bir geçmiş yok. Diğer seviyeler
+  // yalnızca gerçek bir geçmiş varken atanır.
+  level: 'Yeni üye' | 'Başlangıç' | 'Güvenilir' | 'Çok Güvenilir' | 'Topluluk Lideri';
   phoneVerified: boolean;
   idVerified: boolean;
   successfulTradesCount: number;
-  cancellationRate: number; // e.g. 0.02 = 2%
-  responseRate: number; // e.g. 0.98 = 98%
+  cancellationRate: number; // örn. 0.02 = %2
   averageRating: number;
   reviewCount: number;
   reportCount: number;

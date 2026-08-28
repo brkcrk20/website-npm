@@ -90,7 +90,6 @@ function minimalUserProfile(row: any): Dispute['initiator'] {
       idVerified: false,
       successfulTradesCount: 0,
       cancellationRate: 0,
-      responseRate: 1,
       averageRating: 5,
       reviewCount: 0,
       reportCount: 0,
@@ -102,8 +101,6 @@ function minimalUserProfile(row: any): Dispute['initiator'] {
       activeListings: 0,
       completedLoops: 0,
       totalItemsReused: 0,
-      responseRatePercent: 0,
-      avgResponseTimeMinutes: 0,
       cancellationRatePercent: 0,
     },
   };

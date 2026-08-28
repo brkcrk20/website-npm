@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, Phone, ShieldCheck, Clock, XCircle } from 'lucide-react';
+import { ArrowLeft, Star, Phone, ShieldCheck, MessageSquare, XCircle, Sprout } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { tradeService } from '../../services/tradeService';
 import { Review } from '../../types';
+import { trustSummary } from '../../utils/trustDisplay';
 
 // 16. GÜVEN PUANI DETAYI
 //
@@ -50,6 +51,7 @@ export const TrustScorePage: React.FC = () => {
   }, [currentUser.id]);
 
   const trust = currentUser.trustProfile;
+  const summary = trustSummary(trust);
 
   const factors = [
     {
@@ -60,12 +62,12 @@ export const TrustScorePage: React.FC = () => {
     {
       icon: Star,
       label: 'Ortalama değerlendirme',
-      value: trust.averageRating ? `${trust.averageRating.toFixed(1)} / 5` : '—',
+      value: summary.isRated ? `${summary.scoreText} / 5` : 'Henüz yok',
     },
     {
-      icon: Clock,
-      label: 'Yanıt oranı',
-      value: `%${Math.round((trust.responseRate ?? 0) * 100)}`,
+      icon: MessageSquare,
+      label: 'Aldığın değerlendirme',
+      value: `${trust.reviewCount}`,
     },
     {
       icon: XCircle,
@@ -95,11 +97,29 @@ export const TrustScorePage: React.FC = () => {
         </div>
 
         <div className="sw-card p-6 text-center">
-          <CircularScore score={trust.score} />
-          <p className="text-sm font-semibold text-ink mt-3">{trust.level}</p>
-          <p className="text-xs text-ink-soft mt-1 max-w-xs mx-auto">
-            Güven puanı; tamamlanan takaslar, aldığın değerlendirmeler, yanıt davranışın ve iptal
-            oranından hesaplanır.
+          {/* Değerlendirme yokken bir sayı göstermek yanıltıcı: DB'deki ham
+              puanın varsayılanı 5, yani hiç takas yapmamış kullanıcı da
+              "5.0" görünüyordu. */}
+          {summary.isRated ? (
+            <>
+              <CircularScore score={trust.score} />
+              <p className="text-sm font-semibold text-ink mt-3">{trust.level}</p>
+            </>
+          ) : (
+            <>
+              <span className="w-16 h-16 mx-auto rounded-2xl bg-canvas border border-line text-ink-soft flex items-center justify-center">
+                <Sprout className="w-7 h-7" />
+              </span>
+              <p className="text-sm font-semibold text-ink mt-3">Henüz puanın yok</p>
+              <p className="text-xs text-ink-soft mt-1">{summary.detail}</p>
+            </>
+          )}
+          <p className="text-xs text-ink-soft mt-2 max-w-xs mx-auto">
+            {/* Gerçek formül (migration 20260819120000): %70 değerlendirme
+                ortalaması + %30 güvenilirlik (iptal oranının tersi).
+                Eski metin "yanıt davranışın" diyordu — öyle bir girdi yok. */}
+            Güven puanı, aldığın değerlendirmelerin ortalamasından (%70) ve takaslarını iptal
+            etmeden tamamlama oranından (%30) hesaplanır.
           </p>
         </div>
 

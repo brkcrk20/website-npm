@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { communityService } from '../../services/communityService';
 import { CommunityPost, CommunityEvent } from '../../types';
+import { TrustCard } from '../../components/common/TrustCard';
 import {
   Users,
   Heart,
@@ -143,9 +144,7 @@ export const CommunityPage: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    ★ {(post.author.trustProfile?.score ?? 4.8).toFixed(1)}
-                  </span>
+                  <TrustCard trustProfile={post.author.trustProfile} variant="compact" />
                 </div>
 
                 {/* Content */}

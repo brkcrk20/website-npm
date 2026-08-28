@@ -10,6 +10,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { TrustCard } from '../../components/common/TrustCard';
 import { Listing, Review, UserProfile } from '../../types';
 import { getUserBadges } from '../../constants/badges';
+import { trustSummary } from '../../utils/trustDisplay';
 import { ArrowLeft, MessageSquare, ShieldCheck, MapPin, Calendar, Star, Loader2, Ban, Flag } from 'lucide-react';
 
 export const PublicProfilePage: React.FC = () => {
@@ -117,6 +118,8 @@ export const PublicProfilePage: React.FC = () => {
     );
   }
 
+  const publicTrust = trustSummary(user.trustProfile);
+
   return (
     <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
@@ -212,9 +215,9 @@ export const PublicProfilePage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-stone-900">{user.fullName}</h2>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full">
-                    {user.trustProfile?.level || 'Doğrulanmış Üye'}
-                  </span>
+                  {/* Seviye artık gerçek geçmişten geliyor; profil boşsa
+                      "Doğrulanmış Üye" diye bir unvan uydurulmuyor. */}
+                  <TrustCard trustProfile={user.trustProfile} variant="compact" />
                 </div>
                 <div className="flex items-center gap-2 text-xs text-stone-500 mt-0.5">
                   <MapPin className="w-3 h-3 text-stone-400" />
@@ -250,9 +253,11 @@ export const PublicProfilePage: React.FC = () => {
             </div>
             <div className="p-2 rounded-xl bg-stone-50">
               <span className="text-sm font-bold text-emerald-800">
-                ★ {(user.trustProfile?.score ?? 4.8).toFixed(1)}
+                {publicTrust.isRated ? `★ ${publicTrust.scoreText}` : '—'}
               </span>
-              <span className="text-[10px] text-stone-500 block">Güven Skoru</span>
+              <span className="text-[10px] text-stone-500 block">
+                {publicTrust.isRated ? 'Değerlendirme Ortalaması' : 'Henüz değerlendirilmedi'}
+              </span>
             </div>
           </div>
 

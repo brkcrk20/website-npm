@@ -175,6 +175,50 @@ async function mapConversationRow(row: ConversationRow, currentUserId: string): 
 }
 
 export const messageService = {
+  /**
+   * Kullanıcıya gelmiş, henüz okunmamış mesaj sayısı.
+   *
+   * Alt menüdeki "Mesajlar" rozeti için var. Rozet daha önce
+   * `unreadNotificationCount` gösteriyordu — yani okunmamış BİLDİRİM
+   * sayısını. Teklif, değerlendirme daveti ya da ilan süresi uyarısı gelince
+   * mesaj sekmesinde sayı beliriyor, kullanıcı sohbete girip hiçbir yeni
+   * mesaj bulamıyordu.
+   *
+   * `head: true` ile satırlar indirilmez, yalnızca sayı döner.
+   */
+  async getUnreadMessageCount(currentUserId: string): Promise<number> {
+    if (!currentUserId) return 0;
+
+    // Katılımcılar `conversations` satırının kendisinde tutuluyor
+    // (participant_one_id / participant_two_id) — ayrı bir katılımcı
+    // tablosu yok.
+    const { data: conversationRows, error: conversationError } = await supabase
+      .from('conversations')
+      .select('id')
+      .or(`participant_one_id.eq.${currentUserId},participant_two_id.eq.${currentUserId}`);
+
+    if (conversationError || !conversationRows?.length) {
+      if (conversationError) console.error('Konuşmalar alınamadı:', conversationError);
+      return 0;
+    }
+
+    const conversationIds = (conversationRows as { id: string }[]).map((row) => row.id);
+
+    const { count, error } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .in('conversation_id', conversationIds)
+      .eq('is_read', false)
+      .neq('sender_id', currentUserId);
+
+    if (error) {
+      console.error('Okunmamış mesaj sayısı alınamadı:', error);
+      return 0;
+    }
+
+    return count ?? 0;
+  },
+
   /** Mevcut kullanıcının katıldığı tüm konuşmaları, son mesaja göre sıralı döner. */
   async getConversations(currentUserId: string): Promise<Conversation[]> {
     const { data, error } = await supabase

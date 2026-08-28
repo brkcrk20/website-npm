@@ -10,7 +10,7 @@ import { ArrowLeft, Send, ArrowLeftRight } from 'lucide-react';
 export const MessagesPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { currentUser, showToast } = useApp();
+  const { currentUser, showToast, refreshUnreadMessageCount } = useApp();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoadingConvs, setIsLoadingConvs] = useState(true);
@@ -78,11 +78,15 @@ export const MessagesPage: React.FC = () => {
       setMessages(msgs);
       setIsLoadingMessages(false);
     });
-    messageService.markConversationRead(activeConv.id, currentUser.id);
+    // Okundu işaretlendikten sonra alt menüdeki mesaj rozeti de tazelensin;
+    // yoksa kullanıcı sohbeti okuduğu hâlde rozet üstünde kalıyor.
+    messageService
+      .markConversationRead(activeConv.id, currentUser.id)
+      .then(() => refreshUnreadMessageCount());
     return () => {
       cancelled = true;
     };
-  }, [selectedConvId, activeConv, currentUser.id]);
+  }, [selectedConvId, activeConv, currentUser.id, refreshUnreadMessageCount]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

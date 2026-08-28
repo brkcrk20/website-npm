@@ -9,6 +9,7 @@ import {
   TRADE_CANCELLATION_REASONS,
 } from '../../types';
 import { Timeline } from '../../components/common/Timeline';
+import { TrustCard } from '../../components/common/TrustCard';
 import {
   ArrowLeft,
   MessageSquare,
@@ -245,10 +246,9 @@ export const TradeDetailPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-stone-900">{otherUser.fullName}</span>
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  {otherUser.trustProfile?.score ? otherUser.trustProfile.score.toFixed(1) : '4.8'}
-                </span>
+                {/* Puan yoksa "4.8" uydurulmuyor: karşı tarafın gerçekten
+                    değerlendirilip değerlendirilmediği söyleniyor. */}
+                <TrustCard trustProfile={otherUser.trustProfile} variant="compact" />
               </div>
               <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
                 <MapPin className="w-3 h-3 text-stone-400" />

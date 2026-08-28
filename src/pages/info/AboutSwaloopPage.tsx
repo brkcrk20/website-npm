@@ -43,8 +43,16 @@ export const AboutSwaloopPage: React.FC = () => {
               <HeartHandshake className="w-5 h-5 text-emerald-800" />
               <h3 className="text-sm font-bold text-stone-900">1. Kesinlikle Para Yok</h3>
             </div>
+            {/* Bu metin ürünün en sert kuralını çiğniyordu (md. 3/47/116/125:
+                "değeri", eşdeğerlik hesabı, fiyat dili yasak): "Eşyalar
+                birbirlerinin DEĞERİNİ karşılar… FİYAT SPEKÜLASYONU olmadan
+                ADİL takas". Swaloop'ta iki eşyanın denk olup olmadığı
+                hesaplanmaz; iki tarafın ihtiyacının karşılanıp
+                karşılanmadığına iki taraf karar verir. */}
             <p className="text-xs text-stone-600 leading-relaxed">
-              Platformda hiçbir para transferi veya gizli ücret yoktur. Eşyalar birbirlerinin değerini karşılar; böylece enflasyon veya fiyat spekülasyonu olmadan adil takas gerçekleşir.
+              Platformda hiçbir para transferi yoktur. Kimse bir eşyanın ne ettiğini hesaplamaz:
+              takasın olup olmayacağına, ihtiyacının karşılanıp karşılanmadığına bakarak iki taraf
+              birlikte karar verir.
             </p>
           </div>
 

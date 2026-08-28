@@ -1,8 +1,9 @@
-import { UserProfile, CategoryId, TrustProfile } from '../types';
+import { UserProfile, CategoryId } from '../types';
 import { CURRENT_USER } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
 import { convertImageToWebp } from '../utils/imageToWebp';
+import { trustLevel } from '../utils/trustDisplay';
 import { blockService } from './blockService';
 
 const AUTH_STORAGE_KEY = 'swaloop_auth_user';
@@ -272,14 +273,12 @@ async function getTrustProfileRow(userId: string): Promise<any | null> {
   return data;
 }
 
-function trustLevelFromScore(
-  score: number
-): TrustProfile['level'] {
-  if (score >= 4.5) return 'Topluluk Lideri';
-  if (score >= 3.5) return 'Çok Güvenilir';
-  if (score >= 2.5) return 'Güvenilir';
-  return 'Başlangıç';
-}
+// Seviye artık ham skordan türetilMİYOR. Sebep: `trust_profiles.trust_score`
+// kolonunun DB varsayılanı 5 ve hiç değerlendirilmemiş kullanıcıda da 5
+// kalıyor — eski `trustLevelFromScore(5)` bu yüzden sıfır takaslı yeni bir
+// üyeyi "Topluluk Lideri" diye etiketliyordu. Türetme gerçek geçmişe
+// (değerlendirme sayısı + tamamlanan takas) taşındı:
+// bkz. src/utils/trustDisplay.ts → trustLevel().
 
 /**
  * Ham `profiles` satırını UserProfile'a çevirir.
@@ -306,6 +305,8 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
   const cancelledTrades = trust?.cancelled_trades ?? 0;
   const totalTrades = completedTrades + cancelledTrades;
   const score = trust?.trust_score ?? 5;
+  const reviewCount = trust?.review_count ?? 0;
+  const averageRating = trust?.average_rating ?? 0;
 
   return {
     id: row.id,
@@ -339,18 +340,21 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
 
     trustProfile: {
       score,
-      level: trustLevelFromScore(score),
+      level: trustLevel(reviewCount, completedTrades, averageRating),
       phoneVerified: true,
       idVerified: trust?.verification_level === 'id_verified',
       successfulTradesCount: completedTrades,
       cancellationRate:
         totalTrades > 0 ? cancelledTrades / totalTrades : 0,
-      responseRate: trust?.response_rate ?? 1,
       // trust_profiles.average_rating / review_count artık reviews
       // tablosundan trigger ile gerçek zamanlı besleniyor (bkz.
       // supabase/migrations/20260819120000_add_badge_trust_tracking.sql).
-      averageRating: trust?.average_rating ?? 5,
-      reviewCount: trust?.review_count ?? 0,
+      //
+      // Değerlendirme yokken varsayılan 5 DEĞİL 0: "hiç puan almamış"
+      // ile "tam puan almış" aynı şey değil. Arayüz ikisini
+      // `reviewCount === 0` ile ayırt eder (src/utils/trustDisplay.ts).
+      averageRating,
+      reviewCount,
       reportCount: 0,
       accountAgeDays: row.created_at
         ? Math.max(
@@ -361,7 +365,11 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
             )
           )
         : 1,
-      positiveHighlights: ['Telefon doğrulandı'],
+      // "Öne çıkan geri bildirimler" gerçek değerlendirme boyutlarından
+      // türetilmeli. Böyle bir hesap henüz yok; sabit bir liste
+      // ("Zamanında Teslim", "Hızlı İletişim"…) döndürmek karşı tarafa
+      // hiç alınmamış övgüleri göstermek demekti. Hesap gelene kadar boş.
+      positiveHighlights: [],
     },
 
     stats: {
@@ -371,8 +379,6 @@ export function mapProfile(row: any, trust?: any | null): UserProfile {
       // trigger ile artırılıyor (bkz. yukarıdaki migration notu).
       completedLoops: trust?.completed_loops ?? 0,
       totalItemsReused: 0,
-      responseRatePercent: Math.round((trust?.response_rate ?? 1) * 100),
-      avgResponseTimeMinutes: 0,
       cancellationRatePercent:
         totalTrades > 0
           ? Math.round((cancelledTrades / totalTrades) * 100)

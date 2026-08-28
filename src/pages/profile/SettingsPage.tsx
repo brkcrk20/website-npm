@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ChevronRight,
-  Bell,
+  Phone,
   Lock,
-  Globe,
   Moon,
   Sun,
   LogOut,
@@ -23,7 +22,8 @@ import { useApp } from '../../context/AppContext';
 
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, theme, setTheme, language, setLanguage, logoutUser, showToast } = useApp();
+  const { currentUser, theme, setTheme, logoutUser, showToast } = useApp();
+  const [showDeleteInfo, setShowDeleteInfo] = useState(false);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -60,7 +60,7 @@ export const SettingsPage: React.FC = () => {
             </button>
 
             <div className="px-4 py-3.5 flex items-center gap-3">
-              <Bell className="w-4 h-4 text-ink-soft shrink-0" />
+              <Phone className="w-4 h-4 text-ink-soft shrink-0" />
               <span className="text-sm text-ink flex-1">Telefon</span>
               <span className="text-xs text-ink-soft">{currentUser.phone}</span>
             </div>
@@ -101,32 +101,15 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="px-4 py-3 flex items-center gap-3">
-              <Globe className="w-4 h-4 text-ink-soft shrink-0" />
-              <span className="text-sm text-ink flex-1">Dil</span>
-              <div className="inline-flex p-0.5 rounded-xl bg-canvas border border-line">
-                <button
-                  type="button"
-                  onClick={() => setLanguage('tr')}
-                  aria-pressed={language === 'tr'}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
-                    language === 'tr' ? 'bg-surface text-ink' : 'text-ink-soft'
-                  }`}
-                >
-                  Türkçe
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage('en')}
-                  aria-pressed={language === 'en'}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
-                    language === 'en' ? 'bg-surface text-ink' : 'text-ink-soft'
-                  }`}
-                >
-                  English
-                </button>
-              </div>
-            </div>
+            {/* KALDIRILDI — Türkçe/English seçici.
+                `src/utils/translations.ts` içinde 252 çeviri anahtarı var
+                ama `t()` tüm uygulamada yalnızca 17 kez, 2 dosyada
+                çağrılıyordu. Yani "English"e basan kullanıcı, iki
+                bileşen dışında hiçbir şeyin değişmediği yarım çevrilmiş
+                bir ekranla kalıyordu. Hiç çalışmayan bir ayar, olmayan
+                ayardan kötüdür. Çeviri altyapısı (translations.ts) yerinde
+                duruyor; ekranların tamamı `t()` üzerinden geçtiğinde bu
+                seçici geri gelir. */}
           </div>
         </section>
 
@@ -163,21 +146,49 @@ export const SettingsPage: React.FC = () => {
             <LogOut className="w-4 h-4 text-ink-soft shrink-0" />
             <span className="text-sm text-ink flex-1">Çıkış yap</span>
           </button>
+          {/* Eskiden bu satır 4 saniye sonra kaybolan bir toast
+              gösteriyordu — kullanıcı ne yapması gerektiğini okuyamadan
+              mesaj gidiyordu. Yapılamayan bir işi "yapılıyormuş" gibi
+              göstermek yerine durumu ekranda açıkça bırakıyoruz. */}
           <button
             type="button"
-            onClick={() =>
-              showToast(
-                'Hesap silme',
-                'Hesap silme akışı hazırlanıyor. Şimdilik destek üzerinden talep edebilirsin.',
-                'info'
-              )
-            }
+            onClick={() => setShowDeleteInfo((v) => !v)}
+            aria-expanded={showDeleteInfo}
             className="w-full px-4 py-3.5 flex items-center gap-3 text-left hover:bg-canvas transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4 text-danger shrink-0" />
             <span className="text-sm text-danger flex-1">Hesabımı sil</span>
+            <ChevronRight
+              className={`w-4 h-4 text-ink-faint shrink-0 transition-transform ${
+                showDeleteInfo ? 'rotate-90' : ''
+              }`}
+            />
           </button>
         </div>
+
+        {showDeleteInfo && (
+          <div className="sw-card p-4 space-y-2">
+            <p className="text-sm font-semibold text-ink">Hesap silme henüz uygulama içinden yapılamıyor</p>
+            <p className="text-xs text-ink-soft leading-relaxed">
+              Hesabını sildiğimizde ilanların, ihtiyaçların ve mesajların kalıcı olarak kaldırılır;
+              tamamlanmış takasların karşı tarafın geçmişinde isimsiz olarak kalır. Bu işlem geri
+              alınamadığı için şimdilik elle yürütülüyor.
+            </p>
+            <p className="text-xs text-ink-soft leading-relaxed">
+              Silme talebin için Yardım sayfasındaki iletişim yolunu kullan. Talebin ulaşana kadar
+              hesabını dilediğin zaman <span className="font-semibold text-ink">Çıkış yap</span> ile
+              kapatabilir, ilanlarını <span className="font-semibold text-ink">İlanlarım</span>{' '}
+              ekranından kaldırabilirsin.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/yardim')}
+              className="sw-btn sw-btn-ghost sw-btn-block"
+            >
+              Yardım sayfasına git
+            </button>
+          </div>
+        )}
 
         <p className="text-center text-[11px] text-ink-faint pb-4">Swaloop · Sürüm 1.0</p>
       </div>

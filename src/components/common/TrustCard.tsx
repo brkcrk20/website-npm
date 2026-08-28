@@ -1,148 +1,153 @@
 import React from 'react';
 import { TrustProfile } from '../../types';
-import { ShieldCheck, CheckCircle2, Clock, ThumbsUp, Star, Award } from 'lucide-react';
+import { trustSummary } from '../../utils/trustDisplay';
+import { ShieldCheck, CheckCircle2, XCircle, Star, Award, Sprout } from 'lucide-react';
+
+// GÜVEN KARTI
+//
+// Bu bileşen daha önce her alanı için UYDURMA bir varsayılan tutuyordu:
+// puan 4.8, seviye "Doğrulanmış Üye", telefon "doğrulandı", 14 başarılı
+// takas, %98 yanıt oranı, 12 değerlendirme ve üç tane hiç alınmamış övgü
+// ("Zamanında Teslim", "Ürün Açıklamayla Uyumlu", "Hızlı İletişim").
+// Yani sıfır geçmişi olan bir kullanıcının profilinde, ona eşyasını
+// teslim edip etmeyeceğine karar veren yabancıya tamamen hayalî bir sicil
+// gösteriliyordu. Artık gösterilen her sayı gerçek; geçmiş yoksa bu
+// dürüstçe söyleniyor (bkz. src/utils/trustDisplay.ts).
+//
+// "Yanıt oranı" tamamen kaldırıldı: `trust_profiles.response_rate` hiçbir
+// trigger ya da servis tarafından güncellenmiyor, varsayılanı 1 — yani
+// herkes sonsuza kadar %100 görünüyordu.
 
 interface TrustCardProps {
   trustProfile?: TrustProfile;
-  profile?: TrustProfile;
   userName?: string;
   className?: string;
   variant?: 'compact' | 'full';
 }
 
 export const TrustCard: React.FC<TrustCardProps> = ({
-  trustProfile: rawTrustProfile,
-  profile: rawProfile,
-  userName = 'Kullanıcı',
+  trustProfile,
+  userName = 'Bu üye',
   className = '',
   variant = 'full',
 }) => {
-  const profileData = rawTrustProfile || rawProfile;
-  const trustProfile: TrustProfile = {
-    score: profileData?.score ?? 4.8,
-    level: profileData?.level ?? 'Doğrulanmış Üye',
-    phoneVerified: profileData?.phoneVerified ?? true,
-    idVerified: profileData?.idVerified ?? false,
-    successfulTradesCount: profileData?.successfulTradesCount ?? 14,
-    cancellationRate: profileData?.cancellationRate ?? 0.02,
-    responseRate: profileData?.responseRate ?? 0.98,
-    averageRating: profileData?.averageRating ?? 4.9,
-    reviewCount: profileData?.reviewCount ?? 12,
-    reportCount: profileData?.reportCount ?? 0,
-    accountAgeDays: profileData?.accountAgeDays ?? 120,
-    positiveHighlights: profileData?.positiveHighlights ?? [
-      'Zamanında Teslim',
-      'Ürün Açıklamayla Uyumlu',
-      'Hızlı İletişim',
-    ],
-  };
+  const summary = trustSummary(trustProfile);
+
   if (variant === 'compact') {
     return (
-      <div
-        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold ${className}`}
-        title={`Trust Score: ${trustProfile.score.toFixed(2)} (${trustProfile.level})`}
+      <span
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-semibold ${
+          summary.isRated
+            ? 'bg-brand-soft border-brand-line text-brand-dark'
+            : 'bg-canvas border-line text-ink-soft'
+        } ${className}`}
+        title={summary.detail}
       >
-        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-        <span>{trustProfile.score.toFixed(2)}</span>
-        <span className="text-emerald-700 font-normal text-[11px]">• {trustProfile.level}</span>
+        {summary.isRated ? (
+          <>
+            <Star className="w-3.5 h-3.5 fill-current" />
+            {summary.scoreText}
+          </>
+        ) : (
+          <>
+            <Sprout className="w-3.5 h-3.5" />
+            Yeni üye
+          </>
+        )}
+      </span>
+    );
+  }
+
+  // Değerlendirilmemiş üye: sayı uydurmak yerine ne bilindiğini söyle.
+  if (!summary.isRated) {
+    return (
+      <div className={`sw-card p-4 ${className}`}>
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-xl bg-canvas border border-line text-ink-soft flex items-center justify-center shrink-0">
+            <Sprout className="w-5 h-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">Yeni üye</p>
+            <p className="text-xs text-ink-soft">{summary.detail}</p>
+          </div>
+        </div>
+        <p className="text-xs text-ink-soft mt-3 leading-relaxed">
+          {userName} henüz değerlendirilmedi. İlk takasta buluşma yerini herkese açık bir yer
+          seçmen ve ürünü teslim etmeden önce görmen önerilir.
+        </p>
       </div>
     );
   }
 
+  const trades = trustProfile?.successfulTradesCount ?? 0;
+  const cancellationRate = trustProfile?.cancellationRate ?? 0;
+  const reviewCount = trustProfile?.reviewCount ?? 0;
+  const rating = trustProfile?.averageRating ?? 0;
+
   return (
-    <div
-      className={`rounded-2xl bg-white border border-stone-200/90 p-4 shadow-xs ${className}`}
-    >
-      <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+    <div className={`sw-card p-4 ${className}`}>
+      <div className="flex items-center justify-between pb-3 border-b border-line">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-8 h-8 rounded-xl bg-brand-soft text-brand-dark flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-stone-900">Trust Score</span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 text-[10px] font-bold">
-                {trustProfile.level}
-              </span>
-            </div>
-            <p className="text-[11px] text-stone-500">Güvenilirlik ve işlem geçmişi karnesi</p>
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink truncate">Güven karnesi</p>
+            <p className="text-[11px] text-ink-soft truncate">{trustProfile?.level}</p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-xl font-extrabold text-emerald-800 font-display">
-            {trustProfile.score.toFixed(2)}
-            <span className="text-xs text-stone-400 font-normal"> / 5.0</span>
-          </div>
-          <div className="flex items-center gap-0.5 justify-end text-amber-400">
-            {[...Array(5)].map((_, i) => (
+
+        <div className="text-right shrink-0">
+          <p className="text-xl font-semibold text-ink font-display">
+            {summary.scoreText}
+            <span className="text-xs text-ink-faint font-normal"> / 5</span>
+          </p>
+          {/* Yıldızlar gerçek ortalamayı yansıtır; eskiden puan ne olursa
+              olsun beşi de dolu çiziliyordu. */}
+          <span className="flex items-center gap-0.5 justify-end">
+            {[1, 2, 3, 4, 5].map((star) => (
               <Star
-                key={i}
-                className="w-3 h-3 fill-current"
+                key={star}
+                className={`w-3 h-3 ${
+                  star <= Math.round(rating) ? 'text-star fill-star' : 'text-line fill-line'
+                }`}
               />
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Explanatory metrics breakdown */}
-      <div className="grid grid-cols-2 gap-2 my-3 text-xs">
-        <div className="p-2 rounded-xl bg-stone-50 border border-stone-100 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <div>
-            <span className="text-stone-500 text-[10px] block">Doğrulanmış Telefon</span>
-            <span className="font-semibold text-stone-800">
-              {trustProfile.phoneVerified ? 'Doğrulandı' : 'Bekleniyor'}
-            </span>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-xl bg-stone-50 border border-stone-100 flex items-center gap-2">
-          <Award className="w-4 h-4 text-amber-600 shrink-0" />
-          <div>
-            <span className="text-stone-500 text-[10px] block">Başarılı Takas</span>
-            <span className="font-semibold text-stone-800">
-              {trustProfile.successfulTradesCount} Takas
-            </span>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-xl bg-stone-50 border border-stone-100 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-sky-600 shrink-0" />
-          <div>
-            <span className="text-stone-500 text-[10px] block">Yanıt Oranı</span>
-            <span className="font-semibold text-stone-800">
-              %{Math.round(trustProfile.responseRate * 100)}
-            </span>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-xl bg-stone-50 border border-stone-100 flex items-center gap-2">
-          <ThumbsUp className="w-4 h-4 text-indigo-600 shrink-0" />
-          <div>
-            <span className="text-stone-500 text-[10px] block">İptal Oranı</span>
-            <span className="font-semibold text-stone-800">
-              %{Math.round(trustProfile.cancellationRate * 100)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {trustProfile.positiveHighlights.length > 0 && (
-        <div className="pt-2 border-t border-stone-100">
-          <span className="text-[11px] font-semibold text-stone-500 block mb-1.5">
-            Öne Çıkan Geri Bildirimler:
           </span>
-          <div className="flex flex-wrap gap-1.5">
-            {trustProfile.positiveHighlights.map((hl, idx) => (
-              <span
-                key={idx}
-                className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[11px]"
-              >
-                ✓ {hl}
-              </span>
-            ))}
-          </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
+        <div className="p-2 rounded-xl bg-canvas border border-line">
+          <span className="flex items-center gap-1 text-ink-soft text-[10px]">
+            <Award className="w-3.5 h-3.5 shrink-0" />
+            Tamamlanan
+          </span>
+          <span className="font-semibold text-ink">{trades} takas</span>
+        </div>
+
+        <div className="p-2 rounded-xl bg-canvas border border-line">
+          <span className="flex items-center gap-1 text-ink-soft text-[10px]">
+            <Star className="w-3.5 h-3.5 shrink-0" />
+            Değerlendirme
+          </span>
+          <span className="font-semibold text-ink">{reviewCount} adet</span>
+        </div>
+
+        <div className="p-2 rounded-xl bg-canvas border border-line">
+          <span className="flex items-center gap-1 text-ink-soft text-[10px]">
+            <XCircle className="w-3.5 h-3.5 shrink-0" />
+            İptal oranı
+          </span>
+          <span className="font-semibold text-ink">%{Math.round(cancellationRate * 100)}</span>
+        </div>
+      </div>
+
+      {trustProfile?.phoneVerified && (
+        <p className="flex items-center gap-1.5 text-[11px] text-ink-soft mt-3">
+          <CheckCircle2 className="w-3.5 h-3.5 text-brand shrink-0" />
+          Telefon numarası doğrulanmış
+        </p>
       )}
     </div>
   );

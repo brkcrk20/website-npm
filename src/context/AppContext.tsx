@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { listingService, setViewerCoords } from '../services/listingService';
 import { tradeService } from '../services/tradeService';
 import { notificationService } from '../services/notificationService';
+import { messageService } from '../services/messageService';
 import { Language, TranslationKey, getTranslation } from '../utils/translations';
 
 interface ToastMessage {
@@ -42,6 +43,11 @@ interface AppContextType {
   markAllNotificationsAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
   favoritesCount: number;
+  // Okunmamış MESAJ sayısı. Bildirim sayısından ayrıdır: alt menüdeki
+  // "Mesajlar" rozeti eskiden `unreadNotificationCount` gösteriyordu, yani
+  // teklif/değerlendirme bildirimleri mesaj rozetini kabartıyordu.
+  unreadMessageCount: number;
+  refreshUnreadMessageCount: () => Promise<void>;
   refreshUserData: () => Promise<void>;
   logoutUser: () => Promise<void>;
   toasts: ToastMessage[];
@@ -156,6 +162,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshNotifications();
   }, [refreshNotifications]);
 
+  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
+
+  const refreshUnreadMessageCount = useCallback(async () => {
+    setUnreadMessageCount(await messageService.getUnreadMessageCount(currentUser.id));
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    refreshUnreadMessageCount();
+  }, [refreshUnreadMessageCount]);
+
   const markNotificationAsRead = (id: string) => {
     // Önce arayüzü güncelle (bildirime tıklayan kullanıcı beklemesin),
     // sonra DB'ye yaz.
@@ -227,6 +243,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllNotificationsAsRead,
         refreshNotifications,
         favoritesCount,
+        unreadMessageCount,
+        refreshUnreadMessageCount,
         refreshUserData,
         logoutUser,
         toasts,

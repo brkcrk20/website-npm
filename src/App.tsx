@@ -65,6 +65,7 @@ const TradeProcessPage = lazy(() => import('./pages/trades/TradeProcessPage').th
 const TradeSuccessPage = lazy(() => import('./pages/trades/TradeSuccessPage').then((m) => ({ default: m.TradeSuccessPage })));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 const AboutSwaloopPage = lazy(() => import('./pages/info/AboutSwaloopPage').then((m) => ({ default: m.AboutSwaloopPage })));
+const HelpPage = lazy(() => import('./pages/info/HelpPage').then((m) => ({ default: m.HelpPage })));
 
 // Sayfa parçası indirilirken gösterilen iskelet (rapor md. 92: beyaz ekran
 // + spinner yerine içeriğin silüeti).
@@ -168,6 +169,10 @@ export default function App() {
                 {/* Admin & About */}
                 <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboardPage /></RequireAuth>} />
                 <Route path="/hakkimizda" element={<AboutSwaloopPage />} />
+                {/* /yardim rotası YOKTU: Ayarlar'daki "Yardım & Destek"
+                    satırı tanımsız bir adrese gidiyor ve `*` kuralıyla
+                    sessizce /kesfet'e yönleniyordu. */}
+                <Route path="/yardim" element={<HelpPage />} />
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/kesfet" replace />} />

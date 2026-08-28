@@ -55,15 +55,6 @@ export const CreateListingPage: React.FC = () => {
     'safe_point',
   ]);
 
-  const handleAddSampleImage = (url: string) => {
-    if (images.length >= 6) {
-      showToast('Limit Aşıldı', 'En fazla 6 görsel ekleyebilirsiniz.', 'warning');
-      return;
-    }
-    setImages((prev) => [...prev, url]);
-    setImageFiles((prev) => [...prev, null]);
-  };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
     e.target.value = ''; // aynı dosyayı tekrar seçebilmek için input'u sıfırla
@@ -291,45 +282,16 @@ export const CreateListingPage: React.FC = () => {
                 className="hidden"
               />
 
-              {/* Sample Quick Pick Presets */}
-              <div className="pt-2">
-                <span className="text-[11px] font-semibold text-stone-400 block mb-1.5">
-                  Örnek Ürün Görselleri:
-                </span>
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {[
-                    {
-                      label: '💻 Laptop',
-                      url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500',
-                    },
-                    {
-                      label: '📷 Fotoğraf Mak.',
-                      url: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500',
-                    },
-                    {
-                      label: '🚲 Bisiklet',
-                      url: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500',
-                    },
-                    {
-                      label: '🎸 Gitar',
-                      url: 'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?w=500',
-                    },
-                    {
-                      label: '📚 Kitap Seti',
-                      url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500',
-                    },
-                  ].map((preset, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleAddSampleImage(preset.url)}
-                      className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 text-[11px] font-medium text-stone-700 whitespace-nowrap transition-colors"
-                    >
-                      + {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* KALDIRILDI — "Örnek Ürün Görselleri" hızlı seçimi.
+                  Burada beş sabit Unsplash fotoğrafı vardı ve tek dokunuşla
+                  GERÇEK bir ilana eklenebiliyordu: kullanıcı elinde
+                  olmayan bir ürünün stok fotoğrafıyla ilan verebiliyordu.
+                  Bir takas pazarında bu, karşı tarafın gördüğü tek kanıtı
+                  sahteleştirir. Demo döneminden kalmış bir kolaylıktı. */}
+              <p className="text-[11px] text-stone-500">
+                Ürünün kendi fotoğrafını ekle. Gerçek fotoğraf, teklif alma ihtimalini en çok
+                artıran şeydir.
+              </p>
             </div>
 
             {/* Title & Category */}

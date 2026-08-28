@@ -18,7 +18,11 @@ const HIDDEN_PREFIXES = [
 export const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { unreadNotificationCount } = useApp();
+  // Mesaj rozeti okunmamış MESAJ sayısını gösterir. Eskiden
+  // `unreadNotificationCount` bağlıydı: yeni bir teklif ya da ilan süresi
+  // uyarısı geldiğinde mesaj sekmesinde sayı beliriyor, kullanıcı sohbete
+  // girdiğinde hiçbir yeni mesaj bulamıyordu.
+  const { unreadMessageCount } = useApp();
 
   const hidden =
     location.pathname === '/' ||
@@ -55,7 +59,7 @@ export const BottomNav: React.FC = () => {
       label: 'Mesajlar',
       icon: MessageSquare,
       path: '/mesajlar',
-      badge: unreadNotificationCount,
+      badge: unreadMessageCount,
       isActive: (p: string) => p.startsWith('/mesaj'),
     },
     {
