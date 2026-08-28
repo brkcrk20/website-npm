@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { needService } from '../../services/needService';
 import { CATEGORIES } from '../../constants';
 import { CategoryId } from '../../types';
 import { TURKEY_CITIES, getDistrictsForCity } from '../../data/turkeyLocations';
@@ -158,11 +159,42 @@ export const CreateProfilePage: React.FC = () => {
 
     setCurrentUser(result.user);
 
+    // KAYITTA SORULAN SORUNUN CEVABI KULLANILIYOR.
+    //
+    // "Ne arıyorsun?" burada soruluyor ve cevabı `wanted_categories`
+    // sütununa yazılıyordu — ama o sütunu eşleştirme motoru HİÇ okumuyor;
+    // motor yalnızca `needs` tablosuna bakıyor. Sonuç: kullanıcı ne
+    // aradığını yazıyor, /kesfet'e düşüyor ve orada "Ne arıyorsun?" boş
+    // durumuyla YENİDEN karşılaşıyordu. "Aradığın bulundu" bildirimi de
+    // ilk ihtiyacını elle girene kadar hiç çalışmıyordu.
+    //
+    // Seçilen kategoriler artık gerçek ihtiyaca dönüşüyor. Hata kaydı
+    // engellemez: profil oluşmuşken kayıt akışı burada kesilmemeli.
+    try {
+      await Promise.all(
+        selectedWanted.slice(0, 10).map((categoryId) =>
+          needService.createNeed({
+            userId: result.user!.id,
+            title: CATEGORIES.find((c) => c.id === categoryId)?.name ?? categoryId,
+            categoryId,
+          })
+        )
+      );
+    } catch {
+      // Sessiz geçilir: ihtiyaçlar "Aradıklarım" ekranından eklenebilir.
+    }
+
     if (result.warning) {
       showToast('E-posta Eklenemedi', result.warning, 'warning');
     }
 
-    showToast('Profil Oluşturuldu', 'Swaloop dünyasına hoş geldin.', 'success');
+    showToast(
+      'Profil Oluşturuldu',
+      selectedWanted.length > 0
+        ? 'Aradıklarını "Aradıklarım" ekranından düzenleyebilirsin.'
+        : 'Swaloop dünyasına hoş geldin.',
+      'success'
+    );
     navigate('/kesfet');
   };
 

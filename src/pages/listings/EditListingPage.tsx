@@ -24,6 +24,9 @@ export const EditListingPage: React.FC = () => {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  // Etiketler ilan oluştururken yazılıyor (CreateListingPage); düzenlerken
+  // de değiştirilebilmeli, yoksa tek yönlü bir alan olur.
+  const [tagInput, setTagInput] = useState('');
   const [categoryId, setCategoryId] = useState<CategoryId>('other');
   const [condition, setCondition] = useState<ProductCondition>('very_good');
   const [lookingFor, setLookingFor] = useState('');
@@ -46,6 +49,7 @@ export const EditListingPage: React.FC = () => {
         setListing(data);
         setTitle(data.title);
         setDescription(data.description);
+        setTagInput((data.tags ?? []).join(', '));
         setCategoryId(data.categoryId);
         setCondition(data.condition);
         setLookingFor(data.lookingFor);
@@ -80,10 +84,20 @@ export const EditListingPage: React.FC = () => {
     }
 
     setIsSaving(true);
+    const parsedTags = Array.from(
+      new Set(
+        tagInput
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      )
+    ).slice(0, 5);
+
     const updated = await listingService.updateListing(id, {
       title: title.trim(),
       description: description.trim(),
       categoryId,
+      tags: parsedTags,
       condition,
       lookingFor: lookingFor.trim(),
       deliveryOptions,
@@ -265,6 +279,23 @@ export const EditListingPage: React.FC = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm resize-none"
               />
+            </div>
+
+            <div>
+              <label htmlFor="edit-tags" className="block text-xs font-bold mb-1.5">
+                Etiketler
+              </label>
+              <input
+                id="edit-tags"
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                placeholder="Marka, model, renk… (virgülle ayır)"
+                className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm"
+              />
+              <p className="text-[11px] text-ink-faint mt-1">
+                Bu kelimeler, ürünü arayanların seni bulmasını kolaylaştırır.
+              </p>
             </div>
 
             <div>

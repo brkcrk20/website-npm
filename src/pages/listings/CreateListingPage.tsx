@@ -24,6 +24,12 @@ export const CreateListingPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState<CategoryId>('electronics');
   const [description, setDescription] = useState('');
+  // ETİKETLER. `listings.tags` kolonu (20260818135000) baştan beri vardı,
+  // `listingService` yazıyor ve eşleştirme motoru (`needService`) ilan
+  // kelimelerini başlık + ETİKETLER + açıklamadan kuruyordu — ama hiçbir
+  // form etiket yazmadığı için canlıdaki her ilanda boştu. Marka/model
+  // gibi kelimeler açıklamaya yazılmadıysa eşleşmeye hiç girmiyordu.
+  const [tagInput, setTagInput] = useState('');
 
   // images: ekranda gösterilen önizleme URL'leri (gerçek dosya seçilirse
   // geçici bir object URL, örnek görsel seçilirse doğrudan uzak URL).
@@ -101,6 +107,16 @@ export const CreateListingPage: React.FC = () => {
     );
   };
 
+  // Virgülle ayrılmış girdi → en fazla 5 benzersiz etiket.
+  const parsedTags = Array.from(
+    new Set(
+      tagInput
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 5);
+
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
@@ -170,6 +186,7 @@ export const CreateListingPage: React.FC = () => {
       title,
       description: description || `${title} temiz durumda, takasa uygundur.`,
       categoryId,
+      tags: parsedTags,
       images: finalImages,
       condition,
       lookingFor,
@@ -328,16 +345,49 @@ export const CreateListingPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
+                <label
+                  htmlFor="listing-description"
+                  className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5"
+                >
                   Açıklama (Opsiyonel)
                 </label>
                 <textarea
+                  id="listing-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ürünün durumu, kutusu, aksesuarları hakkında bilgi verin..."
                   rows={3}
                   className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line focus:border-brand focus:outline-hidden text-xs sm:text-sm font-medium"
                 />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="listing-tags"
+                  className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5"
+                >
+                  Etiketler (Opsiyonel)
+                </label>
+                <input
+                  id="listing-tags"
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  placeholder="Marka, model, renk… (virgülle ayır)"
+                  className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line focus:border-brand focus:outline-hidden text-xs sm:text-sm font-medium"
+                />
+                <p className="text-[11px] text-ink-faint mt-1">
+                  Bu kelimeler, ürünü arayanların seni bulmasını kolaylaştırır.
+                </p>
+                {parsedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {parsedTags.map((tag) => (
+                      <span key={tag} className="sw-badge bg-brand-soft text-brand-dark">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
