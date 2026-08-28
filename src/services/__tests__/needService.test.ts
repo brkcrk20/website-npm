@@ -45,6 +45,17 @@ describe('wordsMatch — Türkçe ekler eşleşmeyi bozmamalı', () => {
     expect(wordsMatch('kanat', 'kanadı')).toBe(true);
   });
 
+  it('Türkçe karakter yazılmadan da eşleşir (klavye gerçeği)', () => {
+    // 'BISIKLET'.toLocaleLowerCase('tr') → 'bısıklet' (noktasız ı).
+    // Yani CAPS LOCK + noktasız I ile yazılan ilan, "bisiklet" arayan
+    // kimseye görünmüyordu.
+    expect(wordsMatch('bisiklet', 'BISIKLET')).toBe(true);
+    expect(wordsMatch('kılıf', 'kilif')).toBe(true);
+    expect(wordsMatch('çanta', 'canta')).toBe(true);
+    expect(wordsMatch('gitar', 'gıtar')).toBe(true);
+    expect(wordsMatch('düğün', 'dugun')).toBe(true);
+  });
+
   it('sadece baş harfleri tutan alakasız kelimeleri eşleştirmez', () => {
     expect(wordsMatch('araba', 'arabesk')).toBe(false);
     expect(wordsMatch('kol', 'koltuk')).toBe(false);
@@ -94,6 +105,25 @@ describe('scoreNeedAgainstListing', () => {
 
     expect(withCity.score - withoutCity.score).toBe(10);
     expect(withCity.score).toBeLessThan(MATCH_THRESHOLD);
+  });
+
+  it('spesifik ihtiyaç, genel ihtiyaçtan daha az puan almaz', () => {
+    // Regresyon: örtüşme oranı ham `hits / needWords` idi; ihtiyaç metni
+    // uzadıkça skor düşüyordu. Yani kullanıcı ne aradığını ne kadar iyi
+    // anlatırsa eşleşme şansı o kadar azalıyordu.
+    const genel = scoreNeedAgainstListing(need('kamera'), listing);
+    const spesifik = scoreNeedAgainstListing(need('Canon kamera dslr gövde'), listing);
+
+    expect(spesifik.score).toBeGreaterThanOrEqual(MATCH_THRESHOLD);
+    expect(spesifik.score).toBeGreaterThanOrEqual(genel.score);
+  });
+
+  it('zayıf örtüşme eşiği yine de geçemez', () => {
+    // Dört kelimeden yalnızca ikisi tutuyor: kapsama %50, mutlak güç 2/3.
+    // Spesifikliği ödüllendirmek, alakasızı geçirmek anlamına gelmemeli.
+    const zayif = scoreNeedAgainstListing(need('kamera çantası askısı kayışı'), listing);
+
+    expect(zayif.score).toBeLessThan(MATCH_THRESHOLD);
   });
 
   it('skor 100 ile sınırlıdır', () => {

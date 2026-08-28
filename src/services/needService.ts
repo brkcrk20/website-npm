@@ -1,6 +1,7 @@
 import { CategoryId, Listing, Need, NeedMatch, NeedStatus } from '../types';
 import { supabase } from '../lib/supabase';
 import { enrichListings } from './listingService';
+import { blockService } from './blockService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
 
 /**
@@ -97,6 +98,55 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * Eşleştirme için sadeleştirilmiş biçim: Türkçe'ye özgü harfler ASCII
+ * karşılığına indirgenir ve küçültülür.
+ *
+ * İki ayrı sorunu birden çözüyor:
+ *
+ * 1. **Türkçe küçültme ASCII büyük "I"yı bozuyor.** `toLocaleLowerCase('tr')`
+ *    doğru davranıyor ama girdi çoğu zaman Türkçe klavyeden gelmiyor:
+ *
+ *        'BISIKLET'.toLocaleLowerCase('tr')  ->  'bısıklet'   ✗
+ *        'BİSİKLET'.toLocaleLowerCase('tr')  ->  'bisiklet'   ✓
+ *
+ *    Yani ilanını CAPS LOCK ile ve noktasız I ile yazan kullanıcı,
+ *    "bisiklet" arayan kimseye görünmüyordu.
+ *
+ * 2. **Kullanıcılar Türkçe karakter yazmıyor.** "gitar/gıtar",
+ *    "kılıf/kilif", "çanta/canta" aynı şeyi arıyor.
+ *
+ * Bu biçim yalnızca KARŞILAŞTIRMA için; kullanıcıya gösterilen gerekçelerde
+ * (`reasons`) kelimenin özgün hâli kullanılır.
+ */
+const TR_FOLD: Record<string, string> = {
+  ı: 'i', İ: 'i', I: 'i',
+  ş: 's', Ş: 's',
+  ğ: 'g', Ğ: 'g',
+  ü: 'u', Ü: 'u',
+  ö: 'o', Ö: 'o',
+  ç: 'c', Ç: 'c',
+  â: 'a', î: 'i', û: 'u',
+};
+
+export function foldTurkish(text: string): string {
+  return (text ?? '')
+    .replace(/[ıİIşŞğĞüÜöÖçÇâîû]/g, (ch) => TR_FOLD[ch] ?? ch)
+    .toLowerCase();
+}
+
+// Sondaki sert ünsüz, ünlüyle başlayan ek alınca yumuşar:
+// kitap→kitabı, ağaç→ağacı, kanat→kanadı, renk→rengi, bebek→bebeği.
+// Sadeleştirmeden sonra ğ zaten g olduğu için k→g tek kural yetiyor.
+const FINAL_SOFTENING: Record<string, string> = { p: 'b', c: 'c', t: 'd', k: 'g' };
+
+function soften(word: string): string {
+  const last = word[word.length - 1];
+  const softened = FINAL_SOFTENING[last];
+
+  return softened && softened !== last ? word.slice(0, -1) + softened : word;
+}
+
+/**
  * İki kelime aynı şeyi mi anlatıyor?
  *
  * Türkçe eklemeli bir dil: "bisiklet" aradığını yazan kullanıcı,
@@ -109,43 +159,20 @@ export function tokenize(text: string): string[] {
  * tarafındaki skorlayıcı sonra onları "kelime eşleşmesi yok" diye eliyordu.
  * Sorgu "ilgili" derken skorlayıcı "değil" diyordu.
  *
- * Kural:
+ * Kural (sadeleştirme + son ünsüz yumuşatmasından sonra):
  *   * birebir aynıysa → eşleşir
- *   * biri diğeriyle başlıyorsa ve kısa olan en az 4 harfse → eşleşir
- *     ("bisiklet" ⊂ "bisikletim")
- *   * en az 5 harflik ortak bir önek varsa → eşleşir
+ *   * biri diğerinin öneki ve kısa olan en az 4 harfse → eşleşir
+ *   * en az 5 harflik ortak önek varsa → eşleşir
  *
- * Karşılaştırma öncesinde son ünsüz YUMUŞATILIYOR. Türkçe'de ünlüyle
- * başlayan ek alan sözcüklerin sonundaki sert ünsüz yumuşar:
- * kitap→kitabı, renk→rengi, ağaç→ağacı, kanat→kanadı. Bu yapılmazsa
- * "kitap" arayan "Kitabım" ilanını bulamaz — ortak önek yalnızca "kita"
- * (4 harf) kalır ve eşiği geçmez.
- *
- * 4-5 harf alt sınırı bilinçli: daha kısası "araba"yı "arabesk"e,
- * "kol"u "koltuk"a bağlar. Bu bir morfolojik çözümleyici değil ama ilan
- * başlıkları için fazlasıyla yeterli ve açıklanabilir kalıyor (md. 39).
+ * 4-5 harf alt sınırı bilinçli: daha gevşeği "araba"yı "arabesk"e, "kol"u
+ * "koltuk"a bağlar. Bu bir morfolojik çözümleyici değil ama ilan başlıkları
+ * için fazlasıyla yeterli ve açıklanabilir kalıyor (md. 39).
  */
-const FINAL_SOFTENING: Record<string, string> = { p: 'b', ç: 'c', t: 'd', k: 'ğ' };
-
-function soften(word: string): string {
-  const last = word[word.length - 1];
-
-  // "n"den sonraki k, ğ'ye değil g'ye yumuşar: renk→rengi, denk→dengi.
-  if (last === 'k') {
-    return word.slice(0, -1) + (word[word.length - 2] === 'n' ? 'g' : 'ğ');
-  }
-
-  const softened = FINAL_SOFTENING[last];
-
-  return softened ? word.slice(0, -1) + softened : word;
-}
-
 export function wordsMatch(a: string, b: string): boolean {
-  if (a === b) return true;
+  const sa = soften(foldTurkish(a));
+  const sb = soften(foldTurkish(b));
 
-  // "renk" → "reng" ve "rengi" böylece ortak "reng" önekinde buluşur.
-  const sa = soften(a);
-  const sb = soften(b);
+  if (sa === sb) return true;
 
   const [short, long] = sa.length <= sb.length ? [sa, sb] : [sb, sa];
 
@@ -207,7 +234,32 @@ export function scoreNeedAgainstListing(
   );
 
   if (needWords.length && hits.length) {
-    score += Math.round((hits.length / needWords.length) * 40);
+    // Örtüşme oranı ham `hits / needWords` idi ve bu, SPESİFİK ihtiyaçları
+    // cezalandırıyordu:
+    //
+    //   "kamera"                          → 1/1 = %100 → 40 puan
+    //   "aynasız fotoğraf makinesi sony"  → 2/4 = %50  → 20 puan
+    //
+    // Yani kullanıcı ne aradığını ne kadar iyi anlatırsa eşleşme şansı o
+    // kadar düşüyordu — motorun tam tersini yapması gerekir. İki içerik
+    // kelimesinin tutması, ihtiyaç metni ne kadar uzun olursa olsun güçlü
+    // bir sinyaldir.
+    //
+    // Bu yüzden iki ölçünün BÜYÜĞÜ alınıyor:
+    //   * kapsama (coverage): ihtiyacın kaçta kaçı karşılandı,
+    //   * mutlak güç (strength): kaç ayrı içerik kelimesi tuttu (3'te doyar).
+    //
+    //   "kamera"                          1/1 → kapsama 1.00            → 40
+    //   "canon kamera dslr gövde"         3/4 → güç     1.00            → 40
+    //   "kamera çantası askısı kayışı"    2/4 → güç     0.67            → 27
+    //   alakasız                          0/n → 0                       →  0
+    //
+    // Yani ihtiyacını iyi anlatan kullanıcı cezalandırılmıyor, ama zayıf
+    // örtüşme de eşiği geçmiyor (md. 15: "ilan çöplüğü" üretme).
+    const coverage = hits.length / needWords.length;
+    const strength = Math.min(1, hits.length / 3);
+
+    score += Math.round(Math.max(coverage, strength) * 40);
     reasons.push(`Aradığın kelimelerle eşleşiyor: ${hits.join(', ')}`);
   }
 
@@ -374,6 +426,12 @@ export const needService = {
       .slice(0, 10)
       .map((word) => `title.ilike.%${word}%`);
 
+    // Engellenen kullanıcıların ilanları eşleşmelerde çıkmamalı: keşif ve
+    // aramada zaten gizleniyorlar (rapor md. 106) ama "sana uygun" listesi
+    // ve "aradığın bulundu" bildirimi bu filtreyi atlıyordu — engellediğin
+    // kişinin ürünü sana önerilmeye devam ediyordu.
+    const blockedIds = await blockService.getBlockedUserIds(userId);
+
     let query = supabase
       .from('listings')
       .select(`*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path)`)
@@ -381,6 +439,10 @@ export const needService = {
       .neq('owner_id', userId)
       .order('created_at', { ascending: false })
       .limit(120);
+
+    if (blockedIds.length) {
+      query = query.not('owner_id', 'in', `(${blockedIds.join(',')})`);
+    }
 
     if (categoryUuids.length && keywordFilters.length) {
       query = query.or(

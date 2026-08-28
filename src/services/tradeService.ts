@@ -8,7 +8,7 @@ import {
   TradeCancellationReason,
 } from '../types';
 import { supabase } from '../lib/supabase';
-import { mapProfile } from './authService';
+import { mapProfile, fetchTrustProfiles } from './authService';
 import { enrichListings } from './listingService';
 import { messageService } from './messageService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
@@ -176,10 +176,15 @@ function hydrateOffer(
   offerRow: TradeOfferRow,
   tradeRow: TradeRow | null,
   events: TradeEventRow[],
-  listingsById: Map<string, Listing>
+  listingsById: Map<string, Listing>,
+  trustByUserId: Map<string, any> = new Map()
 ): TradeOffer {
-  const initiator = mapProfile(offerRow.sender);
-  const receiver = mapProfile(offerRow.receiver);
+  // Güven bilgisi ayrı bir tabloda (`trust_profiles`) ve `profiles`
+  // join'inden gelmiyor. Buraya geçirilmediğinde karşı taraf her ekranda
+  // "Yeni üye" görünüyordu — takası kabul edip etmeme kararının tek
+  // dayanağı tam da bu bilgi.
+  const initiator = mapProfile(offerRow.sender, trustByUserId.get(offerRow.sender_id));
+  const receiver = mapProfile(offerRow.receiver, trustByUserId.get(offerRow.receiver_id));
 
   const pickListings = (role: TradeItemRole): Listing[] =>
     (offerRow.items ?? [])
@@ -436,10 +441,15 @@ async function hydrateOffers(offerRows: TradeOfferRow[]): Promise<TradeOffer[]> 
   const enriched = await enrichListings([...listingRowById.values()]);
   const listingsById = new Map<string, Listing>(enriched.map((l) => [l.id, l]));
 
+  // Tekliflerde geçen tüm kullanıcıların güven profili tek sorguda.
+  const trustByUserId = await fetchTrustProfiles(
+    offerRows.flatMap((o) => [o.sender_id, o.receiver_id])
+  );
+
   return offerRows.map((offerRow) => {
     const tradeRow = tradeByOfferId.get(offerRow.id) ?? null;
     const events = tradeRow ? eventsByTradeId.get(tradeRow.id) ?? [] : [];
-    const offer = hydrateOffer(offerRow, tradeRow, events, listingsById);
+    const offer = hydrateOffer(offerRow, tradeRow, events, listingsById, trustByUserId);
 
     if (!tradeRow) return offer;
 

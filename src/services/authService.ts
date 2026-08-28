@@ -297,6 +297,44 @@ async function getTrustProfileRow(userId: string): Promise<any | null> {
  * geçtiği için tek bozuk satır ekranın tamamını boşaltıyordu.
  * Artık anonim bir yer tutucu profil üretiliyor.
  */
+/**
+ * Birden çok kullanıcının `trust_profiles` satırını TEK sorguda çeker.
+ *
+ * `mapProfile(row)` ikinci argüman olmadan çağrıldığında güven bilgisi boş
+ * kalır ve kullanıcı arayüzde "Yeni üye" görünür. Takas ve sohbet
+ * ekranlarında tam olarak bu oluyordu: karşı tarafın profili `profiles`
+ * join'inden geliyor ama `trust_profiles` hiç okunmuyordu — yani takası
+ * kabul edip etmeme kararını verirken karşındakinin sicili HİÇ
+ * gösterilmiyordu.
+ *
+ * (Eskiden bu boşluk arayüzde `?? 4.8` ile kapatılıyordu; yani veri yoktu
+ * ve yerine uydurma bir puan konuyordu. Doğru çözüm veriyi çekmek.)
+ */
+export async function fetchTrustProfiles(
+  userIds: string[]
+): Promise<Map<string, any>> {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  const byUser = new Map<string, any>();
+
+  if (!ids.length) return byUser;
+
+  const { data, error } = await supabase
+    .from('trust_profiles')
+    .select('*')
+    .in('user_id', ids);
+
+  if (error) {
+    console.error('Güven profilleri alınamadı:', error);
+    return byUser;
+  }
+
+  for (const row of data ?? []) {
+    if (row.user_id) byUser.set(row.user_id, row);
+  }
+
+  return byUser;
+}
+
 export function mapProfile(row: any, trust?: any | null): UserProfile {
   if (!row) {
     row = { id: '', full_name: 'Swaloop Kullanıcısı' };
