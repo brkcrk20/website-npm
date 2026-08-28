@@ -22,7 +22,8 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 `20260828000000_backend_hardening.sql`,
 `20260829000000_listing_expiry.sql`,
 `20260830000000_trade_column_immutability.sql` ve
-`20260831000000_rpc_grants_and_row_guards.sql` HENÜZ UYGULANMADI.**
+`20260831000000_rpc_grants_and_row_guards.sql` ve
+`20260901000000_seed_categories.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -74,7 +75,15 @@ receiver_id` kısıtları. Regresyon testi:
   (`status='resolved'`, `resolution_note`, `admin_decision`); yönetici
   olmayanın INSERT'inde bu alanlar artık varsayılana çekiliyor.
 
-**BEŞİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`20260901000000` `categories` tablosunu tohumluyor. Tabloyu dolduran hiçbir
+migration ya da seed yoktu: canlıda satırlar elle eklenmiş ama sıfırdan
+kurulan her ortamda (`supabase db reset`, yeni staging, yerel test) tablo
+boş kalıyor ve **ilan verme tamamen çalışmıyor** —
+`listings.category_id` bir yabancı anahtar ve `categoryUuidBySlug()` slug
+bulamayınca null dönüyor. `on conflict (slug) do nothing` olduğu için
+canlıdaki mevcut satırlara dokunmaz, yalnızca eksikleri ekler.
+
+**ALTISI SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
 `trade_status_rank()` ve `enforce_trade_transition()` üzerine;
 `20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
 ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.

@@ -575,11 +575,29 @@ export const authService = {
       };
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select(PROFILE_COLUMNS)
       .eq('id', data.user.id)
       .maybeSingle();
+
+    // Sorgu HATASI ile "profil yok" AYNI ŞEY DEĞİL. Hata `data`'yı da null
+    // bıraktığı için eskiden ikisi de `isNewUser: true` dönüyordu: geçici
+    // bir ağ/RLS hatasında mevcut kullanıcı "yeni kullanıcı" sayılıp profil
+    // oluşturma ekranına gönderiliyor ve kendi profilinin (bio, konum,
+    // fotoğraf, ilgi alanları) üzerine yazıyordu.
+    if (profileError) {
+      console.error('Profil okunamadı:', profileError);
+
+      return {
+        success: false,
+        isNewUser: false,
+        error: describeAuthError(
+          profileError,
+          'Girişin doğrulandı ama profilin okunamadı. Lütfen tekrar dene.'
+        ),
+      };
+    }
 
     if (!profile) {
       return {

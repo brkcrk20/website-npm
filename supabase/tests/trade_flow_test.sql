@@ -45,8 +45,10 @@ insert into public.profiles (id, phone, full_name) values
   ('22222222-2222-2222-2222-222222222222', '+905550000002', 'Mehmet'),
   ('44444444-4444-4444-4444-444444444444', '+905550000003', 'Zeynep');
 
+-- Teste özel bir slug: 20260901000000 gerçek kategorileri tohumluyor,
+-- 'electronics' artık seed'den geliyor ve fixture onunla çakışırdı.
 insert into public.categories (id, name, slug) values
-  ('33333333-3333-3333-3333-333333333333', 'Elektronik', 'electronics');
+  ('33333333-3333-3333-3333-333333333333', 'Test Kategorisi', 'test-kategori');
 
 insert into public.listings (id, owner_id, category_id, title, condition, status) values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Kulaklık', 'very_good', 'active'),
