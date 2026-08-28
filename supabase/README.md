@@ -204,6 +204,40 @@ npx supabase db push
 Komut, `supabase/migrations/` altındaki dosyalardan canlıda **henüz
 uygulanmamış** olanları sırayla çalıştırır.
 
+### Uygulama provası yapıldı
+
+Bu on bir dosya BOŞ bir veritabanına değil, İÇİNDE VERİ OLAN canlıya
+uygulanacak. Bu yüzden yerel PostgreSQL 16 üzerinde şu prova çalıştırıldı:
+
+1. Yalnızca canlıda uygulanmış olan ilk 21 migration kuruldu.
+2. Üstüne, yeni kısıtların takılabileceği durumları bilerek içeren veri
+   yazıldı: tanınmayan bir `condition` değeri (`'mukemmel'`), `condition`
+   alanı boş eski bir ilan, 999/77'ye şişmiş güven sayaçları, güven profili
+   hiç olmayan bir kullanıcı, `actor_id` boş uydurma bir `verified` olayı ve
+   tanınmayan bir olay türü.
+3. Kalan on bir migration sırayla uygulandı.
+
+Sonuç:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| Hiçbir ilan silindi mi? | hayır (3 → 3) |
+| Tanınmayan `condition` | NULL'a çekildi; geçerli olanlar korundu |
+| Şişirilmiş `completed_trades` (999) | `trades`'ten türetilip 1'e onarıldı |
+| Şişirilmiş `cancelled_trades` (77) | 0'a onarıldı |
+| Güven profili olmayan kullanıcı | oluşturuldu |
+| Eski `trade_events` satırları | korundu (kısıtlar NOT VALID) |
+| Kategoriler | 10 satır tohumlandı |
+
+Ardından korumaların canlı benzeri veri üzerinde gerçekten ısırdığı
+doğrulandı: sayaç şişirme, `created_at` ile sıralama ele geçirme, `slug`
+değiştirme, sahte `verified` olayı ve tanınmayan `condition` reddedildi;
+buna karşılık ilan başlığı düzenleme, `increment_listing_view()`, favori
+sayacı ve normal ilan oluşturma bozulmadan çalıştı.
+
+**Yine de:** prova, canlı verinin bire bir kopyası değil. `db push`
+öncesinde Supabase panosundan bir yedek almak doğru olur.
+
 ## Şema değişince: tipleri yeniden üretme
 
 ```bash
