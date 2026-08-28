@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 export const OtpVerificationPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { setCurrentUser, showToast } = useApp();
+  const { setCurrentUser, showToast, markSessionReady } = useApp();
 
   const state =
     (location.state as {
@@ -82,6 +82,9 @@ export const OtpVerificationPage: React.FC = () => {
         navigate('/profil-olustur', { state: { phone } });
       } else {
         if (res.user) setCurrentUser(res.user);
+        // Bkz. PhoneAuthPage'deki aynı not: yarışı beklemeden durumu
+        // söylüyoruz, yoksa korumalı sayfa /giris'e geri atıyor.
+        markSessionReady();
         navigate(from, { replace: true });
       }
       return;

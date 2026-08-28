@@ -10,7 +10,7 @@ interface PhoneAuthPageProps {
 
 export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
   const navigate = useNavigate();
-  const { setCurrentUser, showToast } = useApp();
+  const { setCurrentUser, showToast, markSessionReady } = useApp();
   const location = useLocation();
 
   // GİRİŞ SONRASI NEREYE?
@@ -126,6 +126,10 @@ export const PhoneAuthPage: React.FC<PhoneAuthPageProps> = ({ isRegister }) => {
     }
 
     if (result.user) setCurrentUser(result.user);
+    // Oturum durumunu beklemeden 'ready' yapıyoruz: `onAuthStateChange`
+    // tetiklenip profili çekene kadar korumalı sayfa 'anon' görüp
+    // kullanıcıyı /giris'e geri fırlatıyordu.
+    markSessionReady();
     showToast('Giriş Başarılı!', 'Tekrar hoş geldin.', 'success');
     navigate(from, { replace: true });
   };

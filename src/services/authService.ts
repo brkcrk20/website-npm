@@ -1003,6 +1003,38 @@ export const authService = {
     localStorage.removeItem(AUTH_STORAGE_KEY);
   },
 
+  /**
+   * Oturum sahibinin profil SATIRI var mı?
+   *
+   *   'yes'      → var
+   *   'no'       → oturum var ama satır YOK (kayıt yarıda kalmış)
+   *   'unknown'  → sorulamadı (ağ hatası, RLS, sunucu)
+   *
+   * Bu ayrım şart. `getCurrentUserFromSupabase()` hem "profil yok" hem
+   * "sorgu patladı" için `null` dönüyor; ikisini aynı saymak, ağı bir
+   * saniye kopan MEVCUT bir kullanıcıyı kayıt formuna göndermek demekti.
+   * Bilmiyorsak kullanıcıyı hiçbir yere sürüklemiyoruz.
+   */
+  async profileRowState(): Promise<'yes' | 'no' | 'unknown'> {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      return 'unknown';
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    if (error) {
+      return 'unknown';
+    }
+
+    return data ? 'yes' : 'no';
+  },
+
   isOnboardingDone(): boolean {
     return (
       localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true'

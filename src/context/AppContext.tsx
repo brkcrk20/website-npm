@@ -66,6 +66,7 @@ interface AppContextType {
   pendingOfferCount: number;
   refreshPendingOfferCount: () => Promise<void>;
   refreshUserData: () => Promise<void>;
+  markSessionReady: () => void;
   logoutUser: () => Promise<void>;
   toasts: ToastMessage[];
   showToast: (title: string, description?: string, type?: ToastMessage['type']) => void;
@@ -128,8 +129,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (user) {
         setCurrentUser(user);
         setSessionState('ready');
-      } else {
+        return;
+      }
+
+      // Profil OKUNAMADI. İki ayrı sebebi var ve ikisi aynı şey değil:
+      // satır gerçekten yok (kayıt yarıda kalmış) ya da sorgu patladı
+      // (ağ, RLS, sunucu). İkincisinde kullanıcıyı kayıt formuna
+      // göndermek, ağı bir saniye kopan MEVCUT bir kullanıcıyı olmadığı
+      // bir yere sürüklemek olurdu.
+      const profileState = await authService.profileRowState();
+
+      if (profileState === 'no') {
         setSessionState('needs-profile');
+      } else {
+        // Oturum geçerli; bilemediğimiz için engellemiyoruz. Sayfaların
+        // kendi hata durumları (lib/serviceError.ts) sorunu zaten
+        // kullanıcıya söylüyor.
+        setSessionState('ready');
       }
     };
     checkUserSession();
@@ -299,6 +315,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [announceDataFailure]);
 
+  // GİRİŞ SONRASI YARIŞ.
+  //
+  // `onAuthStateChange('SIGNED_IN')` tetiklendiğinde `checkUserSession()`
+  // başlıyor ama İKİ ağ isteği sürüyor. Giriş ekranı bu sırada
+  // `navigate()` çağırdığı için, korumalı sayfa `sessionState` HÂLÂ 'anon'
+  // iken render oluyor ve RequireAuth az önce giriş yapmış kullanıcıyı
+  // /giris'e geri fırlatıyordu. Giriş ekranı elinde profili olduğunu
+  // BİLDİĞİ için durumu doğrudan söylüyor.
+  const markSessionReady = () => setSessionState('ready');
+
   const refreshUserData = async () => {
     const user = await authService.getCurrentUserFromSupabase();
     if (user) {
@@ -353,6 +379,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pendingOfferCount,
         refreshPendingOfferCount,
         refreshUserData,
+        markSessionReady,
         logoutUser,
         toasts,
         showToast,
