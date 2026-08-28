@@ -458,6 +458,39 @@ async function fullyHydrate(offerRow: TradeOfferRow): Promise<TradeOffer> {
   return offer;
 }
 
+/**
+ * `advanceTradeStep` sonucu.
+ *
+ * Eskiden fonksiyon `TradeOffer | undefined` döndürüyordu ve ÜÇ ayrı
+ * reddetme dalında da `this.getTradeById(tradeId)` — yani BAŞARIYLA AYNI
+ * truthy değeri — dönüyordu. Çağıranlar yalnızca truthy kontrolü yaptığı
+ * için (`if (updated) { showToast('Teslimat Planlandı'); }`) DB'ye hiçbir
+ * şey yazılmasa bile kullanıcı yeşil bir onay mesajı görüyor, adım 6'da
+ * ise doğrudan kutlama ekranına yönlendiriliyordu.
+ *
+ * `DeleteListingResult` ile aynı desen.
+ */
+export interface AdvanceTradeResult {
+  /** Adım gerçekten ilerlediyse güncel takas. */
+  trade?: TradeOffer;
+  /** Dolu ise adım İLERLEMEDİ; metin kullanıcıya gösterilir. */
+  error?: string;
+}
+
+/**
+ * `submitReview` sonucu.
+ *
+ * Eskiden fonksiyon `Review | undefined` döndürüyordu ve altı ayrı
+ * reddetme yolu vardı (takas tamamlanmamış, kendini değerlendirme, taraf
+ * değilsin, DB hatası…). İki çağıranın da dönüşü YOK SAYDIĞI için
+ * kullanıcı her durumda "Değerlendirmeniz Kaydedildi!" görüyordu.
+ */
+export interface SubmitReviewResult {
+  review?: Review;
+  /** Dolu ise değerlendirme YAZILMADI; metin kullanıcıya gösterilir. */
+  error?: string;
+}
+
 export const tradeService = {
   /**
    * Admin/genel bakış amaçlı. Büyük veri setlerinde sayfalama eklenmeli.
@@ -850,18 +883,21 @@ export const tradeService = {
     };
   },
 
-  async advanceTradeStep(tradeId: string, targetStep: 4 | 5 | 6): Promise<TradeOffer | undefined> {
+  async advanceTradeStep(tradeId: string, targetStep: 4 | 5 | 6): Promise<AdvanceTradeResult> {
     // Adım 5 artık bir durum güncellemesi değil, bir ONAY: iki taraf da
     // onaylamadan takas ilerlemiyor.
     if (targetStep === 5) {
       const result = await this.confirmReceipt(tradeId);
-      return result?.trade;
+
+      return result?.trade
+        ? { trade: result.trade }
+        : { error: 'Teslimat onayı kaydedilemedi.' };
     }
 
     const tradeRow = await fetchTradeRowByOfferId(tradeId);
     if (!tradeRow) {
       console.error('advanceTradeStep: bu teklife bağlı bir trade kaydı yok.');
-      return undefined;
+      return { error: 'Bu teklife bağlı bir takas kaydı bulunamadı.' };
     }
 
     // Adım sırası artık DB'de de zorunlu (trg_enforce_trade_transition), ama
@@ -871,7 +907,14 @@ export const tradeService = {
     // ve teslimat hiç gerçekleşmeden iki tarafın güven sayacı artıyordu.
     if (tradeRow.status === 'completed' || tradeRow.status === 'cancelled') {
       console.error('advanceTradeStep: sonuçlanmış bir takas ilerletilemez.', tradeRow.status);
-      return this.getTradeById(tradeId);
+
+      return {
+        trade: await this.getTradeById(tradeId),
+        error:
+          tradeRow.status === 'cancelled'
+            ? 'Bu takas iptal edilmiş; ilerletilemez.'
+            : 'Bu takas zaten tamamlanmış.',
+      };
     }
 
     // Adım 6, iki tarafın da teslimat onayını gerektiriyor (DB'de de zorunlu:
@@ -884,7 +927,11 @@ export const tradeService = {
       console.error(
         'advanceTradeStep: takas ancak iki taraf da teslimatı onayladıktan sonra tamamlanabilir.'
       );
-      return this.getTradeById(tradeId);
+
+      return {
+        trade: await this.getTradeById(tradeId),
+        error: 'Takas, iki taraf da teslimatı onaylamadan tamamlanamaz.',
+      };
     }
 
     const rank: Record<string, number> = {
@@ -912,7 +959,11 @@ export const tradeService = {
       console.error(
         `advanceTradeStep: takas adımı geriye alınamaz (${tradeRow.status} -> ${newStatus}).`
       );
-      return this.getTradeById(tradeId);
+
+      return {
+        trade: await this.getTradeById(tradeId),
+        error: 'Takas adımı geriye alınamaz.',
+      };
     }
 
     update.status = newStatus;
@@ -924,7 +975,7 @@ export const tradeService = {
 
     if (updateError) {
       console.error('Trade durumu güncellenemedi:', updateError);
-      return undefined;
+      return { error: 'Takas adımı güncellenemedi.' };
     }
 
     // actor_id, olay kaydının kim tarafından üretildiğini gösterir; boş
@@ -938,14 +989,14 @@ export const tradeService = {
       event_type: eventType,
     } as TablesInsert<'trade_events'>);
 
-    return this.getTradeById(tradeId);
+    return { trade: await this.getTradeById(tradeId) };
   },
 
-  async submitReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<Review | undefined> {
+  async submitReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<SubmitReviewResult> {
     const tradeRow = await fetchTradeRowByOfferId(review.tradeId);
     if (!tradeRow) {
       console.error('submitReview: bu teklife bağlı bir trade kaydı yok.');
-      return undefined;
+      return { error: 'Bu teklife bağlı bir takas kaydı bulunamadı.' };
     }
 
     // DB tarafında da zorunlu (reviews_insert_trade_party politikası +
@@ -956,12 +1007,12 @@ export const tradeService = {
     // değerlendirme yazılabiliyordu.
     if (tradeRow.status !== 'completed') {
       console.error('submitReview: değerlendirme yalnızca tamamlanmış bir takasa yazılabilir.');
-      return undefined;
+      return { error: 'Değerlendirme yalnızca tamamlanmış bir takasa yazılabilir.' };
     }
 
     if (review.authorId === review.targetUserId) {
       console.error('submitReview: kullanıcı kendini değerlendiremez.');
-      return undefined;
+      return { error: 'Kendini değerlendiremezsin.' };
     }
 
     if (
@@ -969,7 +1020,7 @@ export const tradeService = {
       ![tradeRow.sender_id, tradeRow.receiver_id].includes(review.targetUserId)
     ) {
       console.error('submitReview: değerlendiren ve değerlendirilen bu takasın tarafı olmalı.');
-      return undefined;
+      return { error: 'Yalnızca takasın tarafları birbirini değerlendirebilir.' };
     }
 
     const insertPayload: TablesInsert<'reviews'> = {
@@ -995,10 +1046,18 @@ export const tradeService = {
 
     if (error || !data) {
       console.error('Değerlendirme kaydedilemedi:', error);
-      return undefined;
+
+      // `reviews_one_per_reviewer_key` tekrar eden değerlendirmeyi
+      // engelliyor; kullanıcıya sebebini söylemek gerekiyor.
+      return {
+        error:
+          error?.code === '23505'
+            ? 'Bu takas için değerlendirmeni zaten bıraktın.'
+            : 'Değerlendirme kaydedilemedi. Lütfen tekrar dene.',
+      };
     }
 
-    return {
+    const saved: Review = {
       id: data.id,
       tradeId: review.tradeId,
       authorId: review.authorId,
@@ -1015,9 +1074,11 @@ export const tradeService = {
       comment: data.comment ?? '',
       createdAt: data.created_at,
     };
+
+    return { review: saved };
   },
 
-async getReviewsForUser(userId: string): Promise<Review[]> {
+  async getReviewsForUser(userId: string): Promise<Review[]> {
     if (!userId || userId === 'user-current' || userId.length < 30) {
       return [];
     }

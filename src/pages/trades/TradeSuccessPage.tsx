@@ -34,14 +34,17 @@ export const TradeSuccessPage: React.FC = () => {
     : false;
 
   const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('Harika bir takastı, ürün tam açıklandığı gibiydi.');
+  // Yorum alanı BOŞ başlar. Eskiden "Harika bir takastı, ürün tam
+  // açıklandığı gibiydi." ön dolu geliyordu; çoğu kullanıcı dokunmadan
+  // gönderdiği için kendi yazmadığı bir övgü onun adına kaydoluyordu.
+  const [comment, setComment] = useState('');
   const [showReviewModal, setShowReviewModal] = useState(false);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trade || !otherUser) return;
 
-    await tradeService.submitReview({
+    const result = await tradeService.submitReview({
       tradeId: trade.id,
       authorId: currentUser.id,
       authorName: currentUser.fullName,
@@ -54,8 +57,13 @@ export const TradeSuccessPage: React.FC = () => {
         itemAccuracy: rating,
         delivery: rating,
       },
-      comment,
+      comment: comment.trim(),
     });
+
+    if (result.error) {
+      showToast('Değerlendirme kaydedilemedi', result.error, 'error');
+      return;
+    }
 
     setShowReviewModal(false);
     showToast('Değerlendirme Kaydedildi! ⭐', 'Güven puanına katkı sağladınız.', 'success');

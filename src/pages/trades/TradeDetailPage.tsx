@@ -191,17 +191,22 @@ export const TradeDetailPage: React.FC = () => {
       return;
     }
 
-    const updated = await tradeService.advanceTradeStep(trade.id, step);
-    if (updated) {
-      setTrade(updated);
-      if (step === 4) {
-        showToast('Teslimat Aşamasına Geçildi', 'Kargo veya buluşma planı aktif.', 'info');
-      } else if (step === 6) {
-        showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
-        setShowReviewModal(true);
-      }
-    } else {
-      showToast('Adım ilerletilemedi', 'Lütfen tekrar dene.', 'error');
+    const result = await tradeService.advanceTradeStep(trade.id, step);
+
+    // `error` doluysa adım İLERLEMEDİ — eskiden reddetme dalları da takası
+    // döndürdüğü için kullanıcı yeşil bir onay mesajı görüyordu.
+    if (result.trade) setTrade(result.trade);
+
+    if (result.error) {
+      showToast('Adım ilerletilemedi', result.error, 'error');
+      return;
+    }
+
+    if (step === 4) {
+      showToast('Teslimat Aşamasına Geçildi', 'Kargo veya buluşma planı aktif.', 'info');
+    } else if (step === 6) {
+      showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
+      setShowReviewModal(true);
     }
     });
 
@@ -218,7 +223,7 @@ export const TradeDetailPage: React.FC = () => {
     e.preventDefault();
 
     return runOnce('review', async () => {
-    await tradeService.submitReview({
+    const result = await tradeService.submitReview({
       tradeId: trade.id,
       authorId: currentUser.id,
       authorName: currentUser.fullName,
@@ -231,6 +236,14 @@ export const TradeDetailPage: React.FC = () => {
       // kullanıcının hiç yazmadığı bir övgü onun adına kaydediliyordu.
       comment: reviewComment.trim(),
     });
+
+    // Dönüş eskiden hiç kontrol edilmiyordu: değerlendirme reddedilse bile
+    // (takas tamamlanmamış, aynı takası ikinci kez değerlendirme, RLS…)
+    // kullanıcı "Kaydedildi!" görüyordu.
+    if (result.error) {
+      showToast('Değerlendirme kaydedilemedi', result.error, 'error');
+      return;
+    }
 
     showToast('Değerlendirmeniz Kaydedildi!', 'Topluluk güven skoruna katkınız için teşekkürler.', 'success');
     setShowReviewModal(false);

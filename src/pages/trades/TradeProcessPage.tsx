@@ -24,7 +24,16 @@ const STATUS_TO_STEP: Partial<Record<TradeStatus, number>> = {
   received: 4,
   verified: 5,
   completed: 6,
+  // Sonuçlanmış durumlar da haritada: yoksa `?? 3` devreye giriyor ve
+  // iptal edilmiş bir takasta "Sonraki adım" butonu görünüyordu.
+  cancelled: 6,
+  rejected: 6,
+  expired: 6,
+  disputed: 5,
 };
+
+/** Bu durumlarda takas ilerletilemez; eylem butonu hiç gösterilmez. */
+const TERMINAL_STATUSES: TradeStatus[] = ['completed', 'cancelled', 'rejected', 'expired'];
 
 export const TradeProcessPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,6 +60,10 @@ export const TradeProcessPage: React.FC = () => {
   }, [loadTrade]);
 
   const currentStep = trade ? STATUS_TO_STEP[trade.status] ?? 3 : 3;
+  // Sonuçlanmış takasta ilerletme eylemi hiç gösterilmez. Eskiden
+  // `cancelled` haritada olmadığı için `?? 3` devreye giriyor ve iptal
+  // edilmiş bir takasta bile "Teslimatı Başlat" butonu duruyordu.
+  const isTerminal = trade ? TERMINAL_STATUSES.includes(trade.status) : false;
 
   const steps = [
     { num: 1, title: 'Teklif', desc: 'Teklif iletildi' },
@@ -65,12 +78,14 @@ export const TradeProcessPage: React.FC = () => {
     if (!trade) return;
     setIsAdvancing(true);
     if (currentStep === 3) {
-      const updated = await tradeService.advanceTradeStep(trade.id, 4);
+      const result = await tradeService.advanceTradeStep(trade.id, 4);
       setIsAdvancing(false);
-      if (updated) {
-        setTrade(updated);
-        showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
+      if (result.trade) setTrade(result.trade);
+      if (result.error) {
+        showToast('Adım ilerletilemedi', result.error, 'error');
+        return;
       }
+      showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
     } else if (currentStep === 4) {
       // Adım 5 karşılıklı: onayın kaydediliyor, takas ancak karşı taraf da
       // onayladığında ilerliyor (bkz. tradeService.confirmReceipt).
@@ -87,12 +102,16 @@ export const TradeProcessPage: React.FC = () => {
         showToast('Onay kaydedilemedi', 'Lütfen tekrar dene.', 'error');
       }
     } else if (currentStep === 5) {
-      const updated = await tradeService.advanceTradeStep(trade.id, 6);
+      const result = await tradeService.advanceTradeStep(trade.id, 6);
       setIsAdvancing(false);
-      if (updated) {
-        setTrade(updated);
-        navigate(`/takas-tamamlandi/${trade.id}`);
+      if (result.trade) setTrade(result.trade);
+      if (result.error) {
+        // Eskiden buradaki reddetme de truthy dönüyordu ve kullanıcı
+        // doğrudan kutlama ekranına yönlendiriliyordu.
+        showToast('Takas tamamlanamadı', result.error, 'error');
+        return;
       }
+      navigate(`/takas-tamamlandi/${trade.id}`);
     } else {
       setIsAdvancing(false);
     }
@@ -250,7 +269,7 @@ export const TradeProcessPage: React.FC = () => {
         </div>
 
         {/* Bottom Action Button Matching Screen 11 */}
-        {currentStep < 6 && (
+        {currentStep < 6 && !isTerminal && (
           <div className="pt-2">
             <button
               type="button"
