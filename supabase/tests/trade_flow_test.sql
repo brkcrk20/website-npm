@@ -741,12 +741,18 @@ insert into public.listings (id, owner_id, category_id, title, condition, status
   ('aaaaaaaa-0000-0000-0000-0000000000f3', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Kilitli ilan', 'good', 'active'),
   ('aaaaaaaa-0000-0000-0000-0000000000f4', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'Karşı ilan', 'good', 'active');
 
+-- Teklif ÖNCE 'pending' açılır, kalemler öyle eklenir, sonra kabul edilir —
+-- gerçek akış bu (tradeService.createTradeOffer → accept_trade_offer) ve
+-- 20260831000000 kabul edilmiş teklifin kalemlerini artık kilitliyor.
 insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
-  ('bbbbbbbb-0000-0000-0000-0000000000f1', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'accepted', 'in_person');
+  ('bbbbbbbb-0000-0000-0000-0000000000f1', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', 'in_person');
 
 insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
   ('bbbbbbbb-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-0000000000f3', '11111111-1111-1111-1111-111111111111', 'offered'),
   ('bbbbbbbb-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-0000000000f4', '22222222-2222-2222-2222-222222222222', 'requested');
+
+update public.trade_offers set status = 'accepted'
+  where id = 'bbbbbbbb-0000-0000-0000-0000000000f1';
 
 insert into public.trades (id, offer_id, sender_id, receiver_id, status) values
   ('cccccccc-0000-0000-0000-0000000000f1', 'bbbbbbbb-0000-0000-0000-0000000000f1', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'locked');

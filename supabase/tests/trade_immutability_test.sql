@@ -161,6 +161,90 @@ select pg_temp.ok(
     = 'completed',
   'meşru yoldan tamamlanabiliyor');
 
+
+\echo ''
+\echo '=== 6) RPC yetkileri: istemci sahte bildirim yazamaz (20260831000000)'
+select pg_temp.ok(
+  not has_function_privilege('authenticated',
+    'public.push_notification(uuid,text,text,text,text,uuid,uuid,uuid,uuid,uuid)', 'execute'),
+  'push_notification authenticated''a kapalı');
+
+select pg_temp.ok(
+  not has_function_privilege('anon',
+    'public.push_notification(uuid,text,text,text,text,uuid,uuid,uuid,uuid,uuid)', 'execute'),
+  'push_notification anon''a kapalı');
+
+select pg_temp.ok(
+  not has_function_privilege('authenticated', 'public.recalc_trust_score(uuid)', 'execute'),
+  'recalc_trust_score istemciye kapalı');
+
+select pg_temp.ok(
+  not has_function_privilege('authenticated', 'public.expire_stale_trade_offers()', 'execute'),
+  'expire_stale_trade_offers istemciye kapalı');
+
+-- RLS politikalarının içinden çağrıldıkları için bunlar AÇIK kalmalı.
+select pg_temp.ok(
+  has_function_privilege('authenticated', 'public.is_blocked_between(uuid,uuid)', 'execute'),
+  'is_blocked_between açık kaldı (RLS politikaları çağırıyor)');
+
+
+\echo ''
+\echo '=== 7) Sohbetin karşı tarafı değiştirilemez'
+insert into public.conversations (id, participant_one_id, participant_two_id)
+values ('eeeeeeee-0000-0000-0000-000000000005',
+        '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+
+select pg_temp.rejects($$
+  update public.conversations
+     set participant_two_id = '11111111-1111-1111-1111-111111111111'
+   where id = 'eeeeeeee-0000-0000-0000-000000000005'
+$$, 'sohbetin karşı tarafını değiştirmek (özel yazışma sızdırma)');
+
+-- Meşru güncelleme (aktif takas bağlama) çalışmaya devam etmeli.
+update public.conversations set active_trade_offer_id = 'cccccccc-0000-0000-0000-000000000003'
+ where id = 'eeeeeeee-0000-0000-0000-000000000005';
+select pg_temp.ok(true, 'sohbete aktif takas bağlanabiliyor');
+
+
+\echo ''
+\echo '=== 8) Yanıtlanmış teklifin kalemleri kilitli'
+-- Teklif hâlâ 'pending' iken kalem silmek MEŞRU (kullanıcı teklifini
+-- düzenliyor); kilit ancak teklif yanıtlandıktan sonra devreye girer.
+delete from public.trade_offer_items
+ where offer_id = 'cccccccc-0000-0000-0000-000000000003' and role = 'requested';
+select pg_temp.ok(true, 'bekleyen teklifin kalemi silinebiliyor');
+
+insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
+  ('cccccccc-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000002',
+   '22222222-2222-2222-2222-222222222222', 'requested');
+
+update public.trade_offers set status = 'accepted'
+ where id = 'cccccccc-0000-0000-0000-000000000003';
+
+select pg_temp.rejects($$
+  delete from public.trade_offer_items
+   where offer_id = 'cccccccc-0000-0000-0000-000000000003'
+     and role = 'requested'
+$$, 'kabul edilmiş teklifin kalemini silmek (ilan sonsuza kadar in_trade kalır)');
+
+
+\echo ''
+\echo '=== 9) Şikayette yönetici alanları istemciden yazılamaz'
+insert into public.reports (id, reporter_id, target_type, target_id, reason, description,
+                            status, priority, resolution_note, resolved_by)
+values ('ffffffff-0000-0000-0000-000000000006',
+        '11111111-1111-1111-1111-111111111111', 'listing',
+        'aaaaaaaa-0000-0000-0000-000000000002', 'fraud', 'test',
+        'resolved', 'low', 'İncelendi, haksız bulundu',
+        '22222222-2222-2222-2222-222222222222');
+
+select pg_temp.ok(
+  (select status = 'pending' and priority = 'normal'
+          and resolution_note is null and resolved_by is null
+     from public.reports where id = 'ffffffff-0000-0000-0000-000000000006'),
+  'uydurma yönetici kararı sıfırlandı, şikayet kaydı korundu');
+
+
 \echo ''
 \echo '=== TÜM KONTROLLER GEÇTİ ==='
 

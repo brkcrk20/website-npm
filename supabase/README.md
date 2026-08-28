@@ -20,8 +20,9 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 
 **`20260827000000_backend_integrity_fixes.sql`,
 `20260828000000_backend_hardening.sql`,
-`20260829000000_listing_expiry.sql` ve
-`20260830000000_trade_column_immutability.sql` HENÜZ UYGULANMADI.**
+`20260829000000_listing_expiry.sql`,
+`20260830000000_trade_column_immutability.sql` ve
+`20260831000000_rpc_grants_and_row_guards.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -54,7 +55,26 @@ Kapatma yöntemi kolon değişmezliği tetikleyicileri + `sender_id <>
 receiver_id` kısıtları. Regresyon testi:
 `supabase/tests/trade_immutability_test.sql`.
 
-**DÖRDÜ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`20260831000000` dört boşluğu daha kapatıyor:
+
+* **`push_notification()` herkese açıktı.** `security definer` bir fonksiyon
+  Postgres'te varsayılan olarak PUBLIC'e açıktır; `notifications` tablosunda
+  kullanıcıya INSERT politikası olmaması bu yüzden yeterli değildi. `anon`
+  dahi bu RPC ile herhangi bir kullanıcıya, istediği bağlantıyı taşıyan
+  sahte bir bildirim yazabiliyordu. `recalc_trust_score()` ve
+  `expire_stale_trade_offers()` de aynı sebeple kapatıldı.
+  (`is_admin()` / `is_blocked_between()` bilerek açık: RLS politikaları
+  onları sorguyu atan rolün yetkisiyle çağırıyor.)
+* **Sohbetin karşı tarafı değiştirilebiliyordu** — bir katılımcı
+  `participant_two_id`'yi üçüncü bir kişiye çevirip tüm özel yazışmayı ona
+  açabiliyordu.
+* **Kabul edilmiş teklifin kalemleri hâlâ silinebiliyordu**; silinen kalem
+  yüzünden karşı tarafın ilanı sonsuza kadar `in_trade` kalıyordu.
+* **Şikayet/anlaşmazlık kaydına uydurma yönetici kararı yazılabiliyordu**
+  (`status='resolved'`, `resolution_note`, `admin_decision`); yönetici
+  olmayanın INSERT'inde bu alanlar artık varsayılana çekiliyor.
+
+**BEŞİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
 `trade_status_rank()` ve `enforce_trade_transition()` üzerine;
 `20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
 ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.
