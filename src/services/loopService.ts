@@ -59,7 +59,7 @@ function normalizeParticipantStatus(status: string | null | undefined): LoopPart
 }
 
 const LOOP_SELECT =
-  `*, participants:loop_participants(*, user:profiles(${PROFILE_COLUMNS}), listing:listings(*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path)))`;
+  `*, participants:loop_participants(*, user:profiles(${PROFILE_COLUMNS}), listing:listings(*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path, sort_order)))`;
 
 type LoopParticipantRow = {
   id: string;

@@ -434,7 +434,7 @@ export const needService = {
 
     let query = supabase
       .from('listings')
-      .select(`*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path)`)
+      .select(`*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path, sort_order)`)
       .eq('status', 'active')
       .neq('owner_id', userId)
       .order('created_at', { ascending: false })

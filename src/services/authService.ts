@@ -3,7 +3,7 @@ import { GUEST_USER } from '../constants/guestUser';
 import { DEFAULT_AVATAR } from '../utils/placeholders';
 import { supabase } from '../lib/supabase';
 import type { TablesUpdate } from '../types/supabase';
-import { convertImageToWebp } from '../utils/imageToWebp';
+import { convertImageToWebp, AVATAR_MAX_PX } from '../utils/imageToWebp';
 import { trustLevel } from '../utils/trustDisplay';
 import { blockService } from './blockService';
 
@@ -77,7 +77,8 @@ async function uploadAvatar(file: File): Promise<string | null> {
   }
 
   const ownerId = authData.user.id;
-  const webpFile = await convertImageToWebp(file);
+  // Avatar uzun kenarı 512 px (README "Kararlar").
+  const webpFile = await convertImageToWebp(file, 0.82, AVATAR_MAX_PX);
   const fileExt = webpFile.name.split('.').pop() || 'jpg';
   const randomId =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto

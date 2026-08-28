@@ -26,7 +26,7 @@ const LISTING_IMAGES_BUCKET = 'listing-images';
 const LISTING_OWNER_COLUMNS = 'id, full_name, avatar_url, city, district';
 
 const LISTING_SELECT =
-  `*, user:profiles(${LISTING_OWNER_COLUMNS}), images:listing_images(storage_path)`;
+  `*, user:profiles(${LISTING_OWNER_COLUMNS}), images:listing_images(storage_path, sort_order)`;
 
 /**
  * Kullanıcının arama metnini PostgREST `or()` filtresine gömülebilir hale
@@ -177,6 +177,21 @@ async function getCategorySlug(
 
 import { DEFAULT_AVATAR } from '../utils/placeholders';
 
+/**
+ * Gömülü `listing_images` satırlarını `sort_order`a göre sıralayıp URL
+ * dizisine çevirir. Fotoğraf yoksa nötr yer tutucu döner.
+ */
+function sortedImages(rows: unknown): string[] {
+  if (!Array.isArray(rows) || !rows.length) return [DEFAULT_IMAGE];
+
+  const urls = [...rows]
+    .sort((a: any, b: any) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0))
+    .map((img: any) => (typeof img === 'string' ? img : img?.storage_path || img))
+    .filter((url): url is string => typeof url === 'string' && url.length > 0);
+
+  return urls.length ? urls : [DEFAULT_IMAGE];
+}
+
 function mapListing(row: any): Listing {
   const categoryId = row.category_slug ?? row.category_id;
 
@@ -229,17 +244,24 @@ function mapListing(row: any): Listing {
 
     condition: row.condition as ListingCondition,
 
-    // BURASI GÜNCELLENDİ: Fotoğrafları objeden string'e çeviriyor
-    images:
-      Array.isArray(row.images) && row.images.length
-        ? row.images.map((img: any) => typeof img === 'string' ? img : img.storage_path || img)
-        : [DEFAULT_IMAGE],
+    // Fotoğraflar `sort_order`a göre sıralanır. Bu kolon yükleme sırasında
+    // yazılıyordu (bkz. createListing) ama HİÇBİR sorguda okunmuyordu:
+    // PostgREST gömülü satırların sırasını garanti etmediği için ilanın
+    // KAPAK fotoğrafı (images[0]) her yüklemede değişebiliyordu — kullanıcı
+    // ilanını bir bakışta tanıyamıyordu.
+    images: sortedImages(row.images),
 
     location: {
       city: row.city ?? '',
       district: row.district ?? '',
-      lat: row.latitude ?? 0,
-      lng: row.longitude ?? 0,
+      // Koordinat yoksa 0 DEĞİL undefined. `?? 0` (0,0)'ı — Gine
+      // Körfezi'ndeki gerçek bir noktayı — ilanın konumu yapıyordu ve
+      // EditListingPage bu değeri forma alıp updateListing ile GERİ
+      // YAZDIĞI için konumsuz her ilan düzenlendiğinde kalıcı olarak
+      // (0,0)'a çakılıyordu; sonra haversine oradan binlerce kilometre
+      // hesaplıyordu. Aynı ilke `distanceKm` için aşağıda zaten yazılı.
+      lat: typeof row.latitude === 'number' ? row.latitude : undefined,
+      lng: typeof row.longitude === 'number' ? row.longitude : undefined,
       // "Mesafe ya gerçektir ya da yoktur" (README). Önceden burada sabit 0
       // dönülüyordu: hiçbir sorgu `distance_km` üretmediği için HER ilan
       // "0 km uzakta" görünüyor, mesafe filtreleri de (SwipeMatchPage,

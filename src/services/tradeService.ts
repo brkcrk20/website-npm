@@ -114,7 +114,7 @@ type TradeEventRow = {
 };
 
 const OFFER_SELECT =
-  `*, sender:profiles!trade_offers_sender_id_fkey(${PROFILE_COLUMNS}), receiver:profiles!trade_offers_receiver_id_fkey(${PROFILE_COLUMNS}), items:trade_offer_items(*, listing:listings(*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path)))`;
+  `*, sender:profiles!trade_offers_sender_id_fkey(${PROFILE_COLUMNS}), receiver:profiles!trade_offers_receiver_id_fkey(${PROFILE_COLUMNS}), items:trade_offer_items(*, listing:listings(*, user:profiles(${PROFILE_COLUMNS}), images:listing_images(storage_path, sort_order)))`;
 
 /** Sohbete düşen takas kartının metni: "PS5 ↔ Kamera" (rapor md. 33). */
 function buildTradeSummary(offered: Listing[], requested: Listing[]): string {
