@@ -105,9 +105,26 @@ async function uploadAvatar(file: File): Promise<string | null> {
   return publicUrl;
 }
 
+/**
+ * `createProfile` sonucu.
+ *
+ * Üç durum var ve üçü de çağıran tarafta ayrı ele alınmalı:
+ *   * `user` dolu                  → kayıt tamam.
+ *   * `user` dolu + `warning` dolu → kayıt tamam ama ikincil bir adım
+ *                                    (auth tarafına e-posta yazımı) başarısız.
+ *   * `error` dolu                 → kayıt olmadı; metin kullanıcıya gösterilir.
+ */
+export interface CreateProfileResult {
+  user?: UserProfile;
+  error?: string;
+  warning?: string;
+}
+
 export interface PhoneCheckResult {
   exists: boolean;
   message: string;
+  /** Kontrol yapılamadıysa (RPC hatası) sebebi; `exists` bu durumda anlamsızdır. */
+  error?: string;
 }
 
 function normalizePhone(phone: string): string {
@@ -139,6 +156,103 @@ function formatPhone(phone: string): string {
 
   return phone;
 }
+
+/**
+ * Supabase'ten dönen ham hatayı, kullanıcıya gösterilebilir bir cümleye
+ * çevirir.
+ *
+ * Giriş/kayıt akışındaki HER hata eskiden yalnızca `console.error`'a yazılıp
+ * yerine sabit bir metin gösteriliyordu ("Profil oluşturulamadı. Lütfen
+ * tekrar deneyin."). Ne kullanıcı ne de hatayı bildiren kişi gerçekte neyin
+ * bozulduğunu görebiliyordu: SMS sağlayıcısı tanımsız mı, e-posta gönderim
+ * kotası mı doldu, şifreyi politika mı reddetti — hepsi aynı cümleye
+ * düşüyordu. Artık bilinen durumlar adıyla söyleniyor; bilinmeyende ham
+ * mesaj parantez içinde olduğu gibi ekleniyor, böylece tek bir ekran
+ * görüntüsü teşhis için yetiyor.
+ */
+export function describeAuthError(error: unknown, fallback: string): string {
+  if (!error) return fallback;
+
+  const err = error as { code?: string; message?: string; status?: number };
+  const message = (err.message ?? '').trim();
+  const haystack = `${err.code ?? ''} ${message}`.toLowerCase();
+  const has = (...needles: string[]) => needles.some((n) => haystack.includes(n));
+
+  // ── Telefon / SMS ────────────────────────────────────────────────────────
+  if (has('phone_provider_disabled', 'phone signups are disabled', 'signups not allowed')) {
+    return (
+      'Telefonla giriş bu Supabase projesinde kapalı. ' +
+      'Authentication → Providers altından Phone sağlayıcısını açın.'
+    );
+  }
+
+  if (
+    has(
+      'sms_send_failed',
+      'error sending confirmation otp',
+      'error sending sms',
+      'unsupported phone provider'
+    )
+  ) {
+    return (
+      'SMS gönderilemedi: Supabase projesinde bir SMS sağlayıcısı ' +
+      '(Twilio / Vonage / MessageBird) tanımlı değil ya da sağlayıcı isteği reddetti.'
+    );
+  }
+
+  if (has('over_sms_send_rate_limit')) {
+    return 'Çok fazla SMS istendi. Bir süre bekleyip tekrar deneyin.';
+  }
+
+  if (has('otp_expired', 'token has expired')) {
+    return 'Doğrulama kodunun süresi doldu ya da kod hatalı. Yeni bir kod isteyin.';
+  }
+
+  if (has('invalid_credentials', 'invalid login credentials')) {
+    return 'Telefon numarası veya şifre hatalı.';
+  }
+
+  // ── E-posta ──────────────────────────────────────────────────────────────
+  if (has('email_exists', 'already been registered', 'already registered')) {
+    return 'Bu e-posta adresi başka bir hesapta kayıtlı. Farklı bir e-posta girin.';
+  }
+
+  if (has('over_email_send_rate_limit')) {
+    return (
+      'E-posta gönderim sınırına takıldı (Supabase varsayılanı saatte 2 e-postadır). ' +
+      'Bir süre bekleyin ya da projeye kendi SMTP sunucunuzu tanımlayın.'
+    );
+  }
+
+  if (has('email_address_invalid', 'unable to validate email')) {
+    return 'E-posta adresi geçersiz görünüyor.';
+  }
+
+  // ── Şifre ────────────────────────────────────────────────────────────────
+  if (has('weak_password', 'password should be', 'password is too short')) {
+    return `Şifre, Supabase projesinin şifre politikasını karşılamıyor. ${message}`.trim();
+  }
+
+  if (has('same_password')) {
+    return 'Yeni şifre eskisiyle aynı olamaz.';
+  }
+
+  if (has('reauthentication_needed')) {
+    return 'Şifre değişikliği için yeniden doğrulama gerekiyor.';
+  }
+
+  // ── Genel ────────────────────────────────────────────────────────────────
+  if (has('over_request_rate_limit') || err.status === 429) {
+    return 'Çok fazla deneme yapıldı. Kısa bir süre bekleyip tekrar deneyin.';
+  }
+
+  if (has('failed to fetch', 'networkerror', 'network request failed')) {
+    return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.';
+  }
+
+  return message ? `${fallback} (${message})` : fallback;
+}
+
 
 // public.trust_profiles satırı, her profile INSERT'inde DB tetikleyicisi
 // (create_trust_profile) tarafından otomatik oluşturuluyor. Önceden bu veri
@@ -356,6 +470,7 @@ export const authService = {
       return {
         exists: false,
         message: 'Telefon kontrolü yapılamadı.',
+        error: describeAuthError(error, 'Telefon kontrolü yapılamadı.'),
       };
     }
 
@@ -381,7 +496,7 @@ export const authService = {
 
       return {
         success: false,
-        error: error.message,
+        error: describeAuthError(error, 'SMS kodu gönderilemedi.'),
       };
     }
 
@@ -413,7 +528,7 @@ export const authService = {
       return {
         success: false,
         isNewUser: false,
-        error: error?.message || 'Kod doğrulanamadı.',
+        error: describeAuthError(error, 'Kod doğrulanamadı.'),
       };
     }
 
@@ -458,6 +573,12 @@ export const authService = {
   ): Promise<{
     success: boolean;
     requiresOtp: boolean;
+    /**
+     * Şifre doğru, oturum açıldı ama `profiles` satırı yok: kullanıcı
+     * kaydını yarıda bırakmış. Oturum bilerek AÇIK bırakılır; çağıran
+     * taraf kullanıcıyı `/profil-olustur` adımına göndermelidir.
+     */
+    needsProfile?: boolean;
     user?: UserProfile;
     error?: string;
   }> {
@@ -474,7 +595,7 @@ export const authService = {
       return {
         success: false,
         requiresOtp: false,
-        error: error?.message || 'Telefon numarası veya şifre hatalı.',
+        error: describeAuthError(error, 'Telefon numarası veya şifre hatalı.'),
       };
     }
 
@@ -484,14 +605,31 @@ export const authService = {
       .eq('id', data.user.id)
       .maybeSingle();
 
-    if (profileError || !profileRow) {
-      console.error('Profil bulunamadı:', profileError);
+    if (profileError) {
+      console.error('Profil okunamadı:', profileError);
       await supabase.auth.signOut();
 
       return {
         success: false,
         requiresOtp: false,
-        error: 'Kullanıcı profili bulunamadı.',
+        error: describeAuthError(profileError, 'Kullanıcı profili okunamadı.'),
+      };
+    }
+
+    // Şifre doğru ama profil satırı yok. Bu bir hata değil, YARIM KALMIŞ BİR
+    // KAYIT: telefon+OTP ile auth kullanıcısı açılmış, ardından
+    // CreateProfilePage tamamlanmadan çıkılmış (ya da profil kaydı bir hata
+    // aldığı için hiç yazılamamış).
+    //
+    // Önceden burada oturum kapatılıp "Kullanıcı profili bulunamadı." deniyor
+    // ve kullanıcı KALICI olarak dışarıda kalıyordu: giriş bu duvara
+    // çarpıyor, kayıt ise numara zaten auth'ta var diye ilerlemiyordu.
+    // Artık oturum korunuyor ve kullanıcı kaldığı adımdan devam ediyor.
+    if (!profileRow) {
+      return {
+        success: true,
+        requiresOtp: false,
+        needsProfile: true,
       };
     }
 
@@ -506,7 +644,7 @@ export const authService = {
         return {
           success: false,
           requiresOtp: true,
-          error: otpResult.error || 'SMS kodu gönderilemedi.',
+          error: otpResult.error ?? 'SMS kodu gönderilemedi.',
         };
       }
 
@@ -580,7 +718,7 @@ export const authService = {
     bio?: string;
     interests?: CategoryId[];
     wantedCategories?: CategoryId[];
-  }): Promise<UserProfile | undefined> {
+  }): Promise<CreateProfileResult> {
     const {
       data: authData,
       error: authError,
@@ -589,25 +727,48 @@ export const authService = {
     if (authError || !authData.user) {
       console.error('Profil oluşturmak için giriş gerekli:', authError);
 
-      return undefined;
+      return {
+        error: describeAuthError(
+          authError,
+          'Oturum bulunamadı. Lütfen telefon numaranı yeniden doğrula.'
+        ),
+      };
     }
 
     const userId = authData.user.id;
-    const phone = normalizePhone(data.phone);
+
+    // Numaranın doğruluk kaynağı OTURUM, form değil. `data.phone` router
+    // state'inden geliyor ve o state sayfa yenilenince kayboluyor; çağıran
+    // ekran bu durumda kendi demo numarasına düşüyordu, yani profile YANLIŞ
+    // bir numara yazılabiliyordu. Oturumdaki numara zaten OTP ile doğrulanmış
+    // olan numaradır.
+    const phone = normalizePhone(authData.user.phone || data.phone);
     const fullName = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
 
-    // Telefon+OTP ile açılan oturuma artık bir şifre ve e-posta tanımlıyoruz;
-    // böylece kullanıcı sonraki girişlerde telefon + şifre ile
-    // (her seferinde SMS beklemeden) oturum açabilir.
-    const { error: updateAuthError } = await supabase.auth.updateUser({
+    // Şifre ve e-posta AYRI AYRI yazılıyor; sırası da bilinçli.
+    //
+    // Önceden ikisi tek bir `updateUser({ password, email })` çağrısındaydı ve
+    // çağrı hata verdiğinde kayıt tümden iptal ediliyordu — kullanıcı yalnızca
+    // "Profil oluşturulamadı. Lütfen tekrar deneyin." görüyordu. Oysa e-posta
+    // tarafı, şifreyle hiç ilgisi olmayan sebeplerle çok kolay hata verir:
+    // doğrulama postası Supabase'in varsayılan gönderim kotasına (saatte 2)
+    // takılır ya da adres başka bir hesapta kayıtlıdır. Sonuç: kullanıcı
+    // kaydını hiç tamamlayamıyor, profili olmadığı için sonraki girişte de
+    // duvara çarpıyordu.
+    //
+    // Şifre kritiktir (sonraki girişin tek yolu) — başarısızsa kayıt durur.
+    // E-posta ise `profiles.email` içinde zaten saklanıyor; auth tarafına
+    // yazılamazsa kayıt tamamlanır, kullanıcıya yalnızca uyarı gösterilir.
+    const { error: passwordError } = await supabase.auth.updateUser({
       password: data.password,
-      email: data.email,
     });
 
-    if (updateAuthError) {
-      console.error('Şifre/e-posta ayarlanamadı:', updateAuthError);
+    if (passwordError) {
+      console.error('Şifre ayarlanamadı:', passwordError);
 
-      return undefined;
+      return {
+        error: describeAuthError(passwordError, 'Şifre ayarlanamadı.'),
+      };
     }
 
     const { data: profile, error } = await supabase
@@ -639,7 +800,18 @@ export const authService = {
     if (error || !profile) {
       console.error('Profil oluşturulamadı:', error);
 
-      return undefined;
+      return {
+        error: describeAuthError(error, 'Profil kaydedilemedi.'),
+      };
+    }
+
+    // Profil satırı yazıldı; buradan sonrası artık kaydı geri almaz.
+    const { error: emailError } = await supabase.auth.updateUser({
+      email: data.email.trim(),
+    });
+
+    if (emailError) {
+      console.error('E-posta hesaba eklenemedi:', emailError);
     }
 
     const trust = await getTrustProfileRow(profile.id);
@@ -659,7 +831,13 @@ export const authService = {
       JSON.stringify(newUser)
     );
 
-    return newUser;
+    return {
+      user: newUser,
+      warning: emailError
+        ? `${describeAuthError(emailError, 'E-posta adresi hesabına eklenemedi.')} ` +
+          'Profilin oluşturuldu; e-postanı sonra Profil → Düzenle üzerinden ekleyebilirsin.'
+        : undefined,
+    };
   },
 
   async getCurrentUserFromSupabase(): Promise<UserProfile | null> {
