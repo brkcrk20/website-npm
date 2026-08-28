@@ -89,7 +89,7 @@ export async function uploadListingImages(
   const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError || !authData.user) {
-    console.error(
+    reportServiceError(
       'Fotoğraf yüklenemedi: geçerli bir Supabase oturumu bulunamadı. ' +
         'Kullanıcı arayüzde "giriş yapılmış" görünse bile, gerçek Supabase ' +
         'oturumu sona ermiş olabilir (localStorage önbelleği ile Supabase ' +
@@ -137,7 +137,7 @@ export async function uploadListingImages(
       });
 
     if (uploadError) {
-      console.error('Fotoğraf yüklenemedi:', file.name, uploadError);
+      reportServiceError(`Fotoğraf yüklenemedi (${file.name}):`, uploadError);
       results.push(null);
       continue;
     }
@@ -162,7 +162,7 @@ async function getCategoryUuid(
     .maybeSingle();
 
   if (error) {
-    console.error('Kategori bulunamadı:', error);
+    reportServiceError('Kategori bulunamadı:', error);
     return null;
   }
 
@@ -182,6 +182,7 @@ async function getCategorySlug(
 }
 
 import { DEFAULT_AVATAR } from '../utils/placeholders';
+import { reportServiceError } from '../lib/serviceError';
 
 /**
  * Gömülü `listing_images` satırlarını `sort_order`a göre sıralayıp URL
@@ -488,7 +489,7 @@ async function getFavoriteListingIds(listingIds: string[]): Promise<Set<string>>
     .in('listing_id', listingIds);
 
   if (error) {
-    console.error('Favori listesi alınamadı:', error);
+    reportServiceError('Favori listesi alınamadı:', error);
     return new Set();
   }
 
@@ -530,7 +531,7 @@ export const listingService = {
       .limit(options.limit ?? DEFAULT_LISTING_PAGE_SIZE);
 
     if (error) {
-      console.error('Listings alınamadı:', error);
+      reportServiceError('Listings alınamadı:', error);
       return [];
     }
 
@@ -587,7 +588,7 @@ export const listingService = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error(
+      reportServiceError(
         'Kullanıcı ilanları alınamadı:',
         error
       );
@@ -621,7 +622,7 @@ export const listingService = {
     );
 
     if (!categoryUuid) {
-      console.error(
+      reportServiceError(
         'Geçersiz kategori:',
         data.categoryId
       );
@@ -651,7 +652,7 @@ export const listingService = {
       .single();
 
     if (error || !created) {
-      console.error(
+      reportServiceError(
         'İlan oluşturulamadı:',
         error
       );
@@ -737,7 +738,7 @@ export const listingService = {
         );
 
       if (!categoryUuid) {
-        console.error(
+        reportServiceError(
           'Kategori bulunamadı:',
           updates.categoryId
         );
@@ -793,7 +794,7 @@ export const listingService = {
       .maybeSingle();
 
     if (error || !data) {
-      console.error(
+      reportServiceError(
         'İlan güncellenemedi:',
         error
       );
@@ -835,7 +836,7 @@ export const listingService = {
     });
 
     if (error) {
-      console.error('İlan kaldırılamadı:', error);
+      reportServiceError('İlan kaldırılamadı:', error);
 
       return {
         outcome: 'failed',
@@ -867,7 +868,7 @@ export const listingService = {
     });
 
     if (error) {
-      console.error('İlan yenilenemedi:', error);
+      reportServiceError('İlan yenilenemedi:', error);
 
       return {
         expiresAt: null,
@@ -921,7 +922,7 @@ export const listingService = {
           .eq('id', existing.id);
 
       if (error) {
-        console.error(
+        reportServiceError(
           'Favori kaldırılamadı:',
           error
         );
@@ -941,7 +942,7 @@ export const listingService = {
         });
 
     if (error) {
-      console.error(
+      reportServiceError(
         'Favori eklenemedi:',
         error
       );
@@ -1063,7 +1064,7 @@ export const listingService = {
     } = await request;
 
     if (error) {
-      console.error(
+      reportServiceError(
         'İlan araması başarısız:',
         error
       );

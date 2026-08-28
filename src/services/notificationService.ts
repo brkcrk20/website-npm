@@ -1,5 +1,6 @@
 import { NotificationItem, NotificationType } from '../types';
 import { supabase } from '../lib/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 // ─────────────────────────────────────────────────────────────────────────
 // BİLDİRİM SERVİSİ (rapor md. 44-45)
@@ -69,7 +70,7 @@ export const notificationService = {
       .limit(limit);
 
     if (error) {
-      console.error('Bildirimler alınamadı:', error);
+      reportServiceError('Bildirimler alınamadı:', error);
       return [];
     }
 
@@ -83,7 +84,7 @@ export const notificationService = {
       .eq('id', notificationId);
 
     if (error) {
-      console.error('Bildirim okundu işaretlenemedi:', error);
+      reportServiceError('Bildirim okundu işaretlenemedi:', error);
       return false;
     }
 
@@ -98,7 +99,7 @@ export const notificationService = {
       .eq('is_read', false);
 
     if (error) {
-      console.error('Bildirimler okundu işaretlenemedi:', error);
+      reportServiceError('Bildirimler okundu işaretlenemedi:', error);
       return false;
     }
 

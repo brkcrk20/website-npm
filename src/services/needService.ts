@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { enrichListings } from './listingService';
 import { blockService } from './blockService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 /**
  * Profil join'lerinde çekilen kolonlar.
@@ -299,7 +300,7 @@ export const needService = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('İhtiyaçlar alınamadı:', error);
+      reportServiceError('İhtiyaçlar alınamadı:', error);
       return [];
     }
 
@@ -315,7 +316,7 @@ export const needService = {
     const title = data.title.trim();
 
     if (!title) {
-      console.error('İhtiyaç başlığı boş olamaz.');
+      reportServiceError('İhtiyaç başlığı boş olamaz.');
       return undefined;
     }
 
@@ -341,7 +342,7 @@ export const needService = {
       // Beklenen iki hata: aynı ihtiyacın tekrar eklenmesi
       // (needs_user_title_unique_idx) ve açık ihtiyaç limiti
       // (enforce_active_need_limit) — ikisi de migration'da tanımlı.
-      console.error('İhtiyaç oluşturulamadı:', error);
+      reportServiceError('İhtiyaç oluşturulamadı:', error);
       return undefined;
     }
 
@@ -372,7 +373,7 @@ export const needService = {
       .single();
 
     if (error || !data) {
-      console.error('İhtiyaç güncellenemedi:', error);
+      reportServiceError('İhtiyaç güncellenemedi:', error);
       return undefined;
     }
 
@@ -383,7 +384,7 @@ export const needService = {
     const { error } = await supabase.from('needs').delete().eq('id', needId);
 
     if (error) {
-      console.error('İhtiyaç silinemedi:', error);
+      reportServiceError('İhtiyaç silinemedi:', error);
       return false;
     }
 
@@ -457,7 +458,7 @@ export const needService = {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Eşleşen ilanlar alınamadı:', error);
+      reportServiceError('Eşleşen ilanlar alınamadı:', error);
       return [];
     }
 
@@ -518,7 +519,7 @@ export const needService = {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Bu ürünü arayanlar alınamadı:', error);
+      reportServiceError('Bu ürünü arayanlar alınamadı:', error);
       return [];
     }
 
@@ -558,7 +559,7 @@ export const needService = {
     const { data, error } = await request;
 
     if (error) {
-      console.error('Arayanlar alınamadı:', error);
+      reportServiceError('Arayanlar alınamadı:', error);
       return [];
     }
 
@@ -588,7 +589,7 @@ export const needService = {
       .limit(500);
 
     if (error) {
-      console.error('Popüler ihtiyaçlar alınamadı:', error);
+      reportServiceError('Popüler ihtiyaçlar alınamadı:', error);
       return [];
     }
 

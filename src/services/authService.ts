@@ -6,6 +6,7 @@ import type { TablesUpdate } from '../types/supabase';
 import { convertImageToWebp, AVATAR_MAX_PX } from '../utils/imageToWebp';
 import { trustLevel } from '../utils/trustDisplay';
 import { blockService } from './blockService';
+import { reportServiceError } from '../lib/serviceError';
 
 const AUTH_STORAGE_KEY = 'swaloop_auth_user';
 const ONBOARDING_COMPLETED_KEY = 'swaloop_onboarding_done';
@@ -68,7 +69,7 @@ async function uploadAvatar(file: File): Promise<string | null> {
   const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError || !authData.user) {
-    console.error(
+    reportServiceError(
       'Avatar yüklenemedi: geçerli bir Supabase oturumu bulunamadı. ' +
         'Kullanıcının tekrar giriş (telefon+OTP) yapması gerekebilir.',
       authError
@@ -97,7 +98,7 @@ async function uploadAvatar(file: File): Promise<string | null> {
     });
 
   if (uploadError) {
-    console.error('Avatar yüklenemedi:', uploadError);
+    reportServiceError('Avatar yüklenemedi:', uploadError);
     return null;
   }
 
@@ -268,7 +269,7 @@ async function getTrustProfileRow(userId: string): Promise<any | null> {
     .maybeSingle();
 
   if (error) {
-    console.error('Trust profile alınamadı:', error);
+    reportServiceError('Trust profile alınamadı:', error);
     return null;
   }
 
@@ -325,7 +326,7 @@ export async function fetchTrustProfiles(
     .in('user_id', ids);
 
   if (error) {
-    console.error('Güven profilleri alınamadı:', error);
+    reportServiceError('Güven profilleri alınamadı:', error);
     return byUser;
   }
 
@@ -432,7 +433,7 @@ export const authService = {
     const { data, error } = await supabase.auth.getSession();
 
     if (error) {
-      console.error('Supabase session error:', error);
+      reportServiceError('Supabase session error:', error);
       return null;
     }
 
@@ -509,7 +510,7 @@ export const authService = {
     });
 
     if (error) {
-      console.error('Telefon kontrolü başarısız:', error);
+      reportServiceError('Telefon kontrolü başarısız:', error);
 
       return {
         exists: false,
@@ -536,7 +537,7 @@ export const authService = {
     });
 
     if (error) {
-      console.error('OTP gönderilemedi:', error);
+      reportServiceError('OTP gönderilemedi:', error);
 
       return {
         success: false,
@@ -567,7 +568,7 @@ export const authService = {
     });
 
     if (error || !data.user) {
-      console.error('OTP doğrulama başarısız:', error);
+      reportServiceError('OTP doğrulama başarısız:', error);
 
       return {
         success: false,
@@ -588,7 +589,7 @@ export const authService = {
     // oluşturma ekranına gönderiliyor ve kendi profilinin (bio, konum,
     // fotoğraf, ilgi alanları) üzerine yazıyordu.
     if (profileError) {
-      console.error('Profil okunamadı:', profileError);
+      reportServiceError('Profil okunamadı:', profileError);
 
       return {
         success: false,
@@ -652,7 +653,7 @@ export const authService = {
     });
 
     if (error || !data.user) {
-      console.error('Şifre ile giriş başarısız:', error);
+      reportServiceError('Şifre ile giriş başarısız:', error);
 
       return {
         success: false,
@@ -668,7 +669,7 @@ export const authService = {
       .maybeSingle();
 
     if (profileError) {
-      console.error('Profil okunamadı:', profileError);
+      reportServiceError('Profil okunamadı:', profileError);
       await supabase.auth.signOut();
 
       return {
@@ -755,7 +756,7 @@ export const authService = {
       .single();
 
     if (error || !data) {
-      console.error('SMS doğrulama tercihi güncellenemedi:', error);
+      reportServiceError('SMS doğrulama tercihi güncellenemedi:', error);
       return undefined;
     }
 
@@ -787,7 +788,7 @@ export const authService = {
     } = await supabase.auth.getUser();
 
     if (authError || !authData.user) {
-      console.error('Profil oluşturmak için giriş gerekli:', authError);
+      reportServiceError('Profil oluşturmak için giriş gerekli:', authError);
 
       return {
         error: describeAuthError(
@@ -826,7 +827,7 @@ export const authService = {
     });
 
     if (passwordError) {
-      console.error('Şifre ayarlanamadı:', passwordError);
+      reportServiceError('Şifre ayarlanamadı:', passwordError);
 
       return {
         error: describeAuthError(passwordError, 'Şifre ayarlanamadı.'),
@@ -860,7 +861,7 @@ export const authService = {
       .single();
 
     if (error || !profile) {
-      console.error('Profil oluşturulamadı:', error);
+      reportServiceError('Profil oluşturulamadı:', error);
 
       return {
         error: describeAuthError(error, 'Profil kaydedilemedi.'),
@@ -873,7 +874,7 @@ export const authService = {
     });
 
     if (emailError) {
-      console.error('E-posta hesaba eklenemedi:', emailError);
+      reportServiceError('E-posta hesaba eklenemedi:', emailError);
     }
 
     const trust = await getTrustProfileRow(profile.id);
@@ -951,7 +952,7 @@ export const authService = {
       .maybeSingle();
 
     if (error || !profile) {
-      console.error('Kullanıcı profili bulunamadı:', error);
+      reportServiceError('Kullanıcı profili bulunamadı:', error);
       return null;
     }
 
@@ -1069,7 +1070,7 @@ export const authService = {
       .single();
 
     if (error || !data) {
-      console.error('Profil güncellenemedi:', error);
+      reportServiceError('Profil güncellenemedi:', error);
       return undefined;
     }
 

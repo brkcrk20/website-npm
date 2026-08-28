@@ -2,6 +2,7 @@ import { AdminKPI, AdminAuditLog, Report, Dispute } from '../types';
 import { supabase } from '../lib/supabase';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
 import { DEFAULT_AVATAR } from '../utils/placeholders';
+import { reportServiceError } from '../lib/serviceError';
 
 // =============================================================================
 // GERÇEK VERİYE BAĞLANDI (bkz. supabase/migrations/20260819090000_create_admin_tables.sql)
@@ -122,7 +123,7 @@ async function getCurrentAdmin(): Promise<{ id: string; name: string } | null> {
   const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError || !authData.user) {
-    console.error('Admin işlemi reddedildi: geçerli bir Supabase oturumu yok.', authError);
+    reportServiceError('Admin işlemi reddedildi: geçerli bir Supabase oturumu yok.', authError);
     return null;
   }
 
@@ -133,7 +134,7 @@ async function getCurrentAdmin(): Promise<{ id: string; name: string } | null> {
     .maybeSingle();
 
   if (!profile?.is_admin) {
-    console.error(
+    reportServiceError(
       'Admin işlemi reddedildi: bu kullanıcı (profiles.is_admin = false) admin değil. ' +
         'Supabase Studio → SQL Editor üzerinden `update public.profiles set is_admin = true where id = \'...\'` ile yetkilendirin.'
     );
@@ -242,7 +243,7 @@ export const adminService = {
       .eq('status', 'active');
 
     if (error || !data) {
-      console.error('Kategori dağılımı alınamadı:', error);
+      reportServiceError('Kategori dağılımı alınamadı:', error);
       return [];
     }
 
@@ -272,7 +273,7 @@ export const adminService = {
       .limit(limit);
 
     if (error || !data) {
-      console.error('Aktivite akışı alınamadı:', error);
+      reportServiceError('Aktivite akışı alınamadı:', error);
       return [];
     }
 
@@ -304,7 +305,7 @@ export const adminService = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Raporlar alınamadı (muhtemelen bu kullanıcı admin değil, RLS engelledi):', error);
+      reportServiceError('Raporlar alınamadı (muhtemelen bu kullanıcı admin değil, RLS engelledi):', error);
       return [];
     }
 
@@ -320,7 +321,7 @@ export const adminService = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Disputeler alınamadı (muhtemelen bu kullanıcı admin değil, RLS engelledi):', error);
+      reportServiceError('Disputeler alınamadı (muhtemelen bu kullanıcı admin değil, RLS engelledi):', error);
       return [];
     }
 
@@ -335,7 +336,7 @@ export const adminService = {
       .limit(200);
 
     if (error) {
-      console.error('Denetim kayıtları alınamadı (muhtemelen bu kullanıcı admin değil, RLS engelledi):', error);
+      reportServiceError('Denetim kayıtları alınamadı (muhtemelen bu kullanıcı admin değil, RLS engelledi):', error);
       return [];
     }
 
@@ -362,7 +363,7 @@ export const adminService = {
     const { error } = await supabase.from('reports').update(update).eq('id', reportId);
 
     if (error) {
-      console.error('Rapor güncellenemedi:', error);
+      reportServiceError('Rapor güncellenemedi:', error);
       return false;
     }
 
@@ -393,7 +394,7 @@ export const adminService = {
     const { error } = await supabase.from('disputes').update(update).eq('id', disputeId);
 
     if (error) {
-      console.error('Dispute güncellenemedi:', error);
+      reportServiceError('Dispute güncellenemedi:', error);
       return false;
     }
 
@@ -430,12 +431,12 @@ export const adminService = {
       .select('id');
 
     if (error) {
-      console.error('İlan kaldırılamadı:', error);
+      reportServiceError('İlan kaldırılamadı:', error);
       return false;
     }
 
     if (!data || data.length === 0) {
-      console.error(
+      reportServiceError(
         'İlan kaldırılamadı: hiçbir satır güncellenmedi. İlan silinmiş olabilir ya da ' +
           'bu oturumun admin yetkisi RLS tarafından tanınmıyor (profiles.is_admin).'
       );
@@ -462,7 +463,7 @@ export const adminService = {
     const { error } = await supabase.from('admin_audit_logs').insert(insert);
 
     if (error) {
-      console.error('Denetim kaydı yazılamadı:', error);
+      reportServiceError('Denetim kaydı yazılamadı:', error);
     }
   },
 };

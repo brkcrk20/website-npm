@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import { enrichListings } from './listingService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 /**
  * Profil join'lerinde çekilen kolonlar.
@@ -171,17 +172,17 @@ async function assertOwnActiveListing(userId: string, listingId: string): Promis
     .maybeSingle();
 
   if (error || !data) {
-    console.error('Döngüye eklenecek ilan bulunamadı:', error);
+    reportServiceError('Döngüye eklenecek ilan bulunamadı:', error);
     return false;
   }
 
   if (data.owner_id !== userId) {
-    console.error('Döngüye yalnızca kendi ilanını koyabilirsin.');
+    reportServiceError('Döngüye yalnızca kendi ilanını koyabilirsin.');
     return false;
   }
 
   if (data.status !== 'active') {
-    console.error(`Yalnızca yayında olan bir ilan döngüye konabilir (mevcut durum: ${data.status}).`);
+    reportServiceError(`Yalnızca yayında olan bir ilan döngüye konabilir (mevcut durum: ${data.status}).`);
     return false;
   }
 
@@ -196,7 +197,7 @@ export const loopService = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Döngüler getirilemedi:', error);
+      reportServiceError('Döngüler getirilemedi:', error);
       return [];
     }
 
@@ -211,7 +212,7 @@ export const loopService = {
       .maybeSingle();
 
     if (error || !data) {
-      if (error) console.error('Döngü getirilemedi:', error);
+      if (error) reportServiceError('Döngü getirilemedi:', error);
       return undefined;
     }
 
@@ -251,7 +252,7 @@ export const loopService = {
       .single();
 
     if (loopError || !loopRow) {
-      console.error('Döngü oluşturulamadı:', loopError);
+      reportServiceError('Döngü oluşturulamadı:', loopError);
       return undefined;
     }
 
@@ -268,7 +269,7 @@ export const loopService = {
       .insert(participantInsert);
 
     if (participantError) {
-      console.error('Döngü katılımcısı eklenemedi:', participantError);
+      reportServiceError('Döngü katılımcısı eklenemedi:', participantError);
       // Kurucusu olmayan bir döngü satırı yetim kalır ve listede sonsuza
       // kadar "0 katılımcı" olarak görünürdü; geri alınıyor.
       await supabase.from('loops').delete().eq('id', loopRow.id);
@@ -298,12 +299,12 @@ export const loopService = {
       .maybeSingle();
 
     if (loopError || !loopRow) {
-      console.error('Döngü bulunamadı:', loopError);
+      reportServiceError('Döngü bulunamadı:', loopError);
       return undefined;
     }
 
     if (loopRow.status !== 'matching') {
-      console.error('Bu döngü artık katılıma açık değil:', loopRow.status);
+      reportServiceError('Bu döngü artık katılıma açık değil:', loopRow.status);
       return undefined;
     }
 
@@ -313,7 +314,7 @@ export const loopService = {
       .eq('loop_id', loopId);
 
     if (loopRow.max_participants && (currentCount ?? 0) >= loopRow.max_participants) {
-      console.error('Bu döngü dolu.');
+      reportServiceError('Bu döngü dolu.');
       return undefined;
     }
 
@@ -330,7 +331,7 @@ export const loopService = {
       .insert(participantInsert);
 
     if (insertError) {
-      console.error('Döngüye katılınamadı:', insertError);
+      reportServiceError('Döngüye katılınamadı:', insertError);
       return undefined;
     }
 
@@ -357,7 +358,7 @@ export const loopService = {
       .eq('user_id', userId);
 
     if (updateError) {
-      console.error('Döngü adımı onaylanamadı:', updateError);
+      reportServiceError('Döngü adımı onaylanamadı:', updateError);
       return undefined;
     }
 
@@ -367,7 +368,7 @@ export const loopService = {
       .eq('loop_id', loopId);
 
     if (fetchError) {
-      console.error('Döngü katılımcıları getirilemedi:', fetchError);
+      reportServiceError('Döngü katılımcıları getirilemedi:', fetchError);
     } else {
       const allConfirmed = (participantRows ?? []).every((p) =>
         ['confirmed', 'delivered', 'completed'].includes(p.status)
@@ -387,7 +388,7 @@ export const loopService = {
     const { error: loopError } = await supabase.from('loops').update(loopUpdate).eq('id', loopId);
 
     if (loopError) {
-      console.error('Döngü tamamlanamadı:', loopError);
+      reportServiceError('Döngü tamamlanamadı:', loopError);
       return undefined;
     }
 

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 // ─────────────────────────────────────────────────────────────────────────
 // ENGELLEME (rapor md. 106)
@@ -50,7 +51,7 @@ export const blockService = {
       .eq('blocker_id', userId);
 
     if (error) {
-      console.error('Engel listesi alınamadı:', error);
+      reportServiceError('Engel listesi alınamadı:', error);
       return [];
     }
 
@@ -66,7 +67,7 @@ export const blockService = {
       .maybeSingle();
 
     if (error) {
-      console.error('Engel durumu okunamadı:', error);
+      reportServiceError('Engel durumu okunamadı:', error);
       return false;
     }
 
@@ -81,7 +82,7 @@ export const blockService = {
     });
 
     if (error) {
-      console.error('Kullanıcı engellenemedi:', error);
+      reportServiceError('Kullanıcı engellenemedi:', error);
       return false;
     }
 
@@ -98,7 +99,7 @@ export const blockService = {
       .eq('blocked_id', targetUserId);
 
     if (error) {
-      console.error('Engel kaldırılamadı:', error);
+      reportServiceError('Engel kaldırılamadı:', error);
       return false;
     }
 

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { TablesInsert } from '../types/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 // ─────────────────────────────────────────────────────────────────────────
 // ŞİKAYET (rapor md. 106)
@@ -55,7 +56,7 @@ export const reportService = {
     const { error } = await supabase.from('reports').insert(payload);
 
     if (error) {
-      console.error('Şikayet gönderilemedi:', error);
+      reportServiceError('Şikayet gönderilemedi:', error);
       return false;
     }
 

@@ -12,6 +12,7 @@ import { mapProfile, fetchTrustProfiles } from './authService';
 import { enrichListings } from './listingService';
 import { messageService } from './messageService';
 import type { TablesInsert, TablesUpdate } from '../types/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 /**
  * Profil join'lerinde çekilen kolonlar.
@@ -361,7 +362,7 @@ async function fetchTradeRowByOfferId(offerId: string): Promise<TradeRow | null>
     .maybeSingle();
 
   if (error) {
-    console.error('Trade kaydı alınamadı:', error);
+    reportServiceError('Trade kaydı alınamadı:', error);
     return null;
   }
   return data as TradeRow | null;
@@ -388,7 +389,7 @@ async function hydrateOffers(offerRows: TradeOfferRow[]): Promise<TradeOffer[]> 
     .select('*')
     .in('offer_id', offerIds);
 
-  if (tradeError) console.error('Trade kayıtları alınamadı:', tradeError);
+  if (tradeError) reportServiceError('Trade kayıtları alınamadı:', tradeError);
 
   const tradeByOfferId = new Map<string, TradeRow>();
   for (const row of (tradeRows ?? []) as TradeRow[]) {
@@ -410,8 +411,8 @@ async function hydrateOffers(offerRows: TradeOfferRow[]): Promise<TradeOffer[]> 
       : Promise.resolve({ data: [], error: null } as const),
   ]);
 
-  if (eventsResult.error) console.error('Trade eventleri alınamadı:', eventsResult.error);
-  if (reviewsResult.error) console.error('Değerlendirme bayrakları alınamadı:', reviewsResult.error);
+  if (eventsResult.error) reportServiceError('Trade eventleri alınamadı:', eventsResult.error);
+  if (reviewsResult.error) reportServiceError('Değerlendirme bayrakları alınamadı:', reviewsResult.error);
 
   const eventsByTradeId = new Map<string, TradeEventRow[]>();
   for (const row of (eventsResult.data ?? []) as TradeEventRow[]) {
@@ -512,7 +513,7 @@ export const tradeService = {
       .order('created_at', { ascending: false });
 
     if (error || !data) {
-      console.error('Takas teklifleri alınamadı:', error);
+      reportServiceError('Takas teklifleri alınamadı:', error);
       return [];
     }
 
@@ -527,7 +528,7 @@ export const tradeService = {
       .maybeSingle();
 
     if (error || !data) {
-      console.error('Takas teklifi alınamadı:', error);
+      reportServiceError('Takas teklifi alınamadı:', error);
       return undefined;
     }
 
@@ -542,7 +543,7 @@ export const tradeService = {
       .order('created_at', { ascending: false });
 
     if (error || !data) {
-      console.error('Gelen teklifler alınamadı:', error);
+      reportServiceError('Gelen teklifler alınamadı:', error);
       return [];
     }
 
@@ -571,7 +572,7 @@ export const tradeService = {
       .eq('status', 'pending');
 
     if (error) {
-      console.error('Bekleyen teklif sayısı alınamadı:', error);
+      reportServiceError('Bekleyen teklif sayısı alınamadı:', error);
       return 0;
     }
 
@@ -586,7 +587,7 @@ export const tradeService = {
       .order('created_at', { ascending: false });
 
     if (error || !data) {
-      console.error('Giden teklifler alınamadı:', error);
+      reportServiceError('Giden teklifler alınamadı:', error);
       return [];
     }
 
@@ -616,7 +617,7 @@ export const tradeService = {
     parentOfferId?: string;
   }): Promise<TradeOffer | undefined> {
     if (data.initiator.id === data.receiver.id) {
-      console.error('Kendine takas teklifi gönderilemez.');
+      reportServiceError('Kendine takas teklifi gönderilemez.');
       return undefined;
     }
 
@@ -650,7 +651,7 @@ export const tradeService = {
       .single();
 
     if (offerError || !offerRow) {
-      console.error('Teklif oluşturulamadı:', offerError);
+      reportServiceError('Teklif oluşturulamadı:', offerError);
       return undefined;
     }
 
@@ -674,7 +675,7 @@ export const tradeService = {
       .insert(itemRows);
 
     if (itemsError) {
-      console.error('Teklif kalemleri oluşturulamadı:', itemsError);
+      reportServiceError('Teklif kalemleri oluşturulamadı:', itemsError);
       // Teklif satırı yetim kalmasın diye geri alınıyor.
       await supabase.from('trade_offers').delete().eq('id', offerRow.id);
       return undefined;
@@ -694,7 +695,7 @@ export const tradeService = {
         data.isCounterOffer ? 'counter_card' : 'trade_card'
       );
     } catch (chatError) {
-      console.error('Teklif oluştu ama sohbete takas kartı düşürülemedi:', chatError);
+      reportServiceError('Teklif oluştu ama sohbete takas kartı düşürülemedi:', chatError);
     }
 
     return this.getTradeById(offerRow.id);
@@ -723,7 +724,7 @@ export const tradeService = {
     });
 
     if (error) {
-      console.error('Teklif kabul edilemedi:', error);
+      reportServiceError('Teklif kabul edilemedi:', error);
       return undefined;
     }
 
@@ -749,7 +750,7 @@ export const tradeService = {
       .eq('id', tradeId);
 
     if (error) {
-      console.error('Teklif reddedilemedi:', error);
+      reportServiceError('Teklif reddedilemedi:', error);
       return undefined;
     }
 
@@ -785,7 +786,7 @@ export const tradeService = {
         .eq('id', offerId);
 
       if (error) {
-        console.error('Teklif geri çekilemedi:', error);
+        reportServiceError('Teklif geri çekilemedi:', error);
         return undefined;
       }
 
@@ -802,7 +803,7 @@ export const tradeService = {
       .eq('id', tradeRow.id);
 
     if (error) {
-      console.error('Takas iptal edilemedi:', error);
+      reportServiceError('Takas iptal edilemedi:', error);
       return undefined;
     }
 
@@ -852,7 +853,7 @@ export const tradeService = {
       .eq('id', originalTradeId);
 
     if (markError) {
-      console.error('Orijinal teklif "karşı teklif verildi" olarak işaretlenemedi:', markError);
+      reportServiceError('Orijinal teklif "karşı teklif verildi" olarak işaretlenemedi:', markError);
     }
 
     return this.getTradeById(counterOffer.id);
@@ -874,7 +875,7 @@ export const tradeService = {
     const tradeRow = await fetchTradeRowByOfferId(offerId);
 
     if (!tradeRow) {
-      console.error('confirmReceipt: bu teklife bağlı bir trade kaydı yok.');
+      reportServiceError('confirmReceipt: bu teklife bağlı bir trade kaydı yok.');
       return undefined;
     }
 
@@ -883,7 +884,7 @@ export const tradeService = {
     });
 
     if (error) {
-      console.error('Teslimat onaylanamadı:', error);
+      reportServiceError('Teslimat onaylanamadı:', error);
       return undefined;
     }
 
@@ -906,7 +907,7 @@ export const tradeService = {
 
     const tradeRow = await fetchTradeRowByOfferId(tradeId);
     if (!tradeRow) {
-      console.error('advanceTradeStep: bu teklife bağlı bir trade kaydı yok.');
+      reportServiceError('advanceTradeStep: bu teklife bağlı bir trade kaydı yok.');
       return { error: 'Bu teklife bağlı bir takas kaydı bulunamadı.' };
     }
 
@@ -916,7 +917,7 @@ export const tradeService = {
     // kontrol yoktu: "kilitli" bir takas tek çağrıda "tamamlandı" yapılabiliyor
     // ve teslimat hiç gerçekleşmeden iki tarafın güven sayacı artıyordu.
     if (tradeRow.status === 'completed' || tradeRow.status === 'cancelled') {
-      console.error('advanceTradeStep: sonuçlanmış bir takas ilerletilemez.', tradeRow.status);
+      reportServiceError('advanceTradeStep: sonuçlanmış bir takas ilerletilemez.', tradeRow.status);
 
       return {
         trade: await this.getTradeById(tradeId),
@@ -934,7 +935,7 @@ export const tradeService = {
       targetStep === 6 &&
       (!tradeRow.sender_confirmed_at || !tradeRow.receiver_confirmed_at)
     ) {
-      console.error(
+      reportServiceError(
         'advanceTradeStep: takas ancak iki taraf da teslimatı onayladıktan sonra tamamlanabilir.'
       );
 
@@ -966,7 +967,7 @@ export const tradeService = {
     }
 
     if ((rank[newStatus] ?? 0) <= (rank[tradeRow.status] ?? 0)) {
-      console.error(
+      reportServiceError(
         `advanceTradeStep: takas adımı geriye alınamaz (${tradeRow.status} -> ${newStatus}).`
       );
 
@@ -984,7 +985,7 @@ export const tradeService = {
       .eq('id', tradeRow.id);
 
     if (updateError) {
-      console.error('Trade durumu güncellenemedi:', updateError);
+      reportServiceError('Trade durumu güncellenemedi:', updateError);
       return { error: 'Takas adımı güncellenemedi.' };
     }
 
@@ -1005,7 +1006,7 @@ export const tradeService = {
   async submitReview(review: Omit<Review, 'id' | 'createdAt'>): Promise<SubmitReviewResult> {
     const tradeRow = await fetchTradeRowByOfferId(review.tradeId);
     if (!tradeRow) {
-      console.error('submitReview: bu teklife bağlı bir trade kaydı yok.');
+      reportServiceError('submitReview: bu teklife bağlı bir trade kaydı yok.');
       return { error: 'Bu teklife bağlı bir takas kaydı bulunamadı.' };
     }
 
@@ -1016,12 +1017,12 @@ export const tradeService = {
     // edilmemiş bir takasa da, kendine de, aynı takasa defalarca da
     // değerlendirme yazılabiliyordu.
     if (tradeRow.status !== 'completed') {
-      console.error('submitReview: değerlendirme yalnızca tamamlanmış bir takasa yazılabilir.');
+      reportServiceError('submitReview: değerlendirme yalnızca tamamlanmış bir takasa yazılabilir.');
       return { error: 'Değerlendirme yalnızca tamamlanmış bir takasa yazılabilir.' };
     }
 
     if (review.authorId === review.targetUserId) {
-      console.error('submitReview: kullanıcı kendini değerlendiremez.');
+      reportServiceError('submitReview: kullanıcı kendini değerlendiremez.');
       return { error: 'Kendini değerlendiremezsin.' };
     }
 
@@ -1029,7 +1030,7 @@ export const tradeService = {
       ![tradeRow.sender_id, tradeRow.receiver_id].includes(review.authorId) ||
       ![tradeRow.sender_id, tradeRow.receiver_id].includes(review.targetUserId)
     ) {
-      console.error('submitReview: değerlendiren ve değerlendirilen bu takasın tarafı olmalı.');
+      reportServiceError('submitReview: değerlendiren ve değerlendirilen bu takasın tarafı olmalı.');
       return { error: 'Yalnızca takasın tarafları birbirini değerlendirebilir.' };
     }
 
@@ -1055,7 +1056,7 @@ export const tradeService = {
       .single();
 
     if (error || !data) {
-      console.error('Değerlendirme kaydedilemedi:', error);
+      reportServiceError('Değerlendirme kaydedilemedi:', error);
 
       // `reviews_one_per_reviewer_key` tekrar eden değerlendirmeyi
       // engelliyor; kullanıcıya sebebini söylemek gerekiyor.
@@ -1100,7 +1101,7 @@ export const tradeService = {
       .order('created_at', { ascending: false });
 
     if (error || !data) {
-      console.error('Değerlendirmeler alınamadı:', error);
+      reportServiceError('Değerlendirmeler alınamadı:', error);
       return [];
     }
 

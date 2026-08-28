@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { UserProfile, Listing, TradeOffer, NotificationItem } from '../types';
 import { authService } from '../services/authService';
 import { supabase } from '../lib/supabase';
@@ -6,6 +6,7 @@ import { listingService, setViewerCoords } from '../services/listingService';
 import { tradeService } from '../services/tradeService';
 import { notificationService } from '../services/notificationService';
 import { messageService } from '../services/messageService';
+import { onServiceError } from '../lib/serviceError';
 import { Language, TranslationKey, getTranslation } from '../utils/translations';
 
 interface ToastMessage {
@@ -212,6 +213,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Servis katmanındaki hatalar eskiden yalnızca konsola yazılıyordu; ekrana
+  // hiçbir şey yansımıyordu. Sorgular hatada `[]` döndüğü için kullanıcı
+  // "Henüz ilan yok" görüyor ve bunu BOŞLUK sanıyordu — bir sorun olduğunu
+  // ve tekrar denemesi gerektiğini öğrenemiyordu.
+  //
+  // Sayfa sayfa hata durumu yazmak doğru nihai çözüm; bu ara katman o iş
+  // yapılana kadar sessizliği bitiriyor. Tek bir uyarı gösterilir: bir
+  // ekran açılışında birden çok sorgu birden patlarsa kullanıcıyı toast
+  // yağmuruna tutmamak için 8 saniyelik bir kısma var.
+  const lastServiceErrorAt = useRef(0);
+
+  const announceDataFailure = useCallback((detail: string) => {
+    const now = Date.now();
+    if (now - lastServiceErrorAt.current < 8000) return;
+    lastServiceErrorAt.current = now;
+
+    showToast('Veriler alınamadı', detail, 'error');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const stop = onServiceError((context) => {
+      announceDataFailure(
+        `${context.replace(/:$/, '')} — bağlantını kontrol edip tekrar dene.`
+      );
+    });
+
+    // İKİNCİ AĞ: yukarıdaki dinleyici yalnızca sunucunun döndürdüğü
+    // hataları (`{ data, error }`) yakalar. Bağlantı hiç kurulamazsa
+    // (uçak modu, DNS, sunucu kapalı) supabase-js sözü REDDEDER; servisler
+    // try/catch kullanmadığı ve sayfalar `.then(setState)` yazdığı için bu
+    // red hiçbir yere ulaşmıyor — konsolda bile yalnızca "unhandled
+    // rejection" olarak görünüyordu. Kullanıcı boş bir liste görüp
+    // "hiç ilan yok" sanıyordu.
+    const onRejection = (event: PromiseRejectionEvent) => {
+      announceDataFailure('Sunucuya ulaşılamadı — bağlantını kontrol edip tekrar dene.');
+      // Konsolda görünmeye devam etsin; sessizce yutmuyoruz.
+      console.error('İşlenmemiş servis hatası:', event.reason);
+    };
+
+    window.addEventListener('unhandledrejection', onRejection);
+
+    return () => {
+      stop();
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, [announceDataFailure]);
 
   const refreshUserData = async () => {
     const user = await authService.getCurrentUserFromSupabase();

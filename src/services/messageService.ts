@@ -2,6 +2,7 @@ import { Conversation, Message, UserProfile } from '../types';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';
 import type { TablesInsert } from '../types/supabase';
+import { reportServiceError } from '../lib/serviceError';
 
 /**
  * Profil join'lerinde çekilen kolonlar.
@@ -149,7 +150,7 @@ async function mapConversationRows(
     .eq('is_read', false)
     .neq('sender_id', currentUserId);
 
-  if (unreadError) console.error('Okunmamış sayıları alınamadı:', unreadError);
+  if (unreadError) reportServiceError('Okunmamış sayıları alınamadı:', unreadError);
 
   const unreadByConversation = new Map<string, number>();
   for (const row of (unreadRows ?? []) as { conversation_id: string }[]) {
@@ -198,7 +199,7 @@ export const messageService = {
       .or(`participant_one_id.eq.${currentUserId},participant_two_id.eq.${currentUserId}`);
 
     if (conversationError || !conversationRows?.length) {
-      if (conversationError) console.error('Konuşmalar alınamadı:', conversationError);
+      if (conversationError) reportServiceError('Konuşmalar alınamadı:', conversationError);
       return 0;
     }
 
@@ -212,7 +213,7 @@ export const messageService = {
       .neq('sender_id', currentUserId);
 
     if (error) {
-      console.error('Okunmamış mesaj sayısı alınamadı:', error);
+      reportServiceError('Okunmamış mesaj sayısı alınamadı:', error);
       return 0;
     }
 
@@ -228,7 +229,7 @@ export const messageService = {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('Konuşmalar alınamadı:', error);
+      reportServiceError('Konuşmalar alınamadı:', error);
       return [];
     }
 
@@ -243,7 +244,7 @@ export const messageService = {
       .maybeSingle();
 
     if (error || !data) {
-      if (error) console.error('Konuşma alınamadı:', error);
+      if (error) reportServiceError('Konuşma alınamadı:', error);
       return undefined;
     }
 
@@ -258,7 +259,7 @@ export const messageService = {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Mesajlar alınamadı:', error);
+      reportServiceError('Mesajlar alınamadı:', error);
       return [];
     }
 
@@ -277,7 +278,7 @@ export const messageService = {
     // Boş mesaj DB'de `content text not null` kısıtını geçiyordu (boş string
     // da bir değerdir) ve sohbette görünmez bir satır olarak duruyordu.
     if (!trimmed) {
-      console.error('Boş mesaj gönderilemez.');
+      reportServiceError('Boş mesaj gönderilemez.');
       return undefined;
     }
 
@@ -297,7 +298,7 @@ export const messageService = {
       .single();
 
     if (error || !data) {
-      console.error('Mesaj gönderilemedi:', error);
+      reportServiceError('Mesaj gönderilemedi:', error);
       return undefined;
     }
 
@@ -332,7 +333,7 @@ export const messageService = {
       .eq('id', conversation.id);
 
     if (error) {
-      console.error('Sohbetin aktif takası güncellenemedi:', error);
+      reportServiceError('Sohbetin aktif takası güncellenemedi:', error);
     }
 
     await this.sendMessage(conversation.id, senderId, summary, type, offerId);
@@ -348,7 +349,7 @@ export const messageService = {
       .neq('sender_id', currentUserId);
 
     if (error) {
-      console.error('Mesajlar okundu olarak işaretlenemedi:', error);
+      reportServiceError('Mesajlar okundu olarak işaretlenemedi:', error);
     }
   },
 
@@ -372,7 +373,7 @@ export const messageService = {
       .maybeSingle();
 
     if (findError) {
-      console.error('Konuşma aranırken hata:', findError);
+      reportServiceError('Konuşma aranırken hata:', findError);
     }
 
     if (existingRows) {
@@ -392,7 +393,7 @@ export const messageService = {
       .single();
 
     if (insertError || !created) {
-      console.error('Konuşma oluşturulamadı:', insertError);
+      reportServiceError('Konuşma oluşturulamadı:', insertError);
       // Yarış durumu: başka bir istek aynı anda aynı çifti oluşturmuş olabilir.
       // Unique constraint hatası aldıysak, satırı tekrar okumayı dene.
       const { data: retryRow } = await supabase
