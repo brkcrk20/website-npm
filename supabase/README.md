@@ -19,8 +19,9 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 **Supabase Studio'nun SQL editöründen elle** çalıştırıldı.
 
 **`20260827000000_backend_integrity_fixes.sql`,
-`20260828000000_backend_hardening.sql` ve
-`20260829000000_listing_expiry.sql` HENÜZ UYGULANMADI.**
+`20260828000000_backend_hardening.sql`,
+`20260829000000_listing_expiry.sql` ve
+`20260830000000_trade_column_immutability.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -36,7 +37,24 @@ takas iki tarafın onayı olmadan tamamlanamıyor.
 yayında kalıyor, bitmeden 3 gün önce sahibi uyarılıyor, süre dolunca ilan
 `expired` oluyor (silinmiyor) ve `renew_listing()` ile geri alınıyor.
 
-**ÜÇÜ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`20260830000000` iki kritik güvenlik açığını kapatıyor. `trades` ve
+`trade_offers` üzerindeki UPDATE politikaları kolon ayrımı yapmıyor
+(Postgres'te kolon bazlı RLS yoktur) ve durum tetikleyicileri
+`before update OF STATUS` bağlı olduğu için diğer kolonlara yazan bir
+UPDATE'i hiç görmüyorlar. Sonuç:
+
+* tek bir `PATCH /rest/v1/trades` isteği ile onay damgaları uydurulup takas
+  tek taraflı "tamamlandı" yapılabiliyordu — karşı tarafın ilanı kalıcı
+  olarak `traded` oluyor, iki tarafın güven sayacı artıyor ve saldırgan hiç
+  gerçekleşmemiş takas üzerinden değerlendirme yazabiliyordu;
+* bir teklifin `receiver_id`'si sonradan saldırganın kendisiyle
+  değiştirilip teklif kendi kendine kabul edilebiliyordu.
+
+Kapatma yöntemi kolon değişmezliği tetikleyicileri + `sender_id <>
+receiver_id` kısıtları. Regresyon testi:
+`supabase/tests/trade_immutability_test.sql`.
+
+**DÖRDÜ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
 `trade_status_rank()` ve `enforce_trade_transition()` üzerine;
 `20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
 ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.

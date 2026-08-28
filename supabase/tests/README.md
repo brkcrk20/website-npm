@@ -22,7 +22,15 @@ done
 
 # 4. Testi çalıştır (her adım `t` dönmeli)
 psql -h /tmp/pgtest -p 5433 -U postgres -f supabase/tests/trade_flow_test.sql
+psql -h /tmp/pgtest -p 5433 -U postgres -f supabase/tests/trade_immutability_test.sql
 ```
+
+Testler:
+
+| Dosya | Kapsam |
+| --- | --- |
+| `trade_flow_test.sql` | teklif → kabul → kilit → teslimat → değerlendirme zinciri, sayaçlar, RPC'ler |
+| `trade_immutability_test.sql` | `20260830000000`'in kapattığı kolon değişmezliği açıkları |
 
 Test kendi verisini oluşturur ve sonunda `rollback` yapar; veritabanında iz
 bırakmaz. Stub idempotenttir (roller `create role ... if not exists` yerine bir
