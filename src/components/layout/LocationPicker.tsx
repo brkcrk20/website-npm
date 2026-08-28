@@ -144,7 +144,7 @@ export const LocationPicker: React.FC = () => {
               type="button"
               onClick={handleUseMyLocation}
               disabled={isLocating}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-70"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-70"
             >
               {isLocating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

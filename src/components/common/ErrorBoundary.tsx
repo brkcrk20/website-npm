@@ -63,7 +63,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               onClick={() => {
                 window.location.href = '/kesfet';
               }}
-              className="py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-colors cursor-pointer"
+              className="py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold transition-colors cursor-pointer"
             >
               Keşfete dön
             </button>

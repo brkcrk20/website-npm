@@ -37,11 +37,11 @@ export const Timeline: React.FC<TimelineProps> = ({
 
           let circleStyle = 'bg-canvas border-line text-ink-faint';
           if (isCompleted) {
-            circleStyle = 'bg-brand border-brand text-white shadow-xs';
+            circleStyle = 'bg-brand border-brand text-on-brand shadow-xs';
           } else if (isInProgress) {
-            circleStyle = 'bg-amber-500 border-amber-500 text-white animate-pulse';
+            circleStyle = 'bg-amber-500 border-amber-500 text-on-brand animate-pulse';
           } else if (isFailed) {
-            circleStyle = 'bg-danger border-rose-500 text-white';
+            circleStyle = 'bg-danger border-rose-500 text-on-brand';
           }
 
           return (

@@ -81,7 +81,7 @@ export const AboutSwaloopPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/kesfet')}
-          className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-brand hover:bg-brand-dark text-on-brand rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
         >
           <span>Hemen Takasa Başla</span>
           <ArrowRight className="w-4 h-4" />

@@ -157,7 +157,7 @@ export const OnboardingPage: React.FC = () => {
               type="button"
               onClick={() => setStep((s) => s + 1)}
               aria-label="Sonraki"
-              className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand-dark transition-colors cursor-pointer"
+              className="w-12 h-12 rounded-full bg-brand text-on-brand flex items-center justify-center hover:bg-brand-dark transition-colors cursor-pointer"
             >
               <ArrowRight className="w-5 h-5" />
             </button>

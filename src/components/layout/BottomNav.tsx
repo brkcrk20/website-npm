@@ -124,7 +124,7 @@ export const BottomNav: React.FC = () => {
                 aria-label={item.label}
                 className="flex-1 flex items-center justify-center py-2 cursor-pointer"
               >
-                <span className="w-12 h-12 rounded-2xl bg-brand text-white flex items-center justify-center shadow-sm">
+                <span className="w-12 h-12 rounded-2xl bg-brand text-on-brand flex items-center justify-center shadow-sm">
                   <Icon className="w-6 h-6" />
                 </span>
               </button>
@@ -144,7 +144,7 @@ export const BottomNav: React.FC = () => {
               <span className="relative">
                 <Icon className="w-5 h-5" strokeWidth={active ? 2.4 : 2} />
                 {!!item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-brand text-on-brand text-[10px] font-bold flex items-center justify-center">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
                 )}

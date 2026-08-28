@@ -142,7 +142,7 @@ export const EditListingPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/profil')}
-          className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-brand text-on-brand text-xs font-bold cursor-pointer"
         >
           Profilime dön
         </button>
@@ -158,7 +158,7 @@ export const EditListingPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(`/ilan/${listing.id}`)}
-          className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-brand text-on-brand text-xs font-bold cursor-pointer"
         >
           İlana git
         </button>
@@ -340,7 +340,7 @@ export const EditListingPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white rounded-2xl font-bold text-sm shadow-md transition-colors cursor-pointer disabled:opacity-60"
+            className="w-full py-3.5 bg-brand hover:bg-brand-dark text-on-brand rounded-2xl font-bold text-sm shadow-md transition-colors cursor-pointer disabled:opacity-60"
           >
             {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri kaydet'}
           </button>

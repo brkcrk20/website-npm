@@ -128,7 +128,7 @@ export const NeedsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setFormOpen((open) => !open)}
-            className="px-4 py-2.5 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-2xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             İhtiyaç Ekle
@@ -168,7 +168,7 @@ export const NeedsPage: React.FC = () => {
                       aria-pressed={selected}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                         selected
-                          ? 'bg-brand border-brand text-white'
+                          ? 'bg-brand border-brand text-on-brand'
                           : 'bg-canvas border-line text-ink-soft hover:border-brand'
                       }`}
                     >
@@ -198,7 +198,7 @@ export const NeedsPage: React.FC = () => {
             <button
               type="submit"
               disabled={!title.trim() || saving}
-              className="w-full py-3 rounded-2xl bg-brand hover:bg-brand-dark disabled:bg-line text-white font-bold text-sm transition-colors"
+              className="w-full py-3 rounded-2xl bg-brand hover:bg-brand-dark disabled:bg-line text-on-brand font-bold text-sm transition-colors"
             >
               {saving ? 'Ekleniyor…' : 'Listeme Ekle'}
             </button>
@@ -226,7 +226,7 @@ export const NeedsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setFormOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-md transition-colors"
+              className="px-5 py-2.5 rounded-2xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-xs shadow-md transition-colors"
             >
               İlk İhtiyacını Ekle
             </button>

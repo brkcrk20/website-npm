@@ -254,7 +254,7 @@ export const CreateListingPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-stone-950/70 text-white flex items-center justify-center hover:bg-danger transition-colors"
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-stone-950/70 text-on-brand flex items-center justify-center hover:bg-danger transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -344,7 +344,7 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               disabled={!title.trim() || images.length === 0}
               onClick={() => setStep(2)}
-              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-on-brand font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <span>Sonraki Adım: Takas Tercihleri</span>
               <ArrowRight className="w-4 h-4" />
@@ -442,7 +442,7 @@ export const CreateListingPage: React.FC = () => {
                         }
                         className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
                           selected
-                            ? 'bg-brand border-brand text-white'
+                            ? 'bg-brand border-brand text-on-brand'
                             : 'bg-canvas border-line text-ink-soft hover:border-brand'
                         }`}
                       >
@@ -508,7 +508,7 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               disabled={!lookingFor.trim()}
               onClick={() => setStep(3)}
-              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-on-brand font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <span>Sonraki Adım: Onayla & Yayınla</span>
               <ArrowRight className="w-4 h-4" />
@@ -564,7 +564,7 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               onClick={handlePublish}
               disabled={isPublishing}
-              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-base shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-base shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60"
             >
               <Sparkles className="w-5 h-5 text-star" />
               <span>

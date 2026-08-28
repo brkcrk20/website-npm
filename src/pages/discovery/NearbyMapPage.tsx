@@ -121,7 +121,7 @@ export const NearbyMapPage: React.FC = () => {
                 onClick={() => setActiveRadius(r)}
                 className={`px-2.5 py-1 rounded-lg transition-colors ${
                   activeRadius === r
-                    ? 'bg-brand text-white shadow-xs'
+                    ? 'bg-brand text-on-brand shadow-xs'
                     : 'text-ink-soft hover:bg-canvas'
                 }`}
               >
@@ -162,10 +162,10 @@ export const NearbyMapPage: React.FC = () => {
               className="absolute -translate-x-1/2 -translate-y-1/2 group z-20 cursor-pointer"
             >
               <div className="flex flex-col items-center">
-                <div className="p-2 rounded-2xl bg-brand text-white border-2 border-white shadow-xl group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-2xl bg-brand text-on-brand border-2 border-white shadow-xl group-hover:scale-110 transition-transform">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <span className="mt-1 px-2 py-0.5 rounded-full bg-stone-900/90 border border-stone-700 text-white text-[10px] font-bold whitespace-nowrap backdrop-blur-sm">
+                <span className="mt-1 px-2 py-0.5 rounded-full bg-stone-900/90 border border-stone-700 text-on-brand text-[10px] font-bold whitespace-nowrap backdrop-blur-sm">
                   {spot.name.split(' ')[0]}
                 </span>
               </div>
@@ -198,11 +198,11 @@ export const NearbyMapPage: React.FC = () => {
 
           {/* Map Controls Floating Overlay */}
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-            <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-white text-xs flex items-center gap-1.5 pointer-events-auto">
+            <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-on-brand text-xs flex items-center gap-1.5 pointer-events-auto">
               <ShieldCheck className="w-4 h-4 text-brand" />
               <span>{safeMeetingSpots.length} Doğrulanmış Güvenli Buluşma Noktası</span>
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-white text-xs font-semibold pointer-events-auto">
+            <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-on-brand text-xs font-semibold pointer-events-auto">
               {allListings.length} Aktif İlan
             </div>
           </div>
@@ -210,7 +210,7 @@ export const NearbyMapPage: React.FC = () => {
 
         {/* Safe Spot Details Modal / Box if selected */}
         {selectedSpot && (
-          <div className="p-4 rounded-2xl bg-brand text-white border border-brand shadow-md animate-in slide-in-from-bottom-2">
+          <div className="p-4 rounded-2xl bg-brand text-on-brand border border-brand shadow-md animate-in slide-in-from-bottom-2">
             {(() => {
               const spot = safeMeetingSpots.find((s) => s.id === selectedSpot);
               if (!spot) return null;
@@ -225,13 +225,13 @@ export const NearbyMapPage: React.FC = () => {
                         {spot.activeTradesCount} aktif takas planlandı
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold mt-1 text-white">{spot.name}</h3>
+                    <h3 className="text-sm font-bold mt-1 text-on-brand">{spot.name}</h3>
                     <p className="text-xs text-emerald-100/80 mt-0.5">{spot.address}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSelectedSpot(null)}
-                    className="text-brand hover:text-white text-xs font-semibold"
+                    className="text-brand hover:text-on-brand text-xs font-semibold"
                   >
                     Kapat
                   </button>

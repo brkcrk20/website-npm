@@ -126,7 +126,7 @@ export const DisputePage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/takaslarim')}
-              className="w-full py-3 bg-brand text-white rounded-xl text-xs font-bold shadow-xs hover:bg-brand-dark transition-colors"
+              className="w-full py-3 bg-brand text-on-brand rounded-xl text-xs font-bold shadow-xs hover:bg-brand-dark transition-colors"
             >
               Takaslarıma Dön
             </button>

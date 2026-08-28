@@ -70,7 +70,7 @@ export const Header: React.FC = () => {
           >
             <Bell className="w-5 h-5" />
             {unreadNotificationCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 rounded-full bg-brand text-on-brand text-[10px] font-bold flex items-center justify-center">
                 {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
               </span>
             )}

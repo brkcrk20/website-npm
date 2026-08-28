@@ -165,7 +165,7 @@ export const CounterOfferPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
-          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold cursor-pointer"
+          className="px-4 py-2 bg-brand text-on-brand rounded-xl text-xs font-bold cursor-pointer"
         >
           Takaslarıma Dön
         </button>
@@ -188,7 +188,7 @@ export const CounterOfferPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(`/teklif/${original.id}`)}
-          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold cursor-pointer"
+          className="px-4 py-2 bg-brand text-on-brand rounded-xl text-xs font-bold cursor-pointer"
         >
           Teklifi Görüntüle
         </button>
@@ -344,7 +344,7 @@ export const CounterOfferPage: React.FC = () => {
         <button
           type="submit"
           disabled={giving.length === 0 || wanting.length === 0 || isSubmitting}
-          className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:bg-line text-white font-bold text-sm shadow-md transition-colors cursor-pointer"
+          className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:bg-line text-on-brand font-bold text-sm shadow-md transition-colors cursor-pointer"
         >
           {isSubmitting ? 'Gönderiliyor…' : 'Karşı Teklifi Gönder'}
         </button>

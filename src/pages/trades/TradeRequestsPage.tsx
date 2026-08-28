@@ -133,7 +133,7 @@ export const TradeRequestsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/eslesme')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-emerald-700 hover:from-amber-600 hover:to-emerald-800 text-white text-xs font-bold shadow-md shadow-emerald-900/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-emerald-700 hover:from-amber-600 hover:to-emerald-800 text-on-brand text-xs font-bold shadow-md shadow-emerald-900/20 transition-all cursor-pointer"
           >
             <Flame className="w-4 h-4 fill-white" />
             <span>Kaydır & Eşleş</span>
@@ -143,14 +143,14 @@ export const TradeRequestsPage: React.FC = () => {
         {/* Swipe Matching Promo Banner */}
         <div
           onClick={() => navigate('/eslesme')}
-          className="p-4 rounded-3xl bg-gradient-to-br from-stone-900 via-stone-800 to-emerald-950 text-white border border-brand shadow-md cursor-pointer hover:border-brand transition-all relative overflow-hidden flex items-center justify-between gap-3 group"
+          className="p-4 rounded-3xl bg-gradient-to-br from-stone-900 via-stone-800 to-emerald-950 text-on-brand border border-brand shadow-md cursor-pointer hover:border-brand transition-all relative overflow-hidden flex items-center justify-between gap-3 group"
         >
           <div className="space-y-1 relative z-10">
             <span className="text-[10px] font-black uppercase tracking-widest text-star flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-star" />
               Hızlı Takas Eşleştirme
             </span>
-            <h2 className="text-base font-extrabold text-white">
+            <h2 className="text-base font-extrabold text-on-brand">
               Kaydırarak Takas Eşleştirmesi Yap 🔥
             </h2>
             <p className="text-xs text-stone-300 max-w-sm">
@@ -158,7 +158,7 @@ export const TradeRequestsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="w-11 h-11 rounded-2xl bg-brand/80 border border-brand-line flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+          <div className="w-11 h-11 rounded-2xl bg-brand/80 border border-brand-line flex items-center justify-center text-on-brand shrink-0 group-hover:scale-110 transition-transform">
             <ArrowRight className="w-5 h-5" />
           </div>
         </div>
@@ -170,7 +170,7 @@ export const TradeRequestsPage: React.FC = () => {
             onClick={() => setActiveTab('incoming')}
             className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'incoming'
-                ? 'bg-brand text-white border-brand shadow-xs'
+                ? 'bg-brand text-on-brand border-brand shadow-xs'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -191,7 +191,7 @@ export const TradeRequestsPage: React.FC = () => {
             onClick={() => setActiveTab('outgoing')}
             className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'outgoing'
-                ? 'bg-brand text-white border-brand shadow-xs'
+                ? 'bg-brand text-on-brand border-brand shadow-xs'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -212,7 +212,7 @@ export const TradeRequestsPage: React.FC = () => {
             onClick={() => setActiveTab('smart_matches')}
             className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'smart_matches'
-                ? 'bg-brand text-white border-brand shadow-xs'
+                ? 'bg-brand text-on-brand border-brand shadow-xs'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -233,7 +233,7 @@ export const TradeRequestsPage: React.FC = () => {
             onClick={() => setActiveTab('active_process')}
             className={`p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'active_process'
-                ? 'bg-brand text-white border-brand shadow-xs'
+                ? 'bg-brand text-on-brand border-brand shadow-xs'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -285,7 +285,7 @@ export const TradeRequestsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/eslesme')}
-                  className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-xs font-bold rounded-xl transition-colors"
+                  className="px-4 py-2 bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold rounded-xl transition-colors"
                 >
                   Eşleştirme Başlat
                 </button>
@@ -328,7 +328,7 @@ export const TradeRequestsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/kesfet')}
-                  className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-xs font-bold rounded-xl transition-colors"
+                  className="px-4 py-2 bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold rounded-xl transition-colors"
                 >
                   İlanları Keşfet
                 </button>
@@ -418,7 +418,7 @@ export const TradeRequestsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/teklif-ver?targetId=${match.targetListing.id}`)}
-                      className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <span>Hemen Teklif Oluştur</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -505,7 +505,7 @@ export const TradeRequestsPage: React.FC = () => {
 
                   <button
                     type="button"
-                    className="w-full py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    className="w-full py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <span>Takas Sürecini Görüntüle</span>
                     <ArrowRight className="w-3.5 h-3.5" />

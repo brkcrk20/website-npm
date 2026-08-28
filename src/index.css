@@ -15,10 +15,30 @@
      * Renk tek başına durum belirtmez; ikon/metin ile birlikte kullanılır.
    =========================================================================== */
 
+/* ─────────────────────────────────────────────────────────────────────────
+   KONTRAST NOTU
+   Aşağıdaki değerler gözle değil ÖLÇÜLEREK seçildi. Tasarım dokümanı §7
+   erişilebilirlik başlığında kontrastı şart koşuyor ama uygulanan palet
+   WCAG AA'yı altı yerde kaçırıyordu — en önemlisi uygulamadaki en yaygın
+   metin çifti olan ikincil metin/kart (4.42, gereken 4.5) ve birincil
+   butondaki beyaz metin (3.40).
+
+   Artık her metin/zemin çifti iki temada da >= 4.5:1. Beyaz metnin marka
+   yeşili üzerinde 4.5'i tutması için marka rengi bir tık koyulaştı
+   (#2e9e5f -> #278651); aynı yeşil `text-brand` olarak da kullanıldığı
+   için bu tek değişiklik hem butonu hem bağlantı metnini düzeltiyor.
+
+   Koyu temada beyaz metin açık yeşilin üzerinde 2.76'da kalıyor; bu yüzden
+   marka üstündeki metin rengi `--color-on-brand` tokenı üzerinden gidiyor
+   (açıkta beyaz, koyuda koyu mürekkep).
+   ───────────────────────────────────────────────────────────────────────── */
+
 @theme {
   /* Marka */
-  --color-brand: #2e9e5f;
-  --color-brand-dark: #24804c;
+  --color-brand: #278651;
+  --color-brand-dark: #1d6640;
+  /* Marka zemini üzerindeki metin rengi (buton, aktif çip). */
+  --color-on-brand: #ffffff;
   --color-brand-soft: #e8f5ee;
   --color-brand-line: #c9e6d6;
 
@@ -27,10 +47,10 @@
   --color-surface: #ffffff;
   --color-line: #e6e9e6;
 
-  /* Metin */
+  /* Metin — üç kademe de AA'yı geçer (7.6 / 4.8 üzeri) */
   --color-ink: #16231d;
-  --color-ink-soft: #6e7b74;
-  --color-ink-faint: #9aa39e;
+  --color-ink-soft: #4d5652;
+  --color-ink-faint: #6a746f;
 
   /* Koyu yüzey (splash, admin) */
   --color-night: #16231d;
@@ -39,12 +59,13 @@
   /* Durum. `-soft` / `-line` varyantları uyarı ve hata şeritlerinin zemini
      ve kenarlığı için: eskiden bunlar amber-50/rose-50 gibi ham palet
      renkleriydi ve koyu temada bembeyaz kalıyorlardı. */
-  --color-warn: #d99a2b;
+  --color-warn: #96691b;
   --color-warn-soft: #fdf6e7;
   --color-warn-line: #f0dcae;
-  --color-danger: #d9534f;
+  --color-danger: #cf312d;
   --color-danger-soft: #fdefee;
   --color-danger-line: #f3c9c7;
+  /* Yıldız DOLGU rengidir (metin değil), bu yüzden parlak kalabilir. */
   --color-star: #f5a524;
 
   /* Yardımcı yüzeyler (eskiden bileşen kurallarına gömülü sabit
@@ -84,6 +105,9 @@
     --color-brand-dark: #56c68a;
     --color-brand-soft: #16301f;
     --color-brand-line: #275437;
+    /* Koyu temada beyaz metin açık yeşilin üzerinde 2.76'da kalıyor;
+       marka zemini üstünde koyu mürekkep okunur (6.70). */
+    --color-on-brand: #0f1512;
 
     /* Yüzeyler: saf siyah değil, hafif yeşile çalan koyu gri —
        saf siyahta kenarlıklar kaybolur ve OLED'de titreşim hissi verir. */
@@ -94,7 +118,7 @@
     /* Metin */
     --color-ink: #e9efea;
     --color-ink-soft: #a3b0a8;
-    --color-ink-faint: #77837c;
+    --color-ink-faint: #8b968f;
 
     /* Koyu yüzey tokenları koyu temada zeminle karışmasın diye
        bir tık açık kalır (splash, admin). */
@@ -159,7 +183,7 @@
 
   .sw-btn-primary {
     background-color: var(--color-brand);
-    color: #fff;
+    color: var(--color-on-brand);
   }
   .sw-btn-primary:hover:not(:disabled) {
     background-color: var(--color-brand-dark);
@@ -243,7 +267,7 @@
   .sw-chip-active {
     background-color: var(--color-brand);
     border-color: var(--color-brand);
-    color: #fff;
+    color: var(--color-on-brand);
   }
 
   /* --- Rozet / etiket -------------------------------------------------- */

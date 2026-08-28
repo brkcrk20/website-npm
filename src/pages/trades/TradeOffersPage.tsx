@@ -106,7 +106,7 @@ export const TradeOffersPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/kesfet')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand hover:bg-brand-dark text-on-brand text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Yeni İlan</span>
@@ -123,7 +123,7 @@ export const TradeOffersPage: React.FC = () => {
             onClick={() => setActiveTab('incoming')}
             className={`text-left p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'incoming'
-                ? 'bg-brand text-white border-brand shadow-sm'
+                ? 'bg-brand text-on-brand border-brand shadow-sm'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -146,7 +146,7 @@ export const TradeOffersPage: React.FC = () => {
             onClick={() => setActiveTab('outgoing')}
             className={`text-left p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'outgoing'
-                ? 'bg-brand text-white border-brand shadow-sm'
+                ? 'bg-brand text-on-brand border-brand shadow-sm'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -169,7 +169,7 @@ export const TradeOffersPage: React.FC = () => {
             onClick={() => setActiveTab('completed')}
             className={`text-left p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'completed'
-                ? 'bg-brand text-white border-brand shadow-sm'
+                ? 'bg-brand text-on-brand border-brand shadow-sm'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
@@ -259,7 +259,7 @@ export const TradeOffersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/kesfet')}
-                className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                className="px-4 py-2 bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 İlanları Keşfet
               </button>

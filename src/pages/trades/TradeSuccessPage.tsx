@@ -81,7 +81,7 @@ export const TradeSuccessPage: React.FC = () => {
         {/* Big Green Check Circle with Sparkles Matching Screen 12 */}
         <div className="flex flex-col items-center justify-center pt-8 pb-4 text-center">
           <div className="relative mb-6">
-            <div className="w-28 h-28 rounded-full bg-brand text-white flex items-center justify-center shadow-xl shadow-emerald-900/20 ring-8 ring-brand animate-in zoom-in-90 duration-300">
+            <div className="w-28 h-28 rounded-full bg-brand text-on-brand flex items-center justify-center shadow-xl shadow-emerald-900/20 ring-8 ring-brand animate-in zoom-in-90 duration-300">
               <CheckCircle2 className="w-16 h-16 stroke-[2.5]" />
             </div>
             <Sparkles className="w-6 h-6 text-star absolute -top-1 -right-2 animate-bounce" />
@@ -120,7 +120,7 @@ export const TradeSuccessPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowReviewModal(true)}
-          className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
         >
           <Star className="w-5 h-5 fill-star text-star" />
           <span>{isReviewed ? 'Değerlendirmeyi Güncelle' : 'Değerlendir'}</span>
@@ -186,7 +186,7 @@ export const TradeSuccessPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSubmitReview}
-                className="flex-1 py-3 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark shadow-xs"
+                className="flex-1 py-3 rounded-xl bg-brand text-on-brand text-xs font-bold hover:bg-brand-dark shadow-xs"
               >
                 Kaydet
               </button>

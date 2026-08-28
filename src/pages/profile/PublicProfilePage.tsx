@@ -194,7 +194,7 @@ export const PublicProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleToggleBlock}
-                  className="py-2.5 rounded-xl bg-danger hover:bg-danger text-white text-xs font-bold transition-colors cursor-pointer"
+                  className="py-2.5 rounded-xl bg-danger hover:bg-danger text-on-brand text-xs font-bold transition-colors cursor-pointer"
                 >
                   Engelle
                 </button>
@@ -233,7 +233,7 @@ export const PublicProfilePage: React.FC = () => {
             <button
               type="button"
               onClick={handleStartChat}
-              className="p-2.5 rounded-xl bg-brand text-white hover:bg-brand-dark transition-colors"
+              className="p-2.5 rounded-xl bg-brand text-on-brand hover:bg-brand-dark transition-colors"
               title="Mesaj Gönder"
             >
               <MessageSquare className="w-4 h-4" />

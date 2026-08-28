@@ -185,7 +185,7 @@ export const MessagesPage: React.FC = () => {
                       </span>
                     </span>
                     {conv.unreadCount > 0 && (
-                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-brand text-on-brand text-[10px] font-bold flex items-center justify-center shrink-0">
                         {conv.unreadCount}
                       </span>
                     )}
@@ -317,7 +317,7 @@ export const MessagesPage: React.FC = () => {
                       <div
                         className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                           isMe
-                            ? 'bg-brand text-white rounded-br-sm'
+                            ? 'bg-brand text-on-brand rounded-br-sm'
                             : 'bg-surface text-ink border border-line rounded-bl-sm'
                         }`}
                       >

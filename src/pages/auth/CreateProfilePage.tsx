@@ -221,7 +221,7 @@ export const CreateProfilePage: React.FC = () => {
                   ) : (
                     <User className="w-9 h-9 text-ink-faint" />
                   )}
-                  <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center border-2 border-white">
+                  <span className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand text-on-brand flex items-center justify-center border-2 border-white">
                     {isUploadingAvatar ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (

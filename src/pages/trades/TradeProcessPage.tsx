@@ -113,7 +113,7 @@ export const TradeProcessPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
-          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold"
+          className="px-4 py-2 bg-brand text-on-brand rounded-xl text-xs font-bold"
         >
           Takaslarıma Dön
         </button>
@@ -161,9 +161,9 @@ export const TradeProcessPage: React.FC = () => {
                   <div
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold transition-all ${
                       isCurrent
-                        ? 'bg-brand text-white ring-3 ring-brand scale-105'
+                        ? 'bg-brand text-on-brand ring-3 ring-brand scale-105'
                         : isPassed
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand text-on-brand'
                         : 'bg-line text-ink-soft'
                     }`}
                   >
@@ -256,7 +256,7 @@ export const TradeProcessPage: React.FC = () => {
               type="button"
               onClick={handleNextStep}
               disabled={isAdvancing || currentStep < 3}
-              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-60 disabled:cursor-not-allowed text-on-brand font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <span>
                 {isAdvancing

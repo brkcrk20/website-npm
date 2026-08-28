@@ -177,7 +177,7 @@ export const EditProfilePage: React.FC = () => {
                 type="button"
                 disabled={isUploadingAvatar}
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-brand text-white shadow-sm disabled:opacity-60"
+                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-brand text-on-brand shadow-sm disabled:opacity-60"
               >
                 <Camera className="w-3.5 h-3.5" />
               </button>
@@ -270,7 +270,7 @@ export const EditProfilePage: React.FC = () => {
                     onClick={() => toggleInterest(cat.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 ${
                       isSelected
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand text-on-brand'
                         : 'bg-canvas text-ink-soft hover:bg-line'
                     }`}
                   >
@@ -285,7 +285,7 @@ export const EditProfilePage: React.FC = () => {
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer disabled:opacity-60"
+            className="w-full py-3 bg-brand hover:bg-brand-dark text-on-brand rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer disabled:opacity-60"
           >
             {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
           </button>

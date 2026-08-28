@@ -106,7 +106,7 @@ export const TradeDetailPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
-          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold"
+          className="px-4 py-2 bg-brand text-on-brand rounded-xl text-xs font-bold"
         >
           Takaslarıma Dön
         </button>
@@ -417,7 +417,7 @@ export const TradeDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleAccept}
                   disabled={isBusy}
-                  className="py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-dark text-on-brand text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {busyAction === 'accept' ? 'Kabul ediliyor…' : 'Teklifi Kabul Et'}
                 </button>
@@ -449,7 +449,7 @@ export const TradeDetailPage: React.FC = () => {
                 type="button"
                 onClick={() => handleAdvanceStep(4)}
                 disabled={isBusy}
-                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-on-brand rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {busyAction === 'step-4' ? 'Başlatılıyor…' : 'Teslimat Planını Onayla & Başlat'}
               </button>
@@ -466,7 +466,7 @@ export const TradeDetailPage: React.FC = () => {
                 type="button"
                 onClick={() => handleAdvanceStep(5)}
                 disabled={isBusy}
-                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-on-brand rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{busyAction === 'step-5' ? 'Onaylanıyor…' : 'Ürünü Teslim Aldım & Doğruladım'}</span>
@@ -484,7 +484,7 @@ export const TradeDetailPage: React.FC = () => {
                 type="button"
                 onClick={() => handleAdvanceStep(6)}
                 disabled={isBusy}
-                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-on-brand rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>{busyAction === 'step-6' ? 'Tamamlanıyor…' : 'Takası Başarıyla Tamamla'}</span>
@@ -503,7 +503,7 @@ export const TradeDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowReviewModal(true)}
-                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-on-brand rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Star className="w-4 h-4 fill-white" />
                   <span>Kullanıcıyı Değerlendir ({otherUser.fullName})</span>
@@ -676,7 +676,7 @@ export const TradeDetailPage: React.FC = () => {
                 type="button"
                 onClick={handleSubmitReview}
                 disabled={isBusy}
-                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-xs shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {busyAction === 'review' ? 'Kaydediliyor…' : 'Puanı Kaydet'}
               </button>

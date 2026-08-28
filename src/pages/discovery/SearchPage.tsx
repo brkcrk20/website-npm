@@ -117,7 +117,7 @@ export const SearchPage: React.FC = () => {
             onClick={() => setShowFilters(!showFilters)}
             className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-colors shrink-0 shadow-xs cursor-pointer ${
               showFilters || selectedCategory !== 'all' || selectedCondition !== 'all'
-                ? 'bg-brand text-white border-brand'
+                ? 'bg-brand text-on-brand border-brand'
                 : 'bg-surface border-line text-ink-soft hover:bg-canvas'
             }`}
           >
@@ -155,7 +155,7 @@ export const SearchPage: React.FC = () => {
                   onClick={() => setSelectedCategory('all')}
                   className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                     selectedCategory === 'all'
-                      ? 'bg-brand text-white'
+                      ? 'bg-brand text-on-brand'
                       : 'bg-canvas text-ink-soft'
                   }`}
                 >
@@ -168,7 +168,7 @@ export const SearchPage: React.FC = () => {
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                       selectedCategory === cat.id
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand text-on-brand'
                         : 'bg-canvas text-ink-soft'
                     }`}
                   >
@@ -195,7 +195,7 @@ export const SearchPage: React.FC = () => {
                     onClick={() => setSelectedCondition(c.id)}
                     className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                       selectedCondition === c.id
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand text-on-brand'
                         : 'bg-canvas text-ink-soft'
                     }`}
                   >
@@ -263,7 +263,7 @@ export const SearchPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/aradiklarim')}
-                  className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark transition-colors"
+                  className="px-4 py-2 rounded-xl bg-brand text-on-brand text-xs font-bold hover:bg-brand-dark transition-colors"
                 >
                   Aradıklarıma Ekle
                 </button>
@@ -325,7 +325,7 @@ export const SearchPage: React.FC = () => {
                   setSelectedCategory('all');
                   setSelectedCondition('all');
                 }}
-                className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark transition-colors"
+                className="px-4 py-2 rounded-xl bg-brand text-on-brand text-xs font-bold hover:bg-brand-dark transition-colors"
               >
                 Tüm İlanları Göster
               </button>

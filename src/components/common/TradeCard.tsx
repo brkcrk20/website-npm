@@ -165,7 +165,7 @@ export const TradeCard: React.FC<TradeCardProps> = ({
             <button
               type="button"
               onClick={() => onAccept(trade.id)}
-              className="px-3 py-1 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-semibold transition-colors cursor-pointer"
+              className="px-3 py-1 rounded-lg bg-brand hover:bg-brand-dark text-on-brand text-xs font-semibold transition-colors cursor-pointer"
             >
               Kabul Et
             </button>
