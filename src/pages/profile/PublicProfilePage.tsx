@@ -274,9 +274,9 @@ export const PublicProfilePage: React.FC = () => {
                   <span
                     key={badge.id}
                     title={`${badge.title} — ${badge.description}`}
-                    className="w-8 h-8 rounded-full bg-brand-soft border border-brand-line flex items-center justify-center text-sm shrink-0 cursor-default"
+                    className="w-8 h-8 rounded-full bg-brand-soft border border-brand-line text-brand-dark flex items-center justify-center shrink-0 cursor-default"
                   >
-                    {badge.iconName}
+                    <badge.icon className="w-4 h-4" />
                   </span>
                 ))}
               </div>

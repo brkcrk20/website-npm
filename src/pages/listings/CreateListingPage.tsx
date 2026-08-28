@@ -201,7 +201,7 @@ export const CreateListingPage: React.FC = () => {
       return;
     }
 
-    showToast('İlanın Yayında! 🎉', 'Sana uygun takas teklifleri bekleyebilirsin.', 'success');
+    showToast('İlanın Yayında', 'Sana uygun takas teklifleri bekleyebilirsin.', 'success');
     navigate(`/ilan/${newListing.slug || newListing.id}`);
   };
 

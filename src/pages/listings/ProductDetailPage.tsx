@@ -373,10 +373,22 @@ export const ProductDetailPage: React.FC = () => {
               <span className="block text-sm font-semibold text-ink truncate">
                 {listing.user.fullName}
               </span>
-              <span className="flex items-center gap-1 text-xs text-ink-soft mt-0.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-brand" />
-                {listing.user.trustScore.toFixed(1)} güven puanı
-              </span>
+              {/* `trustScore` DB varsayılanı 5 olduğu için tek başına
+                  gösterilmez (types/index.ts ve utils/trustDisplay.ts:
+                  "puan ya gerçektir ya da yoktur"). Hiç değerlendirilmemiş
+                  bir kullanıcı burada kalkanlı bir "5.0 güven puanı"
+                  rozetiyle çıkıyordu — ilanı açan kişi, karşısındakini
+                  onaylanmış sanıyordu. */}
+              {listing.user.reviewCount > 0 ? (
+                <span className="flex items-center gap-1 text-xs text-ink-soft mt-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand" />
+                  {listing.user.trustScore.toFixed(1)} · {listing.user.reviewCount} değerlendirme
+                </span>
+              ) : (
+                <span className="block text-xs text-ink-faint mt-0.5">
+                  Yeni üye · henüz değerlendirilmedi
+                </span>
+              )}
             </span>
             <ChevronRight className="w-4 h-4 text-ink-faint shrink-0" />
           </button>

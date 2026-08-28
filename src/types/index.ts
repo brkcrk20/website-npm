@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react';
+
 export type ListingCondition = 'zero' | 'like_new' | 'very_good' | 'good' | 'acceptable';
 export type ProductCondition = ListingCondition;
 
@@ -306,10 +308,10 @@ export interface Badge {
   id: string;
   title: string;
   description: string;
-  // Şimdilik lucide ikon adı değil, doğrudan gösterilecek emoji karakteri
-  // (bkz. src/constants/badges.ts) — küçük rozet setinde bağımlılık eklemeden
-  // renkli/tanınabilir simgeler için tercih edildi.
-  iconName: string;
+  // Uygulamanın geri kalanıyla aynı: lucide ikonu. Burada eskiden emoji
+  // karakteri (`iconName: '🏅'`) duruyordu; rozetler uygulamadaki tek
+  // emoji ikon kümesiydi ve emoji her işletim sisteminde farklı çiziliyor.
+  icon: LucideIcon;
   category: 'trade' | 'community' | 'trust' | 'loop';
   isEarned: boolean;
   earnedDate?: string;
@@ -318,15 +320,6 @@ export interface Badge {
   currentProgress: number;
 }
 
-export interface PaperclipStage {
-  stageNumber: number;
-  itemTitle: string;
-  category: string;
-  image: string;
-  dateCompleted?: string;
-  isCompleted: boolean;
-  isCurrent: boolean;
-}
 
 export interface MysterySwapItem {
   id: string;

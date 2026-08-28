@@ -162,7 +162,7 @@ export const CreateProfilePage: React.FC = () => {
       showToast('E-posta Eklenemedi', result.warning, 'warning');
     }
 
-    showToast('Profil Oluşturuldu! 🎉', 'Swaloop dünyasına hoş geldin.', 'success');
+    showToast('Profil Oluşturuldu', 'Swaloop dünyasına hoş geldin.', 'success');
     navigate('/kesfet');
   };
 

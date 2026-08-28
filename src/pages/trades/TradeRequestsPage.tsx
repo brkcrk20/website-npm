@@ -151,7 +151,7 @@ export const TradeRequestsPage: React.FC = () => {
               Hızlı Takas Eşleştirme
             </span>
             <h2 className="text-base font-extrabold text-on-brand">
-              Kaydırarak Takas Eşleştirmesi Yap 🔥
+              Kaydırarak Takas Eşleştirmesi Yap
             </h2>
             <p className="text-xs text-stone-300 max-w-sm">
               Aradığın eşyaları tek tek incele, beğendiklerinle anında karşılıklı eşleşme yakala.

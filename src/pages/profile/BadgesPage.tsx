@@ -57,13 +57,13 @@ export const BadgesPage: React.FC = () => {
               }`}
             >
               <div
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-xs border ${
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-xs border ${
                   badge.isEarned
                     ? 'bg-brand-soft/80 border-brand-line text-brand-dark ring-2 ring-brand'
-                    : 'bg-line/80 border-line text-ink-faint grayscale'
+                    : 'bg-line/80 border-line text-ink-faint'
                 }`}
               >
-                {badge.iconName}
+                <badge.icon className="w-6 h-6" />
               </div>
 
               <div className="flex-1 min-w-0">

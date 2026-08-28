@@ -9,18 +9,45 @@ import {
   Star,
   Sparkles,
 } from 'lucide-react';
+import { badgeEarnedAtTradeCount } from '../../constants/badges';
+
+const REVIEW_DIMENSIONS = [
+  { key: 'trustworthiness', label: 'Güvenilirlik' },
+  { key: 'communication', label: 'İletişim' },
+  { key: 'itemAccuracy', label: 'Açıklamaya uygunluk' },
+  { key: 'delivery', label: 'Teslimat' },
+] as const;
 
 export const TradeSuccessPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { currentUser, showToast } = useApp();
+  const { currentUser, showToast, refreshUserData } = useApp();
 
   const [trade, setTrade] = useState<TradeOffer | undefined>(undefined);
+  // Rozet bildirimi GERÇEK sayıya dayanmalı. `currentUser` sayfa açılışından
+  // beri bellekte duruyor olabilir; takas az önce tamamlandığı için sayaç
+  // bayat olur. Taze veri gelene kadar rozet kutusu hiç çizilmiyor.
+  const [statsFresh, setStatsFresh] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     tradeService.getTradeById(id).then(setTrade);
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    refreshUserData().finally(() => {
+      if (!cancelled) setStatsFresh(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Bu takasla BİRLİKTE kazanılan rozet. Eşik tam bu takasta aşıldıysa
+  // rozet yenidir; aksi hâlde YOKTUR ve kutu hiç çıkmaz.
+  const newBadge = statsFresh ? badgeEarnedAtTradeCount(currentUser.stats.totalTrades) : null;
 
   const otherUser = trade
     ? trade.initiatorId === currentUser.id
@@ -33,7 +60,22 @@ export const TradeSuccessPage: React.FC = () => {
       : trade.isReviewedByReceiver
     : false;
 
-  const [rating, setRating] = useState(5);
+  // DEĞERLENDİRME DÖRT BOYUTLU.
+  //
+  // Eskiden tek bir yıldız satırı vardı ve `categories`'in dördüne de AYNI
+  // sayı yazılıyordu: {trustworthiness: r, communication: r, itemAccuracy: r,
+  // delivery: r}. Yani veritabanındaki dört ayrı sütun tek bir sayının dört
+  // kopyasıydı ve "İletişim iyiydi ama ürün açıklandığı gibi değildi"
+  // diyecek bir yol yoktu — dört boyut da sıfır bilgi taşıyordu.
+  const [ratings, setRatings] = useState({
+    trustworthiness: 5,
+    communication: 5,
+    itemAccuracy: 5,
+    delivery: 5,
+  });
+  const rating = Math.round(
+    (ratings.trustworthiness + ratings.communication + ratings.itemAccuracy + ratings.delivery) / 4
+  );
   // Yorum alanı BOŞ başlar. Eskiden "Harika bir takastı, ürün tam
   // açıklandığı gibiydi." ön dolu geliyordu; çoğu kullanıcı dokunmadan
   // gönderdiği için kendi yazmadığı bir övgü onun adına kaydoluyordu.
@@ -51,12 +93,7 @@ export const TradeSuccessPage: React.FC = () => {
       authorAvatar: currentUser.avatarUrl,
       targetUserId: otherUser.id,
       overallRating: rating,
-      categories: {
-        trustworthiness: rating,
-        communication: rating,
-        itemAccuracy: rating,
-        delivery: rating,
-      },
+      categories: ratings,
       comment: comment.trim(),
     });
 
@@ -66,7 +103,7 @@ export const TradeSuccessPage: React.FC = () => {
     }
 
     setShowReviewModal(false);
-    showToast('Değerlendirme Kaydedildi! ⭐', 'Güven puanına katkı sağladınız.', 'success');
+    showToast('Değerlendirme Kaydedildi', 'Güven puanına katkı sağladınız.', 'success');
     tradeService.getTradeById(trade.id).then(setTrade);
   };
 
@@ -104,23 +141,30 @@ export const TradeSuccessPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Additional Badge Unlocked Notification */}
-        <div className="p-4 rounded-2xl bg-surface border border-line shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-warn-soft border border-warn-line text-warn flex items-center justify-center text-xl">
-            🏅
+        {/* Rozet kutusu yalnızca GERÇEKTEN yeni bir rozet kazanıldıysa.
+            Eskiden koşulsuzdu ve her takasta "'İlk Takasım' rozeti
+            profilinize eklendi" diyordu — 50. takasını yapan kullanıcı da
+            aynı cümleyi okuyordu. */}
+        {newBadge && (
+          <div className="p-4 rounded-2xl bg-surface border border-line shadow-xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-brand-soft border border-brand-line text-brand-dark flex items-center justify-center shrink-0">
+              <newBadge.icon className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-bold text-ink block">Yeni Rozet Kazanıldı</span>
+              <span className="text-[11px] text-ink-soft">
+                "{newBadge.title}" rozeti profiline eklendi.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/rozetlerim')}
+              className="text-xs font-bold text-brand-dark hover:underline cursor-pointer shrink-0"
+            >
+              Gör →
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-bold text-ink block">Yeni Rozet Kazanıldı!</span>
-            <span className="text-[11px] text-ink-soft">"İlk Takasım" rozeti profilinize eklendi.</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/rozetlerim')}
-            className="text-xs font-bold text-brand-dark hover:underline cursor-pointer"
-          >
-            Gör →
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Bottom Action Button Matching Screen 12 */}
@@ -154,31 +198,53 @@ export const TradeSuccessPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Stars */}
-            <div className="flex justify-center gap-2 py-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="p-1 text-2xl transition-transform active:scale-125"
-                >
-                  <Star
-                    className={`w-8 h-8 ${
-                      star <= rating ? 'fill-star text-star' : 'text-stone-300'
-                    }`}
-                  />
-                </button>
+            {/* Dört boyut, dört ayrı puan. `reviews` tablosunda dördü için
+                ayrı sütun var (20260828000000 §7); tek yıldızı dört kez
+                kopyalamak o sütunları anlamsız kılıyordu. */}
+            <div className="space-y-2 py-1">
+              {REVIEW_DIMENSIONS.map((dimension) => (
+                <div key={dimension.key} className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-ink-soft">{dimension.label}</span>
+                  <div className="flex gap-0.5 shrink-0">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() =>
+                          setRatings((prev) => ({ ...prev, [dimension.key]: star }))
+                        }
+                        aria-label={`${dimension.label}: ${star} yıldız`}
+                        aria-pressed={ratings[dimension.key] === star}
+                        className="p-0.5 transition-transform active:scale-125 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand rounded"
+                      >
+                        <Star
+                          className={`w-6 h-6 ${
+                            star <= ratings[dimension.key]
+                              ? 'fill-star text-star'
+                              : 'text-muted'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
+              <p className="text-[11px] text-ink-faint text-center pt-1">
+                Genel puan: {rating}/5
+              </p>
             </div>
 
             {/* Comment */}
             <div>
-              <label className="text-xs font-bold text-ink-soft block mb-1">Yorumunuz</label>
+              <label htmlFor="review-comment" className="text-xs font-bold text-ink-soft block mb-1">
+                Yorumun
+              </label>
               <textarea
+                id="review-comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
+                placeholder="Takas nasıl geçti?"
                 className="w-full p-3 rounded-2xl bg-canvas border border-line text-xs text-ink focus:border-brand focus:outline-hidden resize-none"
               />
             </div>
