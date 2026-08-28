@@ -421,12 +421,17 @@ select pg_temp.ok(
 -- ve artık `active` değil. 20260902000000, ürünü takasa kapalı olan bir
 -- teklifin kabul edilmesini engelliyor.
 insert into public.listings (id, owner_id, category_id, title, condition, status) values
-  ('aaaaaaaa-0000-0000-0000-0000000000c1', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Kabul testi ürünü', 'good', 'active');
+  ('aaaaaaaa-0000-0000-0000-0000000000c1', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Kabul testi ürünü', 'good', 'active'),
+  -- İSTENEN ürün de gerekli: 20260902000000 tek taraflı ("ver bana")
+  -- teklifin kabul edilmesini engelliyor. Gerçek akışta MakeOfferPage
+  -- zaten iki tarafı da yazıyor.
+  ('aaaaaaaa-0000-0000-0000-0000000000c2', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'Kabul testi karşılığı', 'good', 'active');
 
 insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
   ('bbbbbbbb-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', 'cargo');
 insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
-  ('bbbbbbbb-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-0000000000c1', '11111111-1111-1111-1111-111111111111', 'offered');
+  ('bbbbbbbb-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-0000000000c1', '11111111-1111-1111-1111-111111111111', 'offered'),
+  ('bbbbbbbb-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-0000000000c2', '22222222-2222-2222-2222-222222222222', 'requested');
 
 -- Teklifi GÖNDEREN kendi teklifini kabul edemez.
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';

@@ -200,7 +200,7 @@ begin
     raise exception 'Bir kullanıcı kendisiyle takas yapamaz.' using errcode = 'check_violation';
   end if;
 
-  if v_trade.status in ('completed', 'cancelled') then
+  if v_trade.status in ('completed', 'cancelled', 'disputed') then
     raise exception 'Sonuçlanmış bir takas için onay verilemez (%).', v_trade.status
       using errcode = 'check_violation';
   end if;
@@ -218,6 +218,24 @@ begin
   perform set_config('swaloop.trade_confirm', 'off', true);
 
   if v_trade.sender_confirmed_at is null or v_trade.receiver_confirmed_at is null then
+    -- KARŞI TARAFA HABER VER.
+    --
+    -- Burada çıplak bir `return 'waiting'` vardı. `notify_on_trade_status()`
+    -- yalnızca completed/cancelled/delivery_planned durumlarını kapsıyor,
+    -- yani A "Teslim Aldım"a bastığında B'ye HİÇBİR ŞEY gitmiyordu. B,
+    -- uygulamayı kendiliğinden açmadıkça kendisinden onay beklendiğini
+    -- öğrenemiyordu — karşılıklı onay adımının tamamı bu tek bildirime
+    -- bağlı olduğu için takas iki taraf birbirini beklerken asılı kalıyordu.
+    perform public.push_notification(
+      case when v_actor = v_trade.sender_id then v_trade.receiver_id else v_trade.sender_id end,
+      'trade_status',
+      'Karşı taraf teslimatı onayladı',
+      'Sen de onayladığında takas tamamlanacak.',
+      '/takas-sureci/' || v_trade.offer_id,
+      null,
+      v_trade.offer_id
+    );
+
     return 'waiting';
   end if;
 

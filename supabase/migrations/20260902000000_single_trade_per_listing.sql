@@ -85,6 +85,31 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  -- BOŞ YA DA TEK TARAFLI TEKLİF KABUL EDİLEMEZ.
+  --
+  -- `trade_offer_items_role_check` yalnızca değerin ('offered','requested')
+  -- içinde olmasını zorluyor; kalem SAYISI hiçbir yerde doğrulanmıyordu.
+  -- `createTradeOffer` önce teklifi, sonra kalemleri yazdığı için ağ
+  -- koptuğunda SIFIR kalemli bir teklif kalıcı olarak kalıyor ve kabul
+  -- edilebiliyordu: hiçbir ilan kilitlenmiyor, hiçbir ürün el değiştirmiyor,
+  -- ama takas 'completed' olduğunda İKİ TARAFIN DA `completed_trades`
+  -- sayacı artıyordu. Güven sayacını şişirmenin en ucuz yolu buydu.
+  --
+  -- Aynı boşluk, karşılığında hiçbir şey vermeyen "ver bana" isteklerini de
+  -- mümkün kılıyordu — takas ürününün temel varsayımına aykırı.
+  if not exists (
+       select 1 from public.trade_offer_items
+       where offer_id = p_offer_id and role = 'offered'
+     )
+     or not exists (
+       select 1 from public.trade_offer_items
+       where offer_id = p_offer_id and role = 'requested'
+     )
+  then
+    raise exception 'Teklif eksik: en az bir verilen ve bir istenen ürün olmalı.'
+      using errcode = 'check_violation';
+  end if;
+
   if v_offer.status <> 'accepted' then
     update public.trade_offers set status = 'accepted' where id = p_offer_id;
   end if;

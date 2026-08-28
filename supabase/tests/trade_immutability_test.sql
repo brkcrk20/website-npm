@@ -323,6 +323,83 @@ select pg_temp.ok(
 
 
 \echo ''
+\echo '=== 12) Boş ya da tek taraflı teklif kabul edilemez (20260902000000)'
+-- `trade_offer_items_role_check` yalnızca değerin ('offered','requested')
+-- içinde olmasını zorluyordu; kalem SAYISI hiç doğrulanmıyordu. Sıfır
+-- kalemli bir teklif kabul edilebiliyor, hiçbir ürün el değiştirmeden
+-- iki tarafın da `completed_trades` sayacı artıyordu.
+
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-00000000000c', '99999999-9999-9999-9999-999999999999',
+   '33333333-3333-3333-3333-333333333333', 'C''nin ikinci ürünü', 'good', 'active'),
+  ('aaaaaaaa-0000-0000-0000-00000000000d', '22222222-2222-2222-2222-222222222222',
+   '33333333-3333-3333-3333-333333333333', 'B''nin üçüncü ürünü', 'good', 'active');
+
+-- (a) Hiç kalemi olmayan teklif.
+insert into public.trade_offers (id, sender_id, receiver_id, status) values
+  ('cccccccc-0000-0000-0000-00000000000a',
+   '99999999-9999-9999-9999-999999999999', '22222222-2222-2222-2222-222222222222', 'pending');
+
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+select pg_temp.rejects($$
+  select public.accept_trade_offer('cccccccc-0000-0000-0000-00000000000a')
+$$, 'hiç ürünü olmayan teklif kabul edilemiyor');
+
+-- (b) Yalnızca "istenen" kalemi olan teklif: karşılığında hiçbir şey yok.
+insert into public.trade_offers (id, sender_id, receiver_id, status) values
+  ('cccccccc-0000-0000-0000-00000000000b',
+   '99999999-9999-9999-9999-999999999999', '22222222-2222-2222-2222-222222222222', 'pending');
+insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
+  ('cccccccc-0000-0000-0000-00000000000b', 'aaaaaaaa-0000-0000-0000-00000000000d',
+   '22222222-2222-2222-2222-222222222222', 'requested');
+
+select pg_temp.rejects($$
+  select public.accept_trade_offer('cccccccc-0000-0000-0000-00000000000b')
+$$, 'tek taraflı "ver bana" teklifi kabul edilemiyor');
+
+-- (c) İki tarafı da olan teklif geçiyor (kural fazla geniş olmasın).
+insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
+  ('cccccccc-0000-0000-0000-00000000000b', 'aaaaaaaa-0000-0000-0000-00000000000c',
+   '99999999-9999-9999-9999-999999999999', 'offered');
+
+select pg_temp.ok(
+  public.accept_trade_offer('cccccccc-0000-0000-0000-00000000000b') is not null,
+  'iki tarafı da olan teklif kabul edilebiliyor');
+
+
+\echo ''
+\echo '=== 13) Tek taraflı onayda karşı tarafa bildirim gidiyor (20260830000000)'
+-- `confirm_trade_receipt()` ilk onaydan sonra çıplak `return ''waiting''`
+-- diyordu; `notify_on_trade_status()` de bu durumu kapsamıyor. Yani karşı
+-- taraf, kendisinden onay beklendiğini uygulamayı kendiliğinden açmadıkça
+-- ÖĞRENEMİYORDU ve takas iki taraf birbirini beklerken asılı kalıyordu.
+
+select set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999', true);
+select pg_temp.ok(
+  public.confirm_trade_receipt(
+    (select id from public.trades where offer_id = 'cccccccc-0000-0000-0000-00000000000b')
+  ) = 'waiting',
+  'ilk onay "waiting" dönüyor');
+
+select pg_temp.ok(
+  exists (
+    select 1 from public.notifications
+    where user_id = '22222222-2222-2222-2222-222222222222'
+      and type = 'trade_status'
+      and title = 'Karşı taraf teslimatı onayladı'
+  ),
+  'karşı tarafa "sen de onayla" bildirimi gitti');
+
+select pg_temp.ok(
+  not exists (
+    select 1 from public.notifications
+    where user_id = '99999999-9999-9999-9999-999999999999'
+      and title = 'Karşı taraf teslimatı onayladı'
+  ),
+  'onayı veren kendine bildirim almıyor');
+
+
+\echo ''
 \echo '=== TÜM KONTROLLER GEÇTİ ==='
 
 rollback;
