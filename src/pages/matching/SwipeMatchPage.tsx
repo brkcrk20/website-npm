@@ -10,6 +10,9 @@ import {
   ArrowLeft,
   Heart,
   X,
+  Star,
+  Sprout,
+  Target,
   Sparkles,
   RotateCcw,
   SlidersHorizontal,
@@ -163,8 +166,19 @@ export const SwipeMatchPage: React.FC = () => {
   const passOpacity = Math.min(Math.max(-dragOffset.x / 80, 0), 1);
   const superOpacity = Math.min(Math.max(-dragOffset.y / 80, 0), 1);
 
+  // Yükseklik yalnızca 4.5rem düşüyordu; oysa üstte sticky Header
+  // (h-14 = 3.5rem) ve altta fixed BottomNav (min 3.5rem + güvenli alan)
+  // var. Eksik ~2.5rem yüzünden alttaki eylem düğmeleri (beğen / geç /
+  // teklif ver) alt menünün ALTINDA kalıyordu — ekranın ana aksiyonuna
+  // dokunulamıyordu.
   return (
-    <div className="h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] bg-stone-900 text-white flex flex-col justify-between pb-2 select-none overflow-hidden max-w-md md:max-w-lg mx-auto w-full">
+    <div
+      style={{
+        height:
+          'calc(100dvh - 3.5rem - 3.5rem - env(safe-area-inset-bottom, 0px))',
+      }}
+      className="bg-stone-900 text-white flex flex-col justify-between pb-2 select-none overflow-hidden max-w-md md:max-w-lg mx-auto w-full"
+    >
       {/* Top Bar */}
       <header className="px-3 pt-2 pb-1 flex items-center justify-between w-full z-20 shrink-0">
         <div className="flex items-center gap-2">
@@ -250,7 +264,7 @@ export const SwipeMatchPage: React.FC = () => {
                 className="absolute top-6 left-4 border-3 border-emerald-400 text-emerald-400 font-black text-xl px-3 py-1 rounded-xl rotate-[-12deg] pointer-events-none z-30 shadow-lg tracking-wider bg-stone-950/40 backdrop-blur-xs"
                 style={{ opacity: likeOpacity }}
               >
-                TAKAS İSTE 💚
+                TAKAS İSTE
               </div>
             )}
             {passOpacity > 0 && (
@@ -258,7 +272,7 @@ export const SwipeMatchPage: React.FC = () => {
                 className="absolute top-6 right-4 border-3 border-rose-500 text-rose-500 font-black text-xl px-3 py-1 rounded-xl rotate-[12deg] pointer-events-none z-30 shadow-lg tracking-wider bg-stone-950/40 backdrop-blur-xs"
                 style={{ opacity: passOpacity }}
               >
-                PAS GEÇ ❌
+                PAS GEÇ
               </div>
             )}
             {superOpacity > 0 && (
@@ -266,7 +280,7 @@ export const SwipeMatchPage: React.FC = () => {
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-3 border-amber-400 bg-amber-500/20 backdrop-blur-xs text-amber-300 font-black text-xl px-5 py-2 rounded-2xl pointer-events-none z-30 shadow-2xl tracking-wider uppercase text-center"
                 style={{ opacity: superOpacity }}
               >
-                ⭐ SÜPER TAKAS ⭐
+                SÜPER TAKAS
               </div>
             )}
 
@@ -325,8 +339,20 @@ export const SwipeMatchPage: React.FC = () => {
                     <span className="text-[11px] font-bold text-white group-hover:text-emerald-400 transition-colors block truncate">
                       {currentListing.user.fullName}
                     </span>
+                    {/* Puanı olmayan kullanıcıya "4.9 Güven Skoru" yazmak,
+                        takas kararının tek dayanağını uydurmak demekti. */}
                     <span className="text-[9.5px] text-emerald-400 font-semibold flex items-center gap-0.5">
-                      ★ {currentListing.user.trustScore?.toFixed(1) || '4.9'} Güven Skoru
+                      {currentListing.user.reviewCount > 0 ? (
+                        <>
+                          <Star className="w-2.5 h-2.5 fill-current" />
+                          {currentListing.user.trustScore.toFixed(1)} Güven Skoru
+                        </>
+                      ) : (
+                        <>
+                          <Sprout className="w-2.5 h-2.5" />
+                          Yeni üye
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -348,8 +374,9 @@ export const SwipeMatchPage: React.FC = () => {
         ) : (
           /* Empty Deck State */
           <div className="w-full text-center py-10 px-4 bg-stone-800/60 rounded-3xl border border-stone-700/80 space-y-3">
-            <div className="w-12 h-12 rounded-full bg-stone-700/80 flex items-center justify-center mx-auto text-2xl">
-              🎯
+            {/* Emoji ikon yok, yalnızca lucide (md. 149 / tasarım dili §7). */}
+            <div className="w-12 h-12 rounded-full bg-stone-700/80 flex items-center justify-center mx-auto text-stone-300">
+              <Target className="w-6 h-6" />
             </div>
             <div className="space-y-1">
               <h3 className="text-base font-bold text-white font-display">
@@ -448,7 +475,7 @@ export const SwipeMatchPage: React.FC = () => {
                 KARŞILIKLI EŞLEŞME YAKALANDI!
               </span>
               <h2 className="text-2xl font-black text-white font-display">
-                Harika bir Takas Uyumu 🎉
+                Harika bir Takas Uyumu
               </h2>
               <p className="text-xs text-stone-300">
                 {matchedItem.targetListing.user.fullName} ile eşyalarınız %{matchedItem.matchScore} oranında örtüşüyor.

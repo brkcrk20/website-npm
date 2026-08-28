@@ -187,6 +187,7 @@ export const CreateListingPage: React.FC = () => {
         fullName: currentUser.fullName,
         avatarUrl: currentUser.avatarUrl,
         trustScore: currentUser.trustProfile.score,
+        reviewCount: currentUser.trustProfile.reviewCount,
         city: currentUser.city,
         district: currentUser.district,
         isVerified: currentUser.isVerified,

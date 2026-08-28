@@ -14,6 +14,12 @@ import { DEFAULT_LISTING_IMAGE as DEFAULT_IMAGE } from '../utils/placeholders';
 const LISTING_IMAGES_BUCKET = 'listing-images';
 
 /**
+ * `getAllListings()` için varsayılan üst sınır. Ana ekran zaten bir kaç
+ * düzine kart gösteriyor; bunun ötesi indirilip atılıyordu.
+ */
+export const DEFAULT_LISTING_PAGE_SIZE = 120;
+
+/**
  * İlan sorgularında ilan sahibinin profilinden çekilen kolonlar.
  *
  * GÜVENLİK: Buraya `profiles(*)` YAZILMAMALI. `profiles` üzerindeki RLS
@@ -208,6 +214,7 @@ function mapListing(row: any): Listing {
         fullName: row.user.full_name ?? 'Swaloop Kullanıcısı',
         avatarUrl: row.user.avatar_url || DEFAULT_AVATAR,
         trustScore: row.owner_trust_score ?? 5,
+        reviewCount: row.owner_review_count ?? 0,
         city: row.user.city ?? '',
         district: row.user.district ?? '',
         // Önceden sabit `true` idi: doğrulanmamış her ilan sahibi de
@@ -221,6 +228,7 @@ function mapListing(row: any): Listing {
         fullName: 'Swaloop Kullanıcısı',
         avatarUrl: DEFAULT_AVATAR,
         trustScore: row.owner_trust_score ?? 5,
+        reviewCount: row.owner_review_count ?? 0,
         city: row.city ?? '',
         district: row.district ?? '',
         isVerified: false,
@@ -422,12 +430,13 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
   ];
 
   let trustScoreMap = new Map<string, number>();
+  const reviewCountMap = new Map<string, number>();
   const verifiedMap = new Map<string, boolean>();
 
   if (ownerIds.length) {
     const { data: trustRows } = await supabase
       .from('trust_profiles')
-      .select('user_id, trust_score, verification_level')
+      .select('user_id, trust_score, verification_level, review_count')
       .in('user_id', ownerIds);
 
     for (const t of trustRows ?? []) {
@@ -437,6 +446,7 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
         trustScoreMap.set(t.user_id, t.trust_score);
       }
 
+      reviewCountMap.set(t.user_id, (t as { review_count?: number }).review_count ?? 0);
       verifiedMap.set(t.user_id, t.verification_level === 'id_verified');
     }
   }
@@ -452,6 +462,7 @@ export async function enrichListings(rows: any[]): Promise<Listing[]> {
     category_slug:
       categoryMap.get(row.category_id) ?? row.category_id,
     owner_trust_score: trustScoreMap.get(row.owner_id) ?? 5,
+    owner_review_count: reviewCountMap.get(row.owner_id) ?? 0,
     owner_is_verified: verifiedMap.get(row.owner_id) ?? false,
     is_favorite: favoriteIds.has(row.id),
     distance_km:
@@ -496,13 +507,27 @@ export interface DeleteListingResult {
 }
 
 export const listingService = {
-  async getAllListings(): Promise<Listing[]> {
-    // BURASI GÜNCELLENDİ: İlanla birlikte profil ve fotoğrafları da çekiyoruz
+  /**
+   * En yeni aktif ilanlar.
+   *
+   * Sorguda hiç `limit` YOKTU: dört ekran (ana sayfa, eşleştirme, harita,
+   * takas istekleri) her açılışta TÜM aktif ilan tablosunu, profil ve
+   * fotoğraf join'leriyle birlikte indirmeye çalışıyordu. Pazar büyüdükçe
+   * bu sessizce bozulur — PostgREST'in kendi `max-rows` tavanı (Supabase'de
+   * varsayılan 1000) devreye girip sonucu KESER, ama arayüzde bunun hiçbir
+   * işareti olmaz: ana sayfa rastgele bir 1000'lik pencere gösterir.
+   *
+   * Sınır artık açık ve çağıranın kontrolünde. Gerçek sayfalama (sonsuz
+   * kaydırma) ayrı bir iş; buradaki amaç görünmez kesilmeyi görünür bir
+   * karara çevirmek.
+   */
+  async getAllListings(options: { limit?: number } = {}): Promise<Listing[]> {
     const { data, error } = await supabase
       .from('listings')
       .select(LISTING_SELECT)
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(options.limit ?? DEFAULT_LISTING_PAGE_SIZE);
 
     if (error) {
       console.error('Listings alınamadı:', error);

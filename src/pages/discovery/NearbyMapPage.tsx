@@ -6,6 +6,7 @@ import { Listing } from '../../types';
 import {
   ArrowLeft,
   MapPin,
+  Star,
   ShieldCheck,
   Navigation,
   Layers,
@@ -265,9 +266,18 @@ export const NearbyMapPage: React.FC = () => {
                       <span className="text-xs font-bold text-ink truncate">
                         {listing.user.fullName}
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-dark bg-brand-soft px-1.5 py-0.2 rounded shrink-0">
-                        ★ {listing.user.trustScore?.toFixed(1) || '4.8'}
-                      </span>
+                      {/* Puan yoksa "4.8" uydurulmuyor; `★` metin glifi
+                          yerine lucide ikonu (md. 149: yalnızca lucide). */}
+                      {listing.user.reviewCount > 0 ? (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-dark bg-brand-soft px-1.5 py-0.5 rounded shrink-0">
+                          <Star className="w-2.5 h-2.5 fill-current" />
+                          {listing.user.trustScore.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-ink-faint shrink-0">
+                          Yeni üye
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-ink-soft truncate mt-0.5 font-medium">
                       {listing.title}

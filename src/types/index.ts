@@ -95,7 +95,11 @@ export interface Listing {
     id: string;
     fullName: string;
     avatarUrl: string;
+    // Ham puan. DB varsayılanı 5 olduğu için TEK BAŞINA gösterilmez;
+    // önce `reviewCount > 0` sorulur (bkz. src/utils/trustDisplay.ts).
     trustScore: number;
+    /** Sahibinin aldığı değerlendirme sayısı. 0 ise puan gösterilmez. */
+    reviewCount: number;
     city: string;
     district: string;
     isVerified: boolean;
