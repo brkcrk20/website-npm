@@ -27,6 +27,15 @@ import {
   Flag,
 } from 'lucide-react';
 
+// Değerlendirmenin dört boyutu (md. 41). Anahtarlar `Review['categories']`
+// ile birebir aynı olmalı.
+const REVIEW_DIMENSIONS = [
+  { key: 'itemAccuracy', label: 'Ürün açıklamaya uygun' },
+  { key: 'communication', label: 'İletişim' },
+  { key: 'delivery', label: 'Zamanında teslimat' },
+  { key: 'trustworthiness', label: 'Genel güvenilirlik' },
+] as const;
+
 export const TradeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -40,6 +49,24 @@ export const TradeDetailPage: React.FC = () => {
   const [cancelReason, setCancelReason] = useState<TradeCancellationReason | ''>('');
   const [cancelNote, setCancelNote] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  // Takası ilerleten HİÇBİR eylemin çift tıklamaya karşı koruması yoktu:
+  // "Teklifi Kabul Et"e iki kez basmak acceptOffer()'ı iki kez çağırıyor,
+  // "Takası Başarıyla Tamamla" iki kez ilerletme deniyor, değerlendirme
+  // formu iki kez gönderilebiliyordu (ve değerlendirme doğrudan güven
+  // puanını besliyor). Tek bir kilit hepsini kapsıyor.
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const isBusy = busyAction !== null;
+
+  /** Aynı anda tek yazma işlemi çalışsın. */
+  const runOnce = async (name: string, action: () => Promise<void>) => {
+    if (busyAction) return;
+    setBusyAction(name);
+    try {
+      await action();
+    } finally {
+      setBusyAction(null);
+    }
+  };
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewCategories, setReviewCategories] = useState({
@@ -99,22 +126,28 @@ export const TradeDetailPage: React.FC = () => {
     CANCELLABLE_STATUSES.includes(trade.status) &&
     (trade.status !== 'offer_sent' || isInitiator);
 
-  const handleAccept = async () => {
-    const updated = await tradeService.acceptOffer(trade.id);
-    if (updated) {
+  const handleAccept = () =>
+    runOnce('accept', async () => {
+      const updated = await tradeService.acceptOffer(trade.id);
+      if (!updated) {
+        showToast('Teklif kabul edilemedi', 'Lütfen tekrar dene.', 'error');
+        return;
+      }
       setTrade(updated);
       showToast('Takas Teklifi Kabul Edildi!', 'Ürünler takas için kilitlendi.', 'success');
       navigate(`/takas-sureci/${trade.id}`);
-    }
-  };
+    });
 
-  const handleReject = async () => {
-    const updated = await tradeService.rejectOffer(trade.id);
-    if (updated) {
+  const handleReject = () =>
+    runOnce('reject', async () => {
+      const updated = await tradeService.rejectOffer(trade.id);
+      if (!updated) {
+        showToast('Teklif reddedilemedi', 'Lütfen tekrar dene.', 'error');
+        return;
+      }
       setTrade(updated);
       showToast('Teklif Reddedildi', undefined, 'info');
-    }
-  };
+    });
 
   const handleCancelTrade = async () => {
     if (!cancelReason) return;
@@ -135,7 +168,8 @@ export const TradeDetailPage: React.FC = () => {
     showToast('Takastan vazgeçildi', 'İlanlar yeniden takasa açıldı.', 'info');
   };
 
-  const handleAdvanceStep = async (step: 4 | 5 | 6) => {
+  const handleAdvanceStep = (step: 4 | 5 | 6) =>
+    runOnce(`step-${step}`, async () => {
     // Adım 5 tek taraflı bir ilerletme değil, bir onay: takas ancak iki
     // taraf da onayladığında "doğrulandı" adımına geçiyor.
     if (step === 5) {
@@ -166,8 +200,10 @@ export const TradeDetailPage: React.FC = () => {
         showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
         setShowReviewModal(true);
       }
+    } else {
+      showToast('Adım ilerletilemedi', 'Lütfen tekrar dene.', 'error');
     }
-  };
+    });
 
   const handleChatOpen = async () => {
     const conv = await messageService.getOrCreateConversationWithUser(currentUser.id, otherUser.id);
@@ -178,8 +214,10 @@ export const TradeDetailPage: React.FC = () => {
     }
   };
 
-  const handleSubmitReview = async (e: React.FormEvent) => {
+  const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
+
+    return runOnce('review', async () => {
     await tradeService.submitReview({
       tradeId: trade.id,
       authorId: currentUser.id,
@@ -188,12 +226,16 @@ export const TradeDetailPage: React.FC = () => {
       targetUserId: otherUser.id,
       overallRating: rating,
       categories: reviewCategories,
-      comment: reviewComment || 'Harika ve güvenilir bir takas deneyimi oldu!',
+      // Boş bırakılan yorum EKSİK bırakılır. Eskiden yerine
+      // "Harika ve güvenilir bir takas deneyimi oldu!" yazılıyordu —
+      // kullanıcının hiç yazmadığı bir övgü onun adına kaydediliyordu.
+      comment: reviewComment.trim(),
     });
 
     showToast('Değerlendirmeniz Kaydedildi!', 'Topluluk güven skoruna katkınız için teşekkürler.', 'success');
     setShowReviewModal(false);
     loadTrade();
+    });
   };
 
   const isReviewedByMe = isInitiator ? trade.isReviewedByInitiator : trade.isReviewedByReceiver;
@@ -366,16 +408,18 @@ export const TradeDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleReject}
-                  className="py-2.5 px-4 rounded-xl border border-line text-ink-soft hover:bg-canvas text-xs font-bold transition-colors cursor-pointer"
+                  disabled={isBusy}
+                  className="py-2.5 px-4 rounded-xl border border-line text-ink-soft hover:bg-canvas text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Reddet
+                  {busyAction === 'reject' ? 'Reddediliyor…' : 'Reddet'}
                 </button>
                 <button
                   type="button"
                   onClick={handleAccept}
-                  className="py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-colors cursor-pointer"
+                  disabled={isBusy}
+                  className="py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Teklifi Kabul Et
+                  {busyAction === 'accept' ? 'Kabul ediliyor…' : 'Teklifi Kabul Et'}
                 </button>
               </div>
               {/* Reddet ile Kabul arasındaki üçüncü yol (rapor md. 26) */}
@@ -404,9 +448,10 @@ export const TradeDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleAdvanceStep(4)}
-                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                disabled={isBusy}
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Teslimat Planını Onayla & Başlat
+                {busyAction === 'step-4' ? 'Başlatılıyor…' : 'Teslimat Planını Onayla & Başlat'}
               </button>
             </div>
           )}
@@ -420,10 +465,11 @@ export const TradeDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleAdvanceStep(5)}
-                className="w-full py-2.5 bg-teal-800 hover:bg-teal-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                disabled={isBusy}
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Ürünü Teslim Aldım & Doğruladım</span>
+                <span>{busyAction === 'step-5' ? 'Onaylanıyor…' : 'Ürünü Teslim Aldım & Doğruladım'}</span>
               </button>
             </div>
           )}
@@ -437,10 +483,11 @@ export const TradeDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleAdvanceStep(6)}
-                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                disabled={isBusy}
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Takası Başarıyla Tamamla</span>
+                <span>{busyAction === 'step-6' ? 'Tamamlanıyor…' : 'Takası Başarıyla Tamamla'}</span>
               </button>
             </div>
           )}
@@ -575,20 +622,38 @@ export const TradeDetailPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Sub-ratings */}
-            <div className="space-y-2 text-xs bg-canvas p-3 rounded-xl">
-              <div className="flex justify-between items-center">
-                <span className="text-ink-soft">Ürün Açıklamaya Uygunluk:</span>
-                <span className="font-bold text-warn">5/5</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-ink-soft">İletişim & Nezaket:</span>
-                <span className="font-bold text-warn">5/5</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-ink-soft">Zamanında Teslimat:</span>
-                <span className="font-bold text-warn">5/5</span>
-              </div>
+            {/* Alt puanlar (md. 41: değerlendirme dört boyutlu).
+                Bunlar EKRANDA SABİT "5/5" yazıyordu ve kullanıcı
+                değiştiremiyordu — yani her değerlendirme, karşı tarafın
+                her boyutta kusursuz olduğunu bildiriyordu. Güven sistemini
+                besleyen veri buydu. Artık gerçekten seçilebiliyor. */}
+            <div className="space-y-2.5 bg-canvas p-3 rounded-xl">
+              {REVIEW_DIMENSIONS.map((dimension) => (
+                <div key={dimension.key} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-ink-soft">{dimension.label}</span>
+                  <span className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() =>
+                          setReviewCategories((prev) => ({ ...prev, [dimension.key]: star }))
+                        }
+                        aria-label={`${dimension.label}: ${star} yıldız`}
+                        className="p-0.5 cursor-pointer"
+                      >
+                        <Star
+                          className={`w-4 h-4 ${
+                            star <= reviewCategories[dimension.key]
+                              ? 'fill-star text-star'
+                              : 'text-line'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </span>
+                </div>
+              ))}
             </div>
 
             <textarea
@@ -610,9 +675,10 @@ export const TradeDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSubmitReview}
-                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-xs"
+                disabled={isBusy}
+                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Puanı Kaydet
+                {busyAction === 'review' ? 'Kaydediliyor…' : 'Puanı Kaydet'}
               </button>
             </div>
           </div>
