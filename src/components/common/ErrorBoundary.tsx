@@ -38,14 +38,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
     }
 
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
-        <div className="max-w-sm w-full bg-white rounded-3xl border border-stone-200 p-6 text-center space-y-4 shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto text-2xl">
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-6">
+        <div className="max-w-sm w-full bg-surface rounded-3xl border border-line p-6 text-center space-y-4 shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-warn-soft text-warn flex items-center justify-center mx-auto text-2xl">
             ●
           </div>
           <div>
-            <h1 className="text-base font-bold text-stone-900">Bir şeyler ters gitti</h1>
-            <p className="text-xs text-stone-500 mt-1">
+            <h1 className="text-base font-bold text-ink">Bir şeyler ters gitti</h1>
+            <p className="text-xs text-ink-soft mt-1">
               Bu ekran yüklenirken beklenmedik bir sorun oldu. Tekrar deneyebilir ya da keşfete
               dönebilirsin.
             </p>
@@ -54,7 +54,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <button
               type="button"
               onClick={this.handleReset}
-              className="py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+              className="py-2.5 rounded-xl border border-line text-ink-soft hover:bg-canvas text-xs font-bold transition-colors cursor-pointer"
             >
               Tekrar dene
             </button>
@@ -63,7 +63,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               onClick={() => {
                 window.location.href = '/kesfet';
               }}
-              className="py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors cursor-pointer"
+              className="py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-colors cursor-pointer"
             >
               Keşfete dön
             </button>

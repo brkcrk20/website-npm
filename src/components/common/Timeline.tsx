@@ -27,7 +27,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       {/* Horizontal step indicator bar */}
       <div className="relative flex items-center justify-between px-2 py-4">
         {/* Background connector line */}
-        <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-0.5 bg-stone-200 -z-0" />
+        <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-0.5 bg-line -z-0" />
 
         {stepsMeta.map((s, idx) => {
           const eventItem = timeline.find((e) => e.step === s.step);
@@ -35,13 +35,13 @@ export const Timeline: React.FC<TimelineProps> = ({
           const isInProgress = eventItem?.status === 'in_progress';
           const isFailed = eventItem?.status === 'failed';
 
-          let circleStyle = 'bg-stone-100 border-stone-300 text-stone-400';
+          let circleStyle = 'bg-canvas border-line text-ink-faint';
           if (isCompleted) {
-            circleStyle = 'bg-emerald-700 border-emerald-700 text-white shadow-xs';
+            circleStyle = 'bg-brand border-brand text-white shadow-xs';
           } else if (isInProgress) {
             circleStyle = 'bg-amber-500 border-amber-500 text-white animate-pulse';
           } else if (isFailed) {
-            circleStyle = 'bg-rose-500 border-rose-500 text-white';
+            circleStyle = 'bg-danger border-rose-500 text-white';
           }
 
           return (
@@ -54,10 +54,10 @@ export const Timeline: React.FC<TimelineProps> = ({
               <span
                 className={`text-[10px] font-semibold mt-1.5 ${
                   isCompleted
-                    ? 'text-emerald-900 font-bold'
+                    ? 'text-brand-dark font-bold'
                     : isInProgress
-                    ? 'text-amber-700 font-bold'
-                    : 'text-stone-400'
+                    ? 'text-warn font-bold'
+                    : 'text-ink-faint'
                 }`}
               >
                 {s.label}
@@ -68,8 +68,8 @@ export const Timeline: React.FC<TimelineProps> = ({
       </div>
 
       {/* Detailed vertical log list */}
-      <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200/80 space-y-3">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+      <div className="bg-canvas rounded-2xl p-4 border border-line space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
           Takas Süreç Günlüğü
         </h4>
         <div className="space-y-3">
@@ -83,22 +83,22 @@ export const Timeline: React.FC<TimelineProps> = ({
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
                     isCompleted
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-brand-soft text-brand-dark'
                       : isInProgress
-                      ? 'bg-amber-100 text-amber-800'
+                      ? 'bg-warn-soft text-warn'
                       : isFailed
-                      ? 'bg-rose-100 text-rose-800'
-                      : 'bg-stone-200 text-stone-500'
+                      ? 'bg-danger-soft text-danger'
+                      : 'bg-line text-ink-soft'
                   }`}
                 >
                   {isCompleted ? '✓' : evt.step}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-stone-900">{evt.title}</span>
-                    <span className="text-[10px] text-stone-400">{evt.timestamp}</span>
+                    <span className="font-bold text-ink">{evt.title}</span>
+                    <span className="text-[10px] text-ink-faint">{evt.timestamp}</span>
                   </div>
-                  <p className="text-stone-600 mt-0.5">{evt.description}</p>
+                  <p className="text-ink-soft mt-0.5">{evt.description}</p>
                 </div>
               </div>
             );

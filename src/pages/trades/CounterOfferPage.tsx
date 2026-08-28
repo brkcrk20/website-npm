@@ -152,20 +152,20 @@ export const CounterOfferPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
   }
 
   if (!original) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
-        <p className="text-sm font-bold text-stone-700 mb-3">Bu teklif bulunamadı.</p>
+      <div className="min-h-screen bg-canvas p-6 flex flex-col items-center justify-center text-center">
+        <p className="text-sm font-bold text-ink-soft mb-3">Bu teklif bulunamadı.</p>
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
-          className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold cursor-pointer"
+          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold cursor-pointer"
         >
           Takaslarıma Dön
         </button>
@@ -180,15 +180,15 @@ export const CounterOfferPage: React.FC = () => {
 
   if (!canCounter) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
-        <p className="text-sm font-bold text-stone-700 mb-1">Bu teklife karşı teklif veremezsin.</p>
-        <p className="text-xs text-stone-500 mb-3">
+      <div className="min-h-screen bg-canvas p-6 flex flex-col items-center justify-center text-center">
+        <p className="text-sm font-bold text-ink-soft mb-1">Bu teklife karşı teklif veremezsin.</p>
+        <p className="text-xs text-ink-soft mb-3">
           Karşı teklif yalnızca sana gelen ve henüz yanıtlanmamış teklifler için verilebilir.
         </p>
         <button
           type="button"
           onClick={() => navigate(`/teklif/${original.id}`)}
-          className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold cursor-pointer"
+          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold cursor-pointer"
         >
           Teklifi Görüntüle
         </button>
@@ -203,7 +203,7 @@ export const CounterOfferPage: React.FC = () => {
     emptyText: string
   ) =>
     listings.length === 0 ? (
-      <p className="text-xs text-stone-500">{emptyText}</p>
+      <p className="text-xs text-ink-soft">{emptyText}</p>
     ) : (
       <ul className="space-y-2">
         {listings.map((listing) => {
@@ -217,8 +217,8 @@ export const CounterOfferPage: React.FC = () => {
                 onClick={() => toggle(listing.id, selected, setSelected)}
                 className={`w-full p-2.5 rounded-2xl border-2 flex items-center gap-3 text-left transition-colors cursor-pointer ${
                   isSelected
-                    ? 'border-emerald-600 bg-emerald-50/60'
-                    : 'border-stone-200 bg-white hover:bg-stone-50'
+                    ? 'border-brand bg-brand-soft/60'
+                    : 'border-line bg-surface hover:bg-canvas'
                 }`}
               >
                 <img
@@ -227,14 +227,14 @@ export const CounterOfferPage: React.FC = () => {
                   className="w-12 h-12 rounded-xl object-cover shrink-0"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-bold text-stone-900 truncate">
+                  <span className="block text-xs font-bold text-ink truncate">
                     {listing.title}
                   </span>
-                  <span className="block text-[11px] text-stone-500 truncate">
+                  <span className="block text-[11px] text-ink-soft truncate">
                     {listing.location.district || listing.location.city}
                   </span>
                 </span>
-                {isSelected && <Check className="w-4 h-4 text-emerald-700 shrink-0" />}
+                {isSelected && <Check className="w-4 h-4 text-brand-dark shrink-0" />}
               </button>
             </li>
           );
@@ -243,37 +243,37 @@ export const CounterOfferPage: React.FC = () => {
     );
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-24 text-ink">
       <form onSubmit={handleSubmit} className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs cursor-pointer"
+            className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-stone-900 font-display">Karşı Teklif</h1>
-            <p className="text-xs text-stone-500">
+            <h1 className="text-lg font-bold text-ink font-display">Karşı Teklif</h1>
+            <p className="text-xs text-ink-soft">
               {original.initiator.fullName} adlı kullanıcıya alternatif öner
             </p>
           </div>
         </div>
 
         {/* Özet: ne değişiyor */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-3 flex items-center gap-2 text-xs">
-          <span className="flex-1 min-w-0 truncate font-semibold text-stone-800">
+        <div className="bg-surface rounded-2xl border border-line p-3 flex items-center gap-2 text-xs">
+          <span className="flex-1 min-w-0 truncate font-semibold text-ink">
             {giving.map((l) => l.title).join(', ') || 'Vereceğin seçilmedi'}
           </span>
-          <ArrowLeftRight className="w-4 h-4 text-emerald-700 shrink-0" />
-          <span className="flex-1 min-w-0 truncate font-semibold text-stone-800 text-right">
+          <ArrowLeftRight className="w-4 h-4 text-brand-dark shrink-0" />
+          <span className="flex-1 min-w-0 truncate font-semibold text-ink text-right">
             {wanting.map((l) => l.title).join(', ') || 'İstediğin seçilmedi'}
           </span>
         </div>
 
-        <section className="bg-white rounded-3xl border border-stone-200 p-4 space-y-2.5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-stone-700">
+        <section className="bg-surface rounded-3xl border border-line p-4 space-y-2.5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
             Vereceklerin
           </h2>
           {renderPicker(
@@ -284,8 +284,8 @@ export const CounterOfferPage: React.FC = () => {
           )}
         </section>
 
-        <section className="bg-white rounded-3xl border border-stone-200 p-4 space-y-2.5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-stone-700">
+        <section className="bg-surface rounded-3xl border border-line p-4 space-y-2.5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
             Karşılığında istediklerin
           </h2>
           {renderPicker(
@@ -296,8 +296,8 @@ export const CounterOfferPage: React.FC = () => {
           )}
         </section>
 
-        <section className="bg-white rounded-3xl border border-stone-200 p-4 space-y-2.5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-stone-700">
+        <section className="bg-surface rounded-3xl border border-line p-4 space-y-2.5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
             Takas Yöntemi
           </h2>
           <div className="grid grid-cols-3 gap-2">
@@ -313,21 +313,21 @@ export const CounterOfferPage: React.FC = () => {
                   onClick={() => setDeliveryMethod(option.id)}
                   className={`p-3 rounded-2xl border-2 text-left transition-colors cursor-pointer ${
                     isSelected
-                      ? 'border-emerald-600 bg-emerald-50/60'
-                      : 'border-stone-200 hover:bg-stone-50'
+                      ? 'border-brand bg-brand-soft/60'
+                      : 'border-line hover:bg-canvas'
                   }`}
                 >
-                  <Icon className="w-4 h-4 text-emerald-700 mb-1" />
-                  <span className="block text-[11px] font-bold text-stone-900">{option.title}</span>
-                  <span className="block text-[10px] text-stone-500">{option.desc}</span>
+                  <Icon className="w-4 h-4 text-brand-dark mb-1" />
+                  <span className="block text-[11px] font-bold text-ink">{option.title}</span>
+                  <span className="block text-[10px] text-ink-soft">{option.desc}</span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        <section className="bg-white rounded-3xl border border-stone-200 p-4 space-y-2">
-          <label htmlFor="counter-note" className="text-xs font-bold uppercase tracking-wider text-stone-700">
+        <section className="bg-surface rounded-3xl border border-line p-4 space-y-2">
+          <label htmlFor="counter-note" className="text-xs font-bold uppercase tracking-wider text-ink-soft">
             Notun (opsiyonel)
           </label>
           <textarea
@@ -337,14 +337,14 @@ export const CounterOfferPage: React.FC = () => {
             rows={3}
             maxLength={300}
             placeholder="Örn. PS5 bende zaten var, bisikletinle takas edebilir miyiz?"
-            className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-hidden focus:border-emerald-600 resize-none"
+            className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line text-sm outline-hidden focus:border-brand resize-none"
           />
         </section>
 
         <button
           type="submit"
           disabled={giving.length === 0 || wanting.length === 0 || isSubmitting}
-          className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-stone-300 text-white font-bold text-sm shadow-md transition-colors cursor-pointer"
+          className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:bg-line text-white font-bold text-sm shadow-md transition-colors cursor-pointer"
         >
           {isSubmitting ? 'Gönderiliyor…' : 'Karşı Teklifi Gönder'}
         </button>

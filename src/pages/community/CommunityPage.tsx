@@ -67,28 +67,28 @@ export const CommunityPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-28 text-ink">
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="p-1.5 rounded-xl bg-emerald-800 text-white">
+              <span className="p-1.5 rounded-xl bg-brand text-white">
                 <Users className="w-4 h-4" />
               </span>
-              <h1 className="text-xl font-bold text-stone-900 tracking-tight">Swaloop Topluluğu</h1>
+              <h1 className="text-xl font-bold text-ink tracking-tight">Swaloop Topluluğu</h1>
             </div>
-            <p className="text-xs text-stone-500">Takas hikayeleri, yerel buluşmalar ve lider tablosu</p>
+            <p className="text-xs text-ink-soft">Takas hikayeleri, yerel buluşmalar ve lider tablosu</p>
           </div>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center gap-1.5 p-1 bg-stone-200/60 rounded-2xl">
+        <div className="flex items-center gap-1.5 p-1 bg-line/60 rounded-2xl">
           <button
             type="button"
             onClick={() => setActiveTab('stories')}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'stories' ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'stories' ? 'bg-surface text-brand-dark shadow-xs' : 'text-ink-soft hover:text-ink'
             }`}
           >
             Takas Hikayeleri
@@ -97,7 +97,7 @@ export const CommunityPage: React.FC = () => {
             type="button"
             onClick={() => setActiveTab('events')}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'events' ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'events' ? 'bg-surface text-brand-dark shadow-xs' : 'text-ink-soft hover:text-ink'
             }`}
           >
             Etkinlikler ({events.length})
@@ -106,7 +106,7 @@ export const CommunityPage: React.FC = () => {
             type="button"
             onClick={() => setActiveTab('leaderboard')}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'leaderboard' ? 'bg-white text-emerald-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'leaderboard' ? 'bg-surface text-brand-dark shadow-xs' : 'text-ink-soft hover:text-ink'
             }`}
           >
             Lider Tablosu
@@ -115,11 +115,11 @@ export const CommunityPage: React.FC = () => {
 
         {/* 1. Stories Tab */}
         {activeTab === 'stories' && isLoadingPosts && (
-          <div className="py-16 text-center text-xs text-stone-500">Gönderiler yükleniyor...</div>
+          <div className="py-16 text-center text-xs text-ink-soft">Gönderiler yükleniyor...</div>
         )}
 
         {activeTab === 'stories' && !isLoadingPosts && posts.length === 0 && (
-          <div className="py-16 text-center text-xs text-stone-500">Henüz hiç gönderi yok.</div>
+          <div className="py-16 text-center text-xs text-ink-soft">Henüz hiç gönderi yok.</div>
         )}
 
         {activeTab === 'stories' && !isLoadingPosts && posts.length > 0 && (
@@ -127,7 +127,7 @@ export const CommunityPage: React.FC = () => {
             {posts.map((post) => (
               <div
                 key={post.id}
-                className="bg-white rounded-3xl border border-stone-200/90 p-5 shadow-xs space-y-3"
+                className="bg-surface rounded-3xl border border-line p-5 shadow-xs space-y-3"
               >
                 {/* Author Info */}
                 <div className="flex items-center justify-between">
@@ -135,11 +135,11 @@ export const CommunityPage: React.FC = () => {
                     <img
                       src={post.author.avatarUrl}
                       alt={post.author.fullName}
-                      className="w-10 h-10 rounded-full object-cover border border-stone-200"
+                      className="w-10 h-10 rounded-full object-cover border border-line"
                     />
                     <div>
-                      <h3 className="text-xs font-bold text-stone-900">{post.author.fullName}</h3>
-                      <span className="text-[10px] text-stone-400">
+                      <h3 className="text-xs font-bold text-ink">{post.author.fullName}</h3>
+                      <span className="text-[10px] text-ink-faint">
                         {post.author.district}, {post.author.city} • {post.createdAt}
                       </span>
                     </div>
@@ -149,42 +149,42 @@ export const CommunityPage: React.FC = () => {
 
                 {/* Content */}
                 <div>
-                  <h4 className="text-sm font-bold text-stone-900 mb-1">{post.title}</h4>
-                  <p className="text-xs text-stone-700 leading-relaxed">{post.content}</p>
+                  <h4 className="text-sm font-bold text-ink mb-1">{post.title}</h4>
+                  <p className="text-xs text-ink-soft leading-relaxed">{post.content}</p>
                 </div>
 
                 {/* Trade Story Highlight Box */}
                 {post.tradeStory && (
-                  <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center gap-2 text-xs">
-                    <span className="font-semibold text-stone-800">{post.tradeStory.itemGiven}</span>
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span className="font-semibold text-stone-800">{post.tradeStory.itemReceived}</span>
+                  <div className="p-3 rounded-2xl bg-canvas border border-line flex items-center gap-2 text-xs">
+                    <span className="font-semibold text-ink">{post.tradeStory.itemGiven}</span>
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-brand-dark shrink-0" />
+                    <span className="font-semibold text-ink">{post.tradeStory.itemReceived}</span>
                   </div>
                 )}
 
                 {/* Images */}
                 {post.images && post.images.length > 0 && (
-                  <div className="aspect-video rounded-2xl overflow-hidden bg-stone-100">
+                  <div className="aspect-video rounded-2xl overflow-hidden bg-canvas">
                     <img src={post.images[0]} alt="Hikaye Fotoğrafı" className="w-full h-full object-cover" />
                   </div>
                 )}
 
                 {/* Footer buttons */}
-                <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs text-stone-500">
+                <div className="flex items-center justify-between pt-2 border-t border-line text-xs text-ink-soft">
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
                       onClick={() => handleLikePost(post.id)}
                       className={`flex items-center gap-1 font-semibold transition-colors cursor-pointer ${
-                        post.isLiked ? 'text-rose-600' : 'text-stone-600 hover:text-rose-600'
+                        post.isLiked ? 'text-danger' : 'text-ink-soft hover:text-danger'
                       }`}
                     >
-                      <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+                      <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-rose-500 text-danger' : ''}`} />
                       <span>{post.likesCount}</span>
                     </button>
                     <button
                       type="button"
-                      className="flex items-center gap-1 text-stone-600 hover:text-stone-900 font-semibold"
+                      className="flex items-center gap-1 text-ink-soft hover:text-ink font-semibold"
                     >
                       <MessageSquare className="w-4 h-4" />
                       <span>{post.commentsCount}</span>
@@ -202,34 +202,34 @@ export const CommunityPage: React.FC = () => {
             {events.map((event) => (
               <div
                 key={event.id}
-                className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-xs"
+                className="bg-surface rounded-3xl border border-line overflow-hidden shadow-xs"
               >
                 <div className="aspect-video sm:aspect-21/9 relative bg-stone-900">
                   <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover opacity-90" />
-                  <div className="absolute top-3 left-3 bg-emerald-900/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  <div className="absolute top-3 left-3 bg-brand/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
                     {event.category === 'swap_party' ? 'Takas Partisi' : 'Tamir Kafesi'}
                   </div>
                 </div>
 
                 <div className="p-5 space-y-3">
                   <div>
-                    <h3 className="text-base font-bold text-stone-900">{event.title}</h3>
-                    <p className="text-xs text-stone-600 leading-relaxed mt-1">{event.description}</p>
+                    <h3 className="text-base font-bold text-ink">{event.title}</h3>
+                    <p className="text-xs text-ink-soft leading-relaxed mt-1">{event.description}</p>
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-stone-600 bg-stone-50 p-3 rounded-2xl">
+                  <div className="space-y-1.5 text-xs text-ink-soft bg-canvas p-3 rounded-2xl">
                     <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-emerald-800 shrink-0" />
+                      <Calendar className="w-4 h-4 text-brand-dark shrink-0" />
                       <span>{event.date} • {event.time}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-emerald-800 shrink-0" />
+                      <MapPin className="w-4 h-4 text-brand-dark shrink-0" />
                       <span>{event.locationName} ({event.district}, {event.city})</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-stone-500 font-semibold">
+                    <span className="text-xs text-ink-soft font-semibold">
                       {event.attendeesCount} kişi katılıyor
                     </span>
                     <button
@@ -237,8 +237,8 @@ export const CommunityPage: React.FC = () => {
                       onClick={() => handleToggleEventAttendance(event.id)}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         event.isAttending
-                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                          : 'bg-emerald-800 text-white hover:bg-emerald-900 shadow-xs'
+                          ? 'bg-brand-soft text-brand-dark border border-brand-line'
+                          : 'bg-brand text-white hover:bg-brand-dark shadow-xs'
                       }`}
                     >
                       {event.isAttending ? '✓ Katılıyorsun' : 'Katıl & Takvime Ekle'}
@@ -252,13 +252,13 @@ export const CommunityPage: React.FC = () => {
 
         {/* 3. Leaderboard Tab */}
         {activeTab === 'leaderboard' && (
-          <div className="bg-white rounded-3xl border border-stone-200/90 p-5 space-y-4 shadow-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+          <div className="bg-surface rounded-3xl border border-line p-5 space-y-4 shadow-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" />
-                <h3 className="text-sm font-bold text-stone-900">Ayın En Çok Takas Yapanları</h3>
+                <Trophy className="w-5 h-5 text-star" />
+                <h3 className="text-sm font-bold text-ink">Ayın En Çok Takas Yapanları</h3>
               </div>
-              <span className="text-xs text-stone-400">İstanbul / Kadıköy</span>
+              <span className="text-xs text-ink-faint">İstanbul / Kadıköy</span>
             </div>
 
             <div className="space-y-2">
@@ -267,20 +267,20 @@ export const CommunityPage: React.FC = () => {
                   key={user.rank}
                   className={`p-3 rounded-2xl flex items-center justify-between border transition-all ${
                     user.isMe
-                      ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-500/20'
-                      : 'bg-stone-50 border-stone-200/80'
+                      ? 'bg-brand-soft/80 border-brand-line ring-2 ring-brand'
+                      : 'bg-canvas border-line'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
                         user.rank === 1
-                          ? 'bg-amber-400 text-amber-950'
+                          ? 'bg-amber-400 text-warn'
                           : user.rank === 2
-                          ? 'bg-stone-300 text-stone-800'
+                          ? 'bg-line text-ink'
                           : user.rank === 3
                           ? 'bg-amber-700 text-white'
-                          : 'text-stone-400'
+                          : 'text-ink-faint'
                       }`}
                     >
                       {user.rank}
@@ -288,21 +288,21 @@ export const CommunityPage: React.FC = () => {
                     <img
                       src={user.avatar}
                       alt={user.name}
-                      className="w-10 h-10 rounded-full object-cover border border-stone-200"
+                      className="w-10 h-10 rounded-full object-cover border border-line"
                     />
                     <div>
-                      <h4 className="text-xs font-bold text-stone-900">
+                      <h4 className="text-xs font-bold text-ink">
                         {user.name} {user.isMe && '(Sen)'}
                       </h4>
-                      <span className="text-[10px] text-stone-500">{user.trades} başarılı takas</span>
+                      <span className="text-[10px] text-ink-soft">{user.trades} başarılı takas</span>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-sm font-extrabold text-emerald-800 block">
+                    <span className="text-sm font-extrabold text-brand-dark block">
                       {user.trades}
                     </span>
-                    <span className="text-[9px] text-stone-400 uppercase">Takas</span>
+                    <span className="text-[9px] text-ink-faint uppercase">Takas</span>
                   </div>
                 </div>
               ))}

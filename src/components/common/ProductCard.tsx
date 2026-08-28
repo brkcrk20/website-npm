@@ -112,7 +112,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           type="button"
           onClick={handleToggleFavorite}
           aria-label={isFavorite ? 'Favorilerden çıkar' : 'Favorilere ekle'}
-          className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-ink-soft hover:text-brand transition-colors cursor-pointer"
+          className="absolute top-2 right-2 w-9 h-9 rounded-full bg-surface/90 backdrop-blur flex items-center justify-center text-ink-soft hover:text-brand transition-colors cursor-pointer"
         >
           <Heart className={`w-4 h-4 ${isFavorite ? 'fill-brand text-brand' : ''}`} />
         </button>

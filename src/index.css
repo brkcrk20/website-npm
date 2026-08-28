@@ -36,10 +36,21 @@
   --color-night: #16231d;
   --color-night-soft: #1e302a;
 
-  /* Durum */
+  /* Durum. `-soft` / `-line` varyantları uyarı ve hata şeritlerinin zemini
+     ve kenarlığı için: eskiden bunlar amber-50/rose-50 gibi ham palet
+     renkleriydi ve koyu temada bembeyaz kalıyorlardı. */
   --color-warn: #d99a2b;
+  --color-warn-soft: #fdf6e7;
+  --color-warn-line: #f0dcae;
   --color-danger: #d9534f;
+  --color-danger-soft: #fdefee;
+  --color-danger-line: #f3c9c7;
   --color-star: #f5a524;
+
+  /* Yardımcı yüzeyler (eskiden bileşen kurallarına gömülü sabit
+     hex'lerdi; koyu temada değişemedikleri için token oldular) */
+  --color-muted: #cdd4cf;      /* devre dışı buton zemini */
+  --color-skeleton: #e9ebe9;   /* iskelet yükleme */
 }
 
 @layer base {
@@ -49,8 +60,58 @@
     max-width: 100vw;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* ── KOYU TEMA ────────────────────────────────────────────────────────
+     Ayarlar'daki "Koyu" seçeneği vardı ama TEMA YOKTU: yukarıdaki
+     tokenların koyu karşılığı hiç tanımlanmamıştı ve `html.dark` yalnızca
+     `color-scheme` ayarlıyordu. Sonuç: koyu seçilince yalnızca App.tsx'in
+     dış kabuğu (tek `dark:` kullanan yerlerden biri) kararıyor, tüm
+     içerik bembeyaz kalıyordu — yani ayar görünür şekilde bozuktu.
+
+     Tema artık tek bir yerden, token değerlerini değiştirerek dönüyor.
+     `bg-surface` / `text-ink` / `border-line` kullanan her ekran otomatik
+     olarak doğru çalışır; bileşenlerde ayrı ayrı `dark:` yazmak gerekmez.
+
+     `html.dark` özgüllüğü (0,1,1) `:root`tan (0,1,0) yüksek olduğu için
+     @theme değerlerini geçersiz kılar.
+     ──────────────────────────────────────────────────────────────────── */
   html.dark {
     color-scheme: dark;
+
+    /* Marka: koyu zeminde okunabilmesi için bir tık açık. `brand-dark`
+       burada DAHA AÇIK olur — hover'ın yönü koyuda tersine döner. */
+    --color-brand: #38b06f;
+    --color-brand-dark: #56c68a;
+    --color-brand-soft: #16301f;
+    --color-brand-line: #275437;
+
+    /* Yüzeyler: saf siyah değil, hafif yeşile çalan koyu gri —
+       saf siyahta kenarlıklar kaybolur ve OLED'de titreşim hissi verir. */
+    --color-canvas: #0f1512;
+    --color-surface: #17201b;
+    --color-line: #2a352e;
+
+    /* Metin */
+    --color-ink: #e9efea;
+    --color-ink-soft: #a3b0a8;
+    --color-ink-faint: #77837c;
+
+    /* Koyu yüzey tokenları koyu temada zeminle karışmasın diye
+       bir tık açık kalır (splash, admin). */
+    --color-night: #17201b;
+    --color-night-soft: #202b24;
+
+    /* Durum renkleri koyu zeminde soluk kalıyordu; doygunluk arttı. */
+    --color-warn: #e5ac47;
+    --color-warn-soft: #2e2515;
+    --color-warn-line: #4d3f21;
+    --color-danger: #ef6b67;
+    --color-danger-soft: #2f1a19;
+    --color-danger-line: #522b29;
+    --color-star: #f7b23f;
+
+    --color-muted: #2f3a33;
+    --color-skeleton: #222c26;
   }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -104,7 +165,8 @@
     background-color: var(--color-brand-dark);
   }
   .sw-btn-primary:disabled {
-    background-color: #cdd4cf;
+    background-color: var(--color-muted);
+    color: var(--color-ink-faint);
     cursor: not-allowed;
   }
 
@@ -114,7 +176,7 @@
     border: 1px solid var(--color-brand-line);
   }
   .sw-btn-soft:hover:not(:disabled) {
-    background-color: #dcefe4;
+    background-color: var(--color-brand-line);
   }
 
   .sw-btn-ghost {
@@ -223,7 +285,7 @@
 
   /* İskelet yükleme (md. 92) */
   .sw-skeleton {
-    background-color: #e9ebe9;
+    background-color: var(--color-skeleton);
     border-radius: 12px;
     animation: sw-pulse 1.4s ease-in-out infinite;
   }

@@ -142,7 +142,7 @@ export const EditListingPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/profil')}
-          className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold cursor-pointer"
         >
           Profilime dön
         </button>
@@ -154,11 +154,11 @@ export const EditListingPage: React.FC = () => {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-center px-6">
         <p className="text-sm font-bold">Bu ilanı düzenleyemezsin</p>
-        <p className="text-xs text-stone-500">Yalnızca kendi ilanlarını düzenleyebilirsin.</p>
+        <p className="text-xs text-ink-soft">Yalnızca kendi ilanlarını düzenleyebilirsin.</p>
         <button
           type="button"
           onClick={() => navigate(`/ilan/${listing.id}`)}
-          className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+          className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold cursor-pointer"
         >
           İlana git
         </button>
@@ -167,20 +167,20 @@ export const EditListingPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full bg-stone-50 dark:bg-stone-950 pb-8 text-stone-900 dark:text-stone-100">
+    <div className="min-h-full bg-canvas pb-8 text-ink">
       <div className="px-4 pt-3 space-y-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-2xl bg-surface border border-line flex items-center justify-center hover:bg-canvas transition-colors cursor-pointer"
             aria-label="Geri"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <h1 className="text-base font-bold">İlanı düzenle</h1>
-            <p className="text-xs text-stone-500 dark:text-stone-400 truncate max-w-[220px]">
+            <p className="text-xs text-ink-soft truncate max-w-[220px]">
               {listing.title}
             </p>
           </div>
@@ -192,17 +192,17 @@ export const EditListingPage: React.FC = () => {
               key={`${image}-${index}`}
               src={image}
               alt={`${listing.title} ${index + 1}`}
-              className="w-20 h-20 rounded-2xl object-cover border border-stone-200 dark:border-stone-800 shrink-0"
+              className="w-20 h-20 rounded-2xl object-cover border border-line shrink-0"
               loading="lazy"
             />
           ))}
         </div>
-        <p className="text-[11px] text-stone-400 -mt-2">
+        <p className="text-[11px] text-ink-faint -mt-2">
           Fotoğrafları değiştirmek için ilanı silip yeniden yayınlaman gerekiyor.
         </p>
 
         <form onSubmit={handleSave} className="space-y-4">
-          <section className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 p-4 space-y-3">
+          <section className="bg-surface rounded-2xl border border-line p-4 space-y-3">
             <div>
               <label htmlFor="edit-title" className="block text-xs font-bold mb-1.5">
                 Başlık *
@@ -212,7 +212,7 @@ export const EditListingPage: React.FC = () => {
                 value={title}
                 maxLength={80}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm font-semibold"
                 required
               />
             </div>
@@ -225,7 +225,7 @@ export const EditListingPage: React.FC = () => {
                 id="edit-category"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value as CategoryId)}
-                className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm font-semibold"
               >
                 {CATEGORIES.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -243,7 +243,7 @@ export const EditListingPage: React.FC = () => {
                 id="edit-condition"
                 value={condition}
                 onChange={(e) => setCondition(e.target.value as ProductCondition)}
-                className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm font-semibold"
               >
                 {Object.entries(CONDITION_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -263,7 +263,7 @@ export const EditListingPage: React.FC = () => {
                 maxLength={600}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm resize-none"
+                className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm resize-none"
               />
             </div>
 
@@ -276,7 +276,7 @@ export const EditListingPage: React.FC = () => {
                 value={lookingFor}
                 maxLength={120}
                 onChange={(e) => setLookingFor(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm font-semibold"
+                className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm font-semibold"
                 required
               />
             </div>
@@ -290,7 +290,7 @@ export const EditListingPage: React.FC = () => {
                   id="edit-city"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm"
+                  className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm"
                 />
               </div>
               <div>
@@ -301,14 +301,14 @@ export const EditListingPage: React.FC = () => {
                   id="edit-district"
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:border-emerald-600 outline-hidden text-sm"
+                  className="w-full px-3 py-2.5 rounded-xl bg-canvas border border-line focus:border-brand outline-hidden text-sm"
                 />
               </div>
             </div>
           </section>
 
-          <section className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/90 dark:border-stone-800 p-4 space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+          <section className="bg-surface rounded-2xl border border-line p-4 space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
               Teslimat
             </label>
 
@@ -325,13 +325,13 @@ export const EditListingPage: React.FC = () => {
                 onClick={() => handleToggleDelivery(option.id)}
                 className={`w-full p-3 rounded-2xl border-2 flex items-center justify-between transition-colors cursor-pointer ${
                   deliveryOptions.includes(option.id)
-                    ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40'
-                    : 'border-stone-200 dark:border-stone-700'
+                    ? 'border-brand bg-brand-soft/60'
+                    : 'border-line'
                 }`}
               >
                 <span className="text-xs font-bold">{option.title}</span>
                 {deliveryOptions.includes(option.id) && (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                 )}
               </button>
             ))}
@@ -340,7 +340,7 @@ export const EditListingPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-bold text-sm shadow-md transition-colors cursor-pointer disabled:opacity-60"
+            className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white rounded-2xl font-bold text-sm shadow-md transition-colors cursor-pointer disabled:opacity-60"
           >
             {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri kaydet'}
           </button>
@@ -348,7 +348,7 @@ export const EditListingPage: React.FC = () => {
           <button
             type="button"
             onClick={handleDelete}
-            className="w-full py-3 rounded-2xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+            className="w-full py-3 rounded-2xl border border-danger-line text-danger text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-danger-soft transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             İlanı sil

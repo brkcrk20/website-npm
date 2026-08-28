@@ -80,33 +80,33 @@ export const TradeOffersPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 pb-24 text-stone-900 flex items-center justify-center">
-        <p className="text-sm text-stone-500">Takaslar yükleniyor...</p>
+      <div className="min-h-screen bg-canvas pb-24 text-ink flex items-center justify-center">
+        <p className="text-sm text-ink-soft">Takaslar yükleniyor...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-24 text-ink">
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-stone-900 tracking-tight font-display">Takaslarım</h1>
-            <p className="text-xs text-stone-500">Devam eden ve tamamlanan takas süreçleriniz</p>
+            <h1 className="text-xl font-bold text-ink tracking-tight font-display">Takaslarım</h1>
+            <p className="text-xs text-ink-soft">Devam eden ve tamamlanan takas süreçleriniz</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate('/eslesme')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-ink text-xs font-bold shadow-xs transition-colors cursor-pointer"
             >
               <span>🔥 Kaydır & Eşleş</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/kesfet')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Yeni İlan</span>
@@ -120,18 +120,18 @@ export const TradeOffersPage: React.FC = () => {
             onClick={() => setActiveTab('incoming')}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'incoming'
-                ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                : 'bg-white text-stone-700 border-stone-200/80 hover:bg-stone-50'
+                ? 'bg-brand text-white border-brand shadow-sm'
+                : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'incoming' ? 'text-emerald-200' : 'text-stone-400'}`}>
+              <span className={`text-[11px] font-bold ${activeTab === 'incoming' ? 'text-emerald-200' : 'text-ink-faint'}`}>
                 GELEN
               </span>
-              <Inbox className={`w-4 h-4 ${activeTab === 'incoming' ? 'text-emerald-300' : 'text-emerald-700'}`} />
+              <Inbox className={`w-4 h-4 ${activeTab === 'incoming' ? 'text-brand' : 'text-brand-dark'}`} />
             </div>
             <div className="text-xl font-extrabold">{activeIncoming.length}</div>
-            <div className={`text-[10px] ${activeTab === 'incoming' ? 'text-emerald-100' : 'text-stone-500'}`}>
+            <div className={`text-[10px] ${activeTab === 'incoming' ? 'text-emerald-100' : 'text-ink-soft'}`}>
               Onay bekleyen
             </div>
           </div>
@@ -140,18 +140,18 @@ export const TradeOffersPage: React.FC = () => {
             onClick={() => setActiveTab('outgoing')}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'outgoing'
-                ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                : 'bg-white text-stone-700 border-stone-200/80 hover:bg-stone-50'
+                ? 'bg-brand text-white border-brand shadow-sm'
+                : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'outgoing' ? 'text-emerald-200' : 'text-stone-400'}`}>
+              <span className={`text-[11px] font-bold ${activeTab === 'outgoing' ? 'text-emerald-200' : 'text-ink-faint'}`}>
                 GİDEN
               </span>
-              <Send className={`w-4 h-4 ${activeTab === 'outgoing' ? 'text-emerald-300' : 'text-teal-700'}`} />
+              <Send className={`w-4 h-4 ${activeTab === 'outgoing' ? 'text-brand' : 'text-ink-soft'}`} />
             </div>
             <div className="text-xl font-extrabold">{activeOutgoing.length}</div>
-            <div className={`text-[10px] ${activeTab === 'outgoing' ? 'text-emerald-100' : 'text-stone-500'}`}>
+            <div className={`text-[10px] ${activeTab === 'outgoing' ? 'text-emerald-100' : 'text-ink-soft'}`}>
               Yanıt bekleyen
             </div>
           </div>
@@ -160,25 +160,25 @@ export const TradeOffersPage: React.FC = () => {
             onClick={() => setActiveTab('completed')}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'completed'
-                ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
-                : 'bg-white text-stone-700 border-stone-200/80 hover:bg-stone-50'
+                ? 'bg-brand text-white border-brand shadow-sm'
+                : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'completed' ? 'text-emerald-200' : 'text-stone-400'}`}>
+              <span className={`text-[11px] font-bold ${activeTab === 'completed' ? 'text-emerald-200' : 'text-ink-faint'}`}>
                 GEÇMİŞ
               </span>
-              <CheckCircle2 className={`w-4 h-4 ${activeTab === 'completed' ? 'text-emerald-300' : 'text-emerald-600'}`} />
+              <CheckCircle2 className={`w-4 h-4 ${activeTab === 'completed' ? 'text-brand' : 'text-brand-dark'}`} />
             </div>
             <div className="text-xl font-extrabold">{completedTrades.length}</div>
-            <div className={`text-[10px] ${activeTab === 'completed' ? 'text-emerald-100' : 'text-stone-500'}`}>
+            <div className={`text-[10px] ${activeTab === 'completed' ? 'text-emerald-100' : 'text-ink-soft'}`}>
               Sonuçlanan
             </div>
           </div>
         </div>
 
         {/* Tab Navigation Pill Bar */}
-        <div className="flex items-center gap-1.5 p-1 bg-stone-200/60 rounded-xl">
+        <div className="flex items-center gap-1.5 p-1 bg-line/60 rounded-xl">
           <button
             type="button"
             onClick={() => {
@@ -186,7 +186,7 @@ export const TradeOffersPage: React.FC = () => {
               setFilterStatus('all');
             }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'incoming' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'incoming' ? 'bg-surface text-brand-dark shadow-xs' : 'text-ink-soft hover:text-ink'
             }`}
           >
             Gelen Teklifler ({activeIncoming.length})
@@ -198,7 +198,7 @@ export const TradeOffersPage: React.FC = () => {
               setFilterStatus('all');
             }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'outgoing' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'outgoing' ? 'bg-surface text-brand-dark shadow-xs' : 'text-ink-soft hover:text-ink'
             }`}
           >
             Giden Teklifler ({activeOutgoing.length})
@@ -210,7 +210,7 @@ export const TradeOffersPage: React.FC = () => {
               setFilterStatus('all');
             }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'completed' ? 'bg-white text-emerald-900 shadow-xs' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'completed' ? 'bg-surface text-brand-dark shadow-xs' : 'text-ink-soft hover:text-ink'
             }`}
           >
             Geçmiş Takaslar ({completedTrades.length})
@@ -231,18 +231,18 @@ export const TradeOffersPage: React.FC = () => {
               />
             ))
           ) : (
-            <div className="text-center py-12 px-4 bg-white rounded-2xl border border-stone-200/80">
-              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-3">
-                <ArrowLeftRight className="w-6 h-6 text-stone-400" />
+            <div className="text-center py-12 px-4 bg-surface rounded-2xl border border-line">
+              <div className="w-12 h-12 rounded-full bg-canvas flex items-center justify-center mx-auto mb-3">
+                <ArrowLeftRight className="w-6 h-6 text-ink-faint" />
               </div>
-              <h3 className="text-sm font-bold text-stone-800 mb-1">
+              <h3 className="text-sm font-bold text-ink mb-1">
                 {activeTab === 'incoming'
                   ? 'Henüz gelen bir takas teklifi yok'
                   : activeTab === 'outgoing'
                   ? 'Henüz bir takas teklifi göndermediniz'
                   : 'Henüz tamamlanmış bir takasınız bulunmuyor'}
               </h3>
-              <p className="text-xs text-stone-500 max-w-xs mx-auto mb-4">
+              <p className="text-xs text-ink-soft max-w-xs mx-auto mb-4">
                 {activeTab === 'incoming'
                   ? 'İlanlarınızı öne çıkararak diğer kullanıcıların teklif vermesini sağlayabilirsiniz.'
                   : 'Keşfet sayfasındaki binlerce sürdürülebilir ilandan birine teklif gönderin.'}
@@ -250,7 +250,7 @@ export const TradeOffersPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/kesfet')}
-                className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 İlanları Keşfet
               </button>
@@ -261,7 +261,7 @@ export const TradeOffersPage: React.FC = () => {
         {/* 6-Step Safety Protocol Info Box */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-900 text-white">
           <div className="flex items-center gap-2 mb-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-300" />
+            <ShieldCheck className="w-4 h-4 text-brand" />
             <h4 className="text-xs font-bold">Swaloop 6 Adımlı Güvenli Takas</h4>
           </div>
           <p className="text-[11px] text-emerald-100/90 leading-relaxed">

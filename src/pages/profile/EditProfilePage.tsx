@@ -134,36 +134,36 @@ export const EditProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-24 text-ink">
       <div className="max-w-md md:max-w-xl mx-auto px-4 pt-3 space-y-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors"
+            className="p-2 rounded-xl bg-surface border border-line text-ink-soft hover:bg-canvas transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-base font-bold text-stone-900">Profili Düzenle</h1>
-            <p className="text-xs text-stone-500">Kişisel bilgilerinizi ve ilgi alanlarınızı güncelleyin</p>
+            <h1 className="text-base font-bold text-ink">Profili Düzenle</h1>
+            <p className="text-xs text-ink-soft">Kişisel bilgilerinizi ve ilgi alanlarınızı güncelleyin</p>
           </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
           {/* Avatar Edit */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-4 flex items-center gap-4">
+          <div className="bg-surface rounded-2xl border border-line p-4 flex items-center gap-4">
             <div className="relative">
               <img
                 src={avatarUrl}
                 alt="Avatar"
-                className={`w-16 h-16 rounded-full object-cover border-2 border-emerald-700 transition-opacity ${
+                className={`w-16 h-16 rounded-full object-cover border-2 border-brand transition-opacity ${
                   isUploadingAvatar ? 'opacity-50' : ''
                 }`}
               />
               {isUploadingAvatar && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-emerald-700 animate-spin" />
+                  <Loader2 className="w-5 h-5 text-brand-dark animate-spin" />
                 </div>
               )}
               <input
@@ -177,49 +177,49 @@ export const EditProfilePage: React.FC = () => {
                 type="button"
                 disabled={isUploadingAvatar}
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-emerald-800 text-white shadow-sm disabled:opacity-60"
+                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-brand text-white shadow-sm disabled:opacity-60"
               >
                 <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="flex-1 text-xs">
-              <span className="font-bold text-stone-900 block mb-0.5">Profil Fotoğrafı</span>
-              <span className="text-stone-500">Takas güvenliği için net bir profil resmi tercih ediniz.</span>
+              <span className="font-bold text-ink block mb-0.5">Profil Fotoğrafı</span>
+              <span className="text-ink-soft">Takas güvenliği için net bir profil resmi tercih ediniz.</span>
             </div>
           </div>
 
           {/* Form fields */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
+          <div className="bg-surface rounded-2xl border border-line p-4 space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">Ad</label>
+                <label className="text-xs font-bold text-ink-soft block mb-1">Ad</label>
                 <input
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs outline-hidden focus:border-brand"
                   required
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">Soyad</label>
+                <label className="text-xs font-bold text-ink-soft block mb-1">Soyad</label>
                 <input
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs outline-hidden focus:border-brand"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-stone-700 block mb-1">Biyografi & Takas Tarzı</label>
+              <label className="text-xs font-bold text-ink-soft block mb-1">Biyografi & Takas Tarzı</label>
               <textarea
                 rows={2}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700 resize-none"
+                className="w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs outline-hidden focus:border-brand resize-none"
               />
             </div>
 
@@ -227,11 +227,11 @@ export const EditProfilePage: React.FC = () => {
                 değişince ilçe listesi otomatik güncellenir. */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">İl</label>
+                <label className="text-xs font-bold text-ink-soft block mb-1">İl</label>
                 <select
                   value={city}
                   onChange={(e) => handleCityChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs outline-hidden focus:border-brand"
                 >
                   {TURKEY_CITIES.map((c) => (
                     <option key={c} value={c}>
@@ -241,11 +241,11 @@ export const EditProfilePage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-stone-700 block mb-1">İlçe</label>
+                <label className="text-xs font-bold text-ink-soft block mb-1">İlçe</label>
                 <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:border-emerald-700"
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs outline-hidden focus:border-brand"
                 >
                   {districtsForCity.map((d) => (
                     <option key={d} value={d}>
@@ -258,8 +258,8 @@ export const EditProfilePage: React.FC = () => {
           </div>
 
           {/* Interests selection */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-2">
-            <label className="text-xs font-bold text-stone-800 block">Dolaşıma Soktuğun Kategoriler</label>
+          <div className="bg-surface rounded-2xl border border-line p-4 space-y-2">
+            <label className="text-xs font-bold text-ink block">Dolaşıma Soktuğun Kategoriler</label>
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.map((cat) => {
                 const isSelected = interests.includes(cat.id);
@@ -270,8 +270,8 @@ export const EditProfilePage: React.FC = () => {
                     onClick={() => toggleInterest(cat.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 ${
                       isSelected
-                        ? 'bg-emerald-800 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        ? 'bg-brand text-white'
+                        : 'bg-canvas text-ink-soft hover:bg-line'
                     }`}
                   >
                     {isSelected && <Check className="w-3 h-3" />}
@@ -285,7 +285,7 @@ export const EditProfilePage: React.FC = () => {
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer disabled:opacity-60"
+            className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer disabled:opacity-60"
           >
             {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
           </button>

@@ -205,7 +205,7 @@ export const CreateListingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-28 text-ink">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-5">
         {/* Header & Step progress */}
         <div className="flex items-center justify-between">
@@ -215,12 +215,12 @@ export const CreateListingPage: React.FC = () => {
               if (step > 1) setStep((prev) => (prev - 1) as 1 | 2);
               else navigate(-1);
             }}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs"
+            className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shadow-xs"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            <span className="text-xs font-bold text-brand-dark bg-brand-soft px-3 py-1 rounded-full border border-brand-line">
               Adım {step} / 3
             </span>
           </div>
@@ -230,17 +230,17 @@ export const CreateListingPage: React.FC = () => {
         {step === 1 && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink font-display">
                 Ne Takas Etmek İstiyorsun?
               </h1>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-xs text-ink-soft mt-0.5">
                 Kullanmadığın ürünün fotoğraflarını ve temel bilgilerini ekle.
               </p>
             </div>
 
             {/* Images Grid */}
-            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-600">
+            <div className="bg-surface rounded-3xl p-4 border border-line space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
                 Ürün Fotoğrafları ({images.length}/6)
               </label>
 
@@ -248,13 +248,13 @@ export const CreateListingPage: React.FC = () => {
                 {images.map((img, idx) => (
                   <div
                     key={idx}
-                    className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 group"
+                    className="relative aspect-square rounded-2xl overflow-hidden bg-canvas border border-line group"
                   >
                     <img src={img} alt="Product preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-stone-950/70 text-white flex items-center justify-center hover:bg-rose-600 transition-colors"
+                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-stone-950/70 text-white flex items-center justify-center hover:bg-danger transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -265,10 +265,10 @@ export const CreateListingPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="relative aspect-square rounded-2xl border-2 border-dashed border-stone-300 hover:border-emerald-600 bg-stone-50 flex flex-col items-center justify-center text-center p-2 transition-colors cursor-pointer"
+                    className="relative aspect-square rounded-2xl border-2 border-dashed border-line hover:border-brand bg-canvas flex flex-col items-center justify-center text-center p-2 transition-colors cursor-pointer"
                   >
-                    <Camera className="w-6 h-6 text-stone-400 mb-1" />
-                    <span className="text-[10px] font-semibold text-stone-500">Fotoğraf Ekle</span>
+                    <Camera className="w-6 h-6 text-ink-faint mb-1" />
+                    <span className="text-[10px] font-semibold text-ink-soft">Fotoğraf Ekle</span>
                   </button>
                 )}
               </div>
@@ -288,16 +288,16 @@ export const CreateListingPage: React.FC = () => {
                   olmayan bir ürünün stok fotoğrafıyla ilan verebiliyordu.
                   Bir takas pazarında bu, karşı tarafın gördüğü tek kanıtı
                   sahteleştirir. Demo döneminden kalmış bir kolaylıktı. */}
-              <p className="text-[11px] text-stone-500">
+              <p className="text-[11px] text-ink-soft">
                 Ürünün kendi fotoğrafını ekle. Gerçek fotoğraf, teklif alma ihtimalini en çok
                 artıran şeydir.
               </p>
             </div>
 
             {/* Title & Category */}
-            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-4">
+            <div className="bg-surface rounded-3xl p-4 border border-line space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
                   İlan Başlığı *
                 </label>
                 <input
@@ -305,18 +305,18 @@ export const CreateListingPage: React.FC = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Örn: Apple Watch Series 7 45mm"
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
+                  className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line focus:border-brand focus:outline-hidden text-sm font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
                   Kategori *
                 </label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value as CategoryId)}
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
+                  className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line focus:border-brand focus:outline-hidden text-sm font-semibold"
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -327,7 +327,7 @@ export const CreateListingPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
                   Açıklama (Opsiyonel)
                 </label>
                 <textarea
@@ -335,7 +335,7 @@ export const CreateListingPage: React.FC = () => {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ürünün durumu, kutusu, aksesuarları hakkında bilgi verin..."
                   rows={3}
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-xs sm:text-sm font-medium"
+                  className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line focus:border-brand focus:outline-hidden text-xs sm:text-sm font-medium"
                 />
               </div>
             </div>
@@ -344,7 +344,7 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               disabled={!title.trim() || images.length === 0}
               onClick={() => setStep(2)}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <span>Sonraki Adım: Takas Tercihleri</span>
               <ArrowRight className="w-4 h-4" />
@@ -356,17 +356,17 @@ export const CreateListingPage: React.FC = () => {
         {step === 2 && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink font-display">
                 Kondisyon & Aradığın Ürün
               </h1>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-xs text-ink-soft mt-0.5">
                 Karşılığında ne takas etmek istediğini belirt.
               </p>
             </div>
 
             {/* Condition Selection */}
-            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700">
+            <div className="bg-surface rounded-3xl p-4 border border-line space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
                 Ürün Kondisyonu
               </label>
 
@@ -377,26 +377,26 @@ export const CreateListingPage: React.FC = () => {
                     onClick={() => setCondition(c.id as ProductCondition)}
                     className={`p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                       condition === c.id
-                        ? 'border-emerald-600 bg-emerald-50/60'
-                        : 'border-stone-200 hover:bg-stone-50'
+                        ? 'border-brand bg-brand-soft/60'
+                        : 'border-line hover:bg-canvas'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-stone-900">{c.title}</span>
+                      <span className="text-xs font-bold text-ink">{c.title}</span>
                       {condition === c.id && (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                       )}
                     </div>
-                    <span className="text-[11px] text-stone-500 block mt-0.5">{c.desc}</span>
+                    <span className="text-[11px] text-ink-soft block mt-0.5">{c.desc}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Looking For Input */}
-            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
+            <div className="bg-surface rounded-3xl p-4 border border-line space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
                   Ne ile Takas Etmek İstersin? *
                 </label>
                 <input
@@ -404,9 +404,9 @@ export const CreateListingPage: React.FC = () => {
                   value={lookingFor}
                   onChange={(e) => setLookingFor(e.target.value)}
                   placeholder="Örn: Bisiklet, Nintendo Switch veya tablet"
-                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-semibold"
+                  className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line focus:border-brand focus:outline-hidden text-sm font-semibold"
                 />
-                <span className="text-[11px] text-stone-400 block mt-1">
+                <span className="text-[11px] text-ink-faint block mt-1">
                   İpucu: Net ifadeler yazarsan akıllı algoritmamız sana uygun takasları daha hızlı
                   önerir.
                 </span>
@@ -415,7 +415,7 @@ export const CreateListingPage: React.FC = () => {
               {/* Aradığın kategoriler — rapor md. 20-21. Serbest metin insan
                   için, bu liste eşleştirme motoru için. */}
               <div>
-                <span className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1.5">
+                <span className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-1.5">
                   Aradığın Kategoriler
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -436,8 +436,8 @@ export const CreateListingPage: React.FC = () => {
                         }
                         className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
                           selected
-                            ? 'bg-emerald-700 border-emerald-700 text-white'
-                            : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-emerald-600'
+                            ? 'bg-brand border-brand text-white'
+                            : 'bg-canvas border-line text-ink-soft hover:border-brand'
                         }`}
                       >
                         {cat.name}
@@ -445,15 +445,15 @@ export const CreateListingPage: React.FC = () => {
                     );
                   })}
                 </div>
-                <span className="text-[11px] text-stone-400 block mt-1.5">
+                <span className="text-[11px] text-ink-faint block mt-1.5">
                   Birden fazla seçebilirsin. Seçmezsen sadece yazdığın metne göre eşleştirilir.
                 </span>
               </div>
             </div>
 
             {/* Delivery Methods */}
-            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
-              <label className="block text-xs font-bold uppercase tracking-wider text-stone-700">
+            <div className="bg-surface rounded-3xl p-4 border border-line space-y-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft">
                 Teslimat Tercihleri
               </label>
 
@@ -462,16 +462,16 @@ export const CreateListingPage: React.FC = () => {
                   onClick={() => handleToggleDelivery('in_person')}
                   className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
                     deliveryOptions.includes('in_person')
-                      ? 'border-emerald-600 bg-emerald-50/60'
-                      : 'border-stone-200 hover:bg-stone-50'
+                      ? 'border-brand bg-brand-soft/60'
+                      : 'border-line hover:bg-canvas'
                   }`}
                 >
                   <div>
-                    <span className="text-xs font-bold block text-stone-900">Elden Buluşma</span>
-                    <span className="text-[10px] text-stone-500">Güvenli noktalarda</span>
+                    <span className="text-xs font-bold block text-ink">Elden Buluşma</span>
+                    <span className="text-[10px] text-ink-soft">Güvenli noktalarda</span>
                   </div>
                   {deliveryOptions.includes('in_person') && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                   )}
                 </div>
 
@@ -479,16 +479,16 @@ export const CreateListingPage: React.FC = () => {
                   onClick={() => handleToggleDelivery('cargo')}
                   className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
                     deliveryOptions.includes('cargo')
-                      ? 'border-emerald-600 bg-emerald-50/60'
-                      : 'border-stone-200 hover:bg-stone-50'
+                      ? 'border-brand bg-brand-soft/60'
+                      : 'border-line hover:bg-canvas'
                   }`}
                 >
                   <div>
-                    <span className="text-xs font-bold block text-stone-900">Kargo ile</span>
-                    <span className="text-[10px] text-stone-500">Alıcı / Gönderici</span>
+                    <span className="text-xs font-bold block text-ink">Kargo ile</span>
+                    <span className="text-[10px] text-ink-soft">Alıcı / Gönderici</span>
                   </div>
                   {deliveryOptions.includes('cargo') && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                   )}
                 </div>
               </div>
@@ -498,7 +498,7 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               disabled={!lookingFor.trim()}
               onClick={() => setStep(3)}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <span>Sonraki Adım: Onayla & Yayınla</span>
               <ArrowRight className="w-4 h-4" />
@@ -510,30 +510,30 @@ export const CreateListingPage: React.FC = () => {
         {step === 3 && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-stone-900 font-display">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink font-display">
                 Onayla & Yayınla
               </h1>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-xs text-ink-soft mt-0.5">
                 İlanını son bir kez kontrol et ve takasa hazır hale getir.
               </p>
             </div>
 
             {/* Listing Summary Preview Box */}
-            <div className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
+            <div className="bg-surface rounded-3xl p-4 border border-line space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-soft block">
                 İlan Özeti
               </span>
 
               <div className="flex gap-3 items-center">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-stone-100 shrink-0">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-canvas shrink-0">
                   <img src={images[0]} alt="Product" className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900">{title}</h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
-                    İstenen: <span className="font-semibold text-emerald-900">{lookingFor}</span>
+                  <h3 className="text-sm font-bold text-ink">{title}</h3>
+                  <p className="text-xs text-ink-soft mt-0.5">
+                    İstenen: <span className="font-semibold text-brand-dark">{lookingFor}</span>
                   </p>
-                  <span className="text-[11px] text-stone-400 block mt-0.5">
+                  <span className="text-[11px] text-ink-faint block mt-0.5">
                     {currentUser.district}, {currentUser.city}
                   </span>
                 </div>
@@ -541,8 +541,8 @@ export const CreateListingPage: React.FC = () => {
             </div>
 
             {/* Zero Cash Reminder */}
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+            <div className="p-4 rounded-2xl bg-brand-soft border border-brand-line text-xs text-brand-dark flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 text-brand-dark shrink-0 mt-0.5" />
               <div>
                 <strong className="block font-bold">Nakit Para Olmadan Takas Güvencesi</strong>
                 Swaloop'ta para transferi yapılmaz. Ürününü teslim ettiğinde karşı tarafın da onayını
@@ -554,9 +554,9 @@ export const CreateListingPage: React.FC = () => {
               type="button"
               onClick={handlePublish}
               disabled={isPublishing}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60"
+              className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-base shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60"
             >
-              <Sparkles className="w-5 h-5 text-amber-300" />
+              <Sparkles className="w-5 h-5 text-star" />
               <span>
                 {isUploadingPhotos
                   ? 'Fotoğraflar yükleniyor...'

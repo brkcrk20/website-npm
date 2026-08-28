@@ -76,27 +76,27 @@ export const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-24 text-ink">
       <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 pt-3 space-y-4">
         {/* Search header */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shrink-0 shadow-xs"
+            className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shrink-0 shadow-xs"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           <form onSubmit={handleSearch} className="relative flex-1">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-ink-faint absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="İlan veya istenen ürün ara..."
               autoFocus
-              className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-stone-200 focus:border-emerald-600 focus:outline-hidden text-sm font-medium shadow-xs"
+              className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-surface border border-line focus:border-brand focus:outline-hidden text-sm font-medium shadow-xs"
             />
             {query && (
               <button
@@ -105,7 +105,7 @@ export const SearchPage: React.FC = () => {
                   setQuery('');
                   setSearchParams({});
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-soft"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -117,8 +117,8 @@ export const SearchPage: React.FC = () => {
             onClick={() => setShowFilters(!showFilters)}
             className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-colors shrink-0 shadow-xs cursor-pointer ${
               showFilters || selectedCategory !== 'all' || selectedCondition !== 'all'
-                ? 'bg-emerald-800 text-white border-emerald-800'
-                : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100'
+                ? 'bg-brand text-white border-brand'
+                : 'bg-surface border-line text-ink-soft hover:bg-canvas'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
@@ -127,9 +127,9 @@ export const SearchPage: React.FC = () => {
 
         {/* Filter Drawer / Accordion */}
         {showFilters && (
-          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-4 animate-in fade-in zoom-in-98 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
+          <div className="bg-surface rounded-2xl p-4 border border-line shadow-sm space-y-4 animate-in fade-in zoom-in-98 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-soft flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5" />
                 Detaylı Filtreler
               </span>
@@ -140,7 +140,7 @@ export const SearchPage: React.FC = () => {
                   setSelectedCondition('all');
                   setMaxDistance(25);
                 }}
-                className="text-xs text-stone-400 hover:text-emerald-700 font-semibold"
+                className="text-xs text-ink-faint hover:text-brand-dark font-semibold"
               >
                 Sıfırla
               </button>
@@ -148,15 +148,15 @@ export const SearchPage: React.FC = () => {
 
             {/* Category */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">Kategori</label>
+              <label className="block text-xs font-bold text-ink-soft mb-1.5">Kategori</label>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('all')}
                   className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                     selectedCategory === 'all'
-                      ? 'bg-emerald-800 text-white'
-                      : 'bg-stone-100 text-stone-700'
+                      ? 'bg-brand text-white'
+                      : 'bg-canvas text-ink-soft'
                   }`}
                 >
                   Tümü
@@ -168,8 +168,8 @@ export const SearchPage: React.FC = () => {
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                       selectedCategory === cat.id
-                        ? 'bg-emerald-800 text-white'
-                        : 'bg-stone-100 text-stone-700'
+                        ? 'bg-brand text-white'
+                        : 'bg-canvas text-ink-soft'
                     }`}
                   >
                     {cat.name}
@@ -180,7 +180,7 @@ export const SearchPage: React.FC = () => {
 
             {/* Condition */}
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">Kondisyon</label>
+              <label className="block text-xs font-bold text-ink-soft mb-1.5">Kondisyon</label>
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { id: 'all', label: 'Tümü' },
@@ -195,8 +195,8 @@ export const SearchPage: React.FC = () => {
                     onClick={() => setSelectedCondition(c.id)}
                     className={`px-3 py-1 rounded-xl text-xs font-semibold ${
                       selectedCondition === c.id
-                        ? 'bg-emerald-800 text-white'
-                        : 'bg-stone-100 text-stone-700'
+                        ? 'bg-brand text-white'
+                        : 'bg-canvas text-ink-soft'
                     }`}
                   >
                     {c.label}
@@ -207,9 +207,9 @@ export const SearchPage: React.FC = () => {
 
             {/* Distance Slider */}
             <div>
-              <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-1">
+              <div className="flex items-center justify-between text-xs font-bold text-ink-soft mb-1">
                 <span>Maksimum Mesafe</span>
-                <span className="text-emerald-800">{maxDistance} km</span>
+                <span className="text-brand-dark">{maxDistance} km</span>
               </div>
               <input
                 type="range"
@@ -226,13 +226,13 @@ export const SearchPage: React.FC = () => {
         {/* Results Stream */}
         <div>
           {query.trim() && (
-            <div className="inline-flex p-0.5 rounded-2xl bg-stone-200/70 mb-3">
+            <div className="inline-flex p-0.5 rounded-2xl bg-line/70 mb-3">
               <button
                 type="button"
                 onClick={() => setTab('giving')}
                 aria-pressed={tab === 'giving'}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  tab === 'giving' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                  tab === 'giving' ? 'bg-surface text-ink shadow-xs' : 'text-ink-soft'
                 }`}
               >
                 Verenler ({results.length})
@@ -242,7 +242,7 @@ export const SearchPage: React.FC = () => {
                 onClick={() => setTab('seeking')}
                 aria-pressed={tab === 'seeking'}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  tab === 'seeking' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-600'
+                  tab === 'seeking' ? 'bg-surface text-ink shadow-xs' : 'text-ink-soft'
                 }`}
               >
                 Arayanlar ({seekers.length})
@@ -254,16 +254,16 @@ export const SearchPage: React.FC = () => {
               "Arayanlar" yalnızca aktif bir arama varken anlamlı. */}
           {tab === 'seeking' && query.trim() ? (
             seekers.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 border border-stone-200 text-center space-y-2">
-                <h3 className="text-base font-bold text-stone-900">Bunu arayan kimse yok</h3>
-                <p className="text-xs text-stone-500 max-w-xs mx-auto">
+              <div className="bg-surface rounded-3xl p-8 border border-line text-center space-y-2">
+                <h3 className="text-base font-bold text-ink">Bunu arayan kimse yok</h3>
+                <p className="text-xs text-ink-soft max-w-xs mx-auto">
                   Sen arayabilirsin: aradığın şeyi listene ekle, uygun bir ilan yayınlandığında
                   haberin olsun.
                 </p>
                 <button
                   type="button"
                   onClick={() => navigate('/aradiklarim')}
-                  className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-colors"
+                  className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark transition-colors"
                 >
                   Aradıklarıma Ekle
                 </button>
@@ -275,7 +275,7 @@ export const SearchPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/profil/${seeker.id}`)}
-                      className="w-full bg-white rounded-2xl p-3 border border-stone-200 flex items-center gap-3 text-left hover:bg-stone-50 transition-colors cursor-pointer"
+                      className="w-full bg-surface rounded-2xl p-3 border border-line flex items-center gap-3 text-left hover:bg-canvas transition-colors cursor-pointer"
                     >
                       {seeker.avatarUrl ? (
                         <img
@@ -284,13 +284,13 @@ export const SearchPage: React.FC = () => {
                           className="w-10 h-10 rounded-full object-cover shrink-0"
                         />
                       ) : (
-                        <span className="w-10 h-10 rounded-full bg-stone-100 shrink-0" />
+                        <span className="w-10 h-10 rounded-full bg-canvas shrink-0" />
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block text-xs font-bold text-stone-900 truncate">
+                        <span className="block text-xs font-bold text-ink truncate">
                           {need.title}
                         </span>
-                        <span className="block text-[11px] text-stone-500 truncate">
+                        <span className="block text-[11px] text-ink-soft truncate">
                           {seeker.fullName}
                           {seeker.district ? ` · ${seeker.district}` : ''}
                           {seeker.city ? `, ${seeker.city}` : ''}
@@ -304,18 +304,18 @@ export const SearchPage: React.FC = () => {
           ) : isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="aspect-[3/4] rounded-2xl bg-stone-100 animate-pulse" />
+                <div key={i} className="aspect-[3/4] rounded-2xl bg-canvas animate-pulse" />
               ))}
             </div>
           ) : results.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 border border-stone-200 text-center space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-stone-100 text-stone-400 flex items-center justify-center mx-auto">
+            <div className="bg-surface rounded-3xl p-8 border border-line text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-canvas text-ink-faint flex items-center justify-center mx-auto">
                 <Search className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-bold text-stone-900">
+              <h3 className="text-base font-bold text-ink">
                 Henüz sana uygun takas bulunamadı.
               </h3>
-              <p className="text-xs text-stone-500 max-w-xs mx-auto">
+              <p className="text-xs text-ink-soft max-w-xs mx-auto">
                 Arama kelimeni değiştirebilir veya filtreleri sıfırlayarak tekrar deneyebilirsin.
               </p>
               <button
@@ -325,7 +325,7 @@ export const SearchPage: React.FC = () => {
                   setSelectedCategory('all');
                   setSelectedCondition('all');
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800 transition-colors"
+                className="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-dark transition-colors"
               >
                 Tüm İlanları Göster
               </button>

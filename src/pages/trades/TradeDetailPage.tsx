@@ -66,20 +66,20 @@ export const TradeDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex items-center justify-center">
-        <p className="text-sm text-stone-500">Takas yükleniyor...</p>
+      <div className="min-h-screen bg-canvas p-6 flex items-center justify-center">
+        <p className="text-sm text-ink-soft">Takas yükleniyor...</p>
       </div>
     );
   }
 
   if (!trade) {
     return (
-      <div className="min-h-screen bg-stone-50 p-6 flex flex-col items-center justify-center text-center">
-        <h2 className="text-base font-bold text-stone-800 mb-2">Takas bulunamadı</h2>
+      <div className="min-h-screen bg-canvas p-6 flex flex-col items-center justify-center text-center">
+        <h2 className="text-base font-bold text-ink mb-2">Takas bulunamadı</h2>
         <button
           type="button"
           onClick={() => navigate('/takaslarim')}
-          className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold"
+          className="px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold"
         >
           Takaslarıma Dön
         </button>
@@ -199,7 +199,7 @@ export const TradeDetailPage: React.FC = () => {
   const isReviewedByMe = isInitiator ? trade.isReviewedByInitiator : trade.isReviewedByReceiver;
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-28 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-28 text-ink">
       <div className="max-w-md md:max-w-2xl mx-auto px-4 pt-3 space-y-4">
         {/* Top Header */}
         <div className="flex items-center justify-between">
@@ -207,28 +207,28 @@ export const TradeDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/takaslarim')}
-              className="p-2 rounded-xl bg-white border border-stone-200 text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-surface border border-line text-ink-soft hover:bg-canvas transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-stone-900">Takas Süreci</h1>
+                <h1 className="text-base font-bold text-ink">Takas Süreci</h1>
                 {trade.status === 'locked' && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-brand-soft text-brand-dark px-2 py-0.5 rounded-full">
                     <Lock className="w-3 h-3" />
                     Kilitlendi
                   </span>
                 )}
               </div>
-              <p className="text-xs text-stone-500">ID: #{trade.id.slice(-6)}</p>
+              <p className="text-xs text-ink-soft">ID: #{trade.id.slice(-6)}</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => navigate(`/dispute?tradeId=${trade.id}`)}
-            className="text-stone-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-colors"
+            className="text-ink-faint hover:text-danger p-2 rounded-xl hover:bg-danger-soft transition-colors"
             title="Sorun Bildir"
           >
             <Flag className="w-4 h-4" />
@@ -236,22 +236,22 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* Counterpart Profile Card */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-3.5 flex items-center justify-between">
+        <div className="bg-surface rounded-2xl border border-line p-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src={otherUser.avatarUrl}
               alt={otherUser.fullName}
-              className="w-12 h-12 rounded-full object-cover border border-stone-200"
+              className="w-12 h-12 rounded-full object-cover border border-line"
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-stone-900">{otherUser.fullName}</span>
+                <span className="text-xs font-bold text-ink">{otherUser.fullName}</span>
                 {/* Puan yoksa "4.8" uydurulmuyor: karşı tarafın gerçekten
                     değerlendirilip değerlendirilmediği söyleniyor. */}
                 <TrustCard trustProfile={otherUser.trustProfile} variant="compact" />
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-stone-500 mt-0.5">
-                <MapPin className="w-3 h-3 text-stone-400" />
+              <div className="flex items-center gap-2 text-[11px] text-ink-soft mt-0.5">
+                <MapPin className="w-3 h-3 text-ink-faint" />
                 <span>{otherUser.district}, {otherUser.city}</span>
               </div>
             </div>
@@ -260,7 +260,7 @@ export const TradeDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={handleChatOpen}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-900 hover:bg-emerald-100 text-xs font-bold border border-emerald-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-soft text-brand-dark hover:bg-brand-soft text-xs font-bold border border-brand-line transition-colors cursor-pointer"
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>Mesajlaş</span>
@@ -268,85 +268,85 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* 6-Step Visual Timeline Component */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-3">
+        <div className="bg-surface rounded-2xl border border-line p-4">
+          <h2 className="text-xs font-bold text-ink uppercase tracking-wider mb-3">
             6 Adımlı Takas Akışı
           </h2>
           <Timeline timeline={trade.timeline} currentStatus={trade.status} />
         </div>
 
         {/* Side-by-side Product Comparison */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Takaslanan Ürünler</h2>
+        <div className="bg-surface rounded-2xl border border-line p-4 space-y-3">
+          <h2 className="text-xs font-bold text-ink uppercase tracking-wider">Takaslanan Ürünler</h2>
 
           <div className="grid grid-cols-2 gap-3 relative items-stretch">
             {/* Left: My Item */}
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
+            <div className="p-3 rounded-xl bg-canvas border border-line flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
+                <span className="text-[10px] font-bold text-ink-faint uppercase tracking-wider block mb-1">
                   {isInitiator ? 'Senin Verdiğin' : 'Senin Alacağın'}
                 </span>
-                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 mb-2">
+                <div className="aspect-square rounded-lg overflow-hidden bg-line mb-2">
                   <img
                     src={myItem?.images[0]}
                     alt={myItem?.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{myItem?.title}</h3>
+                <h3 className="text-xs font-bold text-ink line-clamp-1">{myItem?.title}</h3>
               </div>
-              <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
-                Durum: <span className="font-semibold text-stone-700">{myItem?.condition}</span>
+              <div className="mt-2 pt-2 border-t border-line text-[10px] text-ink-soft">
+                Durum: <span className="font-semibold text-ink-soft">{myItem?.condition}</span>
               </div>
             </div>
 
             {/* Center Swap Arrow */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-stone-300 shadow-sm flex items-center justify-center">
-              <ArrowLeftRight className="w-4 h-4 text-emerald-800" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-surface border border-line shadow-sm flex items-center justify-center">
+              <ArrowLeftRight className="w-4 h-4 text-brand-dark" />
             </div>
 
             {/* Right: Other Item */}
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
+            <div className="p-3 rounded-xl bg-canvas border border-line flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
+                <span className="text-[10px] font-bold text-ink-faint uppercase tracking-wider block mb-1">
                   {isInitiator ? 'Senin Alacağın' : 'Senin Verdiğin'}
                 </span>
-                <div className="aspect-square rounded-lg overflow-hidden bg-stone-200 mb-2">
+                <div className="aspect-square rounded-lg overflow-hidden bg-line mb-2">
                   <img
                     src={otherItem?.images[0]}
                     alt={otherItem?.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-xs font-bold text-stone-900 line-clamp-1">{otherItem?.title}</h3>
+                <h3 className="text-xs font-bold text-ink line-clamp-1">{otherItem?.title}</h3>
               </div>
-              <div className="mt-2 pt-2 border-t border-stone-200/60 text-[10px] text-stone-500">
-                Durum: <span className="font-semibold text-stone-700">{otherItem?.condition}</span>
+              <div className="mt-2 pt-2 border-t border-line text-[10px] text-ink-soft">
+                Durum: <span className="font-semibold text-ink-soft">{otherItem?.condition}</span>
               </div>
             </div>
           </div>
 
           {/* Trade Note if any */}
           {trade.note && (
-            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-700">
-              <span className="font-bold text-stone-500 block text-[10px] uppercase mb-0.5">Teklif Notu:</span>
+            <div className="p-3 rounded-xl bg-canvas border border-line text-xs text-ink-soft">
+              <span className="font-bold text-ink-soft block text-[10px] uppercase mb-0.5">Teklif Notu:</span>
               "{trade.note}"
             </div>
           )}
         </div>
 
         {/* Meeting & Delivery Protocol Details */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-2.5">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
-          <div className="flex items-start gap-2.5 text-xs text-stone-700">
-            <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+        <div className="bg-surface rounded-2xl border border-line p-4 space-y-2.5">
+          <h2 className="text-xs font-bold text-ink uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
+          <div className="flex items-start gap-2.5 text-xs text-ink-soft">
+            <MapPin className="w-4 h-4 text-brand-dark shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Buluşma / Teslim Yeri:</span>
               <span>{trade.deliveryDetails?.locationName || 'Kadıköy Güvenli Takas Noktası (Metro Çıkışı)'}</span>
             </div>
           </div>
-          <div className="flex items-start gap-2.5 text-xs text-stone-700">
-            <Calendar className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2.5 text-xs text-ink-soft">
+            <Calendar className="w-4 h-4 text-brand-dark shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Planlanan Tarih:</span>
               <span>{trade.deliveryDetails?.scheduledDate || 'Belirlenmedi (Sohbet üzerinden kararlaştırılabilir)'}</span>
@@ -355,25 +355,25 @@ export const TradeDetailPage: React.FC = () => {
         </div>
 
         {/* Action Panel for Current Trade Status */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 p-4 space-y-3">
-          <h2 className="text-xs font-bold text-stone-900 uppercase tracking-wider">Sıradaki Eylem</h2>
+        <div className="bg-surface rounded-2xl border border-line p-4 space-y-3">
+          <h2 className="text-xs font-bold text-ink uppercase tracking-wider">Sıradaki Eylem</h2>
 
           {/* If waiting for receiver response */}
           {trade.status === 'offer_sent' && isReceiver && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">Bu takas teklifini kabul etmek istiyor musunuz?</p>
+              <p className="text-xs text-ink-soft">Bu takas teklifini kabul etmek istiyor musunuz?</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={handleReject}
-                  className="py-2.5 px-4 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+                  className="py-2.5 px-4 rounded-xl border border-line text-ink-soft hover:bg-canvas text-xs font-bold transition-colors cursor-pointer"
                 >
                   Reddet
                 </button>
                 <button
                   type="button"
                   onClick={handleAccept}
-                  className="py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-colors cursor-pointer"
+                  className="py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   Teklifi Kabul Et
                 </button>
@@ -382,7 +382,7 @@ export const TradeDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate(`/karsi-teklif/${trade.id}`)}
-                className="w-full py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-100 text-xs font-bold transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl border border-brand-line bg-brand-soft/60 text-brand-dark hover:bg-brand-soft text-xs font-bold transition-colors cursor-pointer"
               >
                 Karşı Teklif Ver
               </button>
@@ -390,7 +390,7 @@ export const TradeDetailPage: React.FC = () => {
           )}
 
           {trade.status === 'offer_sent' && isInitiator && (
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
+            <div className="p-3 bg-warn-soft rounded-xl border border-warn-line text-xs text-warn">
               Teklifiniz karşı tarafa iletildi. Karşı taraf onayladığında bildirim alacaksınız.
             </div>
           )}
@@ -398,13 +398,13 @@ export const TradeDetailPage: React.FC = () => {
           {/* Locked state: Need delivery planning */}
           {trade.status === 'locked' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-ink-soft">
                 Ürünler kilitlendi! Karşı tarafla sohbet üzerinden buluşma saati ayarlayın veya teslimatı başlatın.
               </p>
               <button
                 type="button"
                 onClick={() => handleAdvanceStep(4)}
-                className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
                 Teslimat Planını Onayla & Başlat
               </button>
@@ -414,7 +414,7 @@ export const TradeDetailPage: React.FC = () => {
           {/* Delivery Planned state: In transit */}
           {trade.status === 'delivery_planned' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-ink-soft">
                 Buluşma veya kargo teslimatı gerçekleştiğinde aşağıdaki butona basarak ürünü teslim aldığınızı onaylayın.
               </p>
               <button
@@ -431,13 +431,13 @@ export const TradeDetailPage: React.FC = () => {
           {/* Verified state: Complete trade */}
           {trade.status === 'verified' && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-ink-soft">
                 Teslimat doğrulaması yapıldı. Takas sürecini tamamlayıp profilinize yansıtın.
               </p>
               <button
                 type="button"
                 onClick={() => handleAdvanceStep(6)}
-                className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Takası Başarıyla Tamamla</span>
@@ -448,8 +448,8 @@ export const TradeDetailPage: React.FC = () => {
           {/* Completed state: Review counterpart */}
           {trade.status === 'completed' && (
             <div className="space-y-2">
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+              <div className="p-3 bg-brand-soft rounded-xl border border-brand-line text-xs text-brand-dark font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-brand-dark shrink-0" />
                 <span>Takas başarıyla tamamlandı! Güven puanınız profilinize yansıtıldı.</span>
               </div>
               {!isReviewedByMe ? (
@@ -462,7 +462,7 @@ export const TradeDetailPage: React.FC = () => {
                   <span>Kullanıcıyı Değerlendir ({otherUser.fullName})</span>
                 </button>
               ) : (
-                <p className="text-[11px] text-stone-500 text-center font-medium">
+                <p className="text-[11px] text-ink-soft text-center font-medium">
                   Bu takas için değerlendirmeniz kaydedilmiştir.
                 </p>
               )}
@@ -475,7 +475,7 @@ export const TradeDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowCancelModal(true)}
-              className="w-full py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+              className="w-full py-2.5 rounded-xl border border-line text-ink-soft hover:bg-canvas text-xs font-bold transition-colors cursor-pointer"
             >
               {trade.status === 'offer_sent' ? 'Teklifi Geri Çek' : 'Takastan Vazgeç'}
             </button>
@@ -486,10 +486,10 @@ export const TradeDetailPage: React.FC = () => {
       {/* Review Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-surface rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Takastan vazgeç</h3>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <h3 className="text-sm font-bold text-ink">Takastan vazgeç</h3>
+              <p className="text-xs text-ink-soft mt-0.5">
                 Neden vazgeçtiğini seçersen karşı taraf için de, bizim için de daha anlaşılır olur.
               </p>
             </div>
@@ -506,8 +506,8 @@ export const TradeDetailPage: React.FC = () => {
                     onClick={() => setCancelReason(reason.id)}
                     className={`w-full p-3 rounded-2xl border-2 text-left text-xs font-semibold transition-colors cursor-pointer ${
                       selected
-                        ? 'border-emerald-600 bg-emerald-50/60 text-emerald-950'
-                        : 'border-stone-200 text-stone-700 hover:bg-stone-50'
+                        ? 'border-brand bg-brand-soft/60 text-brand-dark'
+                        : 'border-line text-ink-soft hover:bg-canvas'
                     }`}
                   >
                     {reason.label}
@@ -522,14 +522,14 @@ export const TradeDetailPage: React.FC = () => {
               rows={2}
               maxLength={300}
               placeholder="Eklemek istediğin bir şey var mı? (opsiyonel)"
-              className="w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-hidden focus:border-emerald-600 resize-none"
+              className="w-full px-4 py-3 rounded-2xl bg-canvas border border-line text-sm outline-hidden focus:border-brand resize-none"
             />
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setShowCancelModal(false)}
-                className="py-2.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-100 text-xs font-bold transition-colors cursor-pointer"
+                className="py-2.5 rounded-xl border border-line text-ink-soft hover:bg-canvas text-xs font-bold transition-colors cursor-pointer"
               >
                 Vazgeçme
               </button>
@@ -537,7 +537,7 @@ export const TradeDetailPage: React.FC = () => {
                 type="button"
                 disabled={!cancelReason || isCancelling}
                 onClick={handleCancelTrade}
-                className="py-2.5 rounded-xl bg-stone-900 hover:bg-black disabled:bg-stone-300 text-white text-xs font-bold transition-colors cursor-pointer"
+                className="py-2.5 rounded-xl bg-stone-900 hover:bg-black disabled:bg-line text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 {isCancelling ? 'İptal ediliyor…' : 'Takası İptal Et'}
               </button>
@@ -548,13 +548,13 @@ export const TradeDetailPage: React.FC = () => {
 
       {showReviewModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-surface rounded-3xl max-w-sm w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-2">
-                <Star className="w-6 h-6 fill-amber-500 text-amber-500" />
+              <div className="w-12 h-12 rounded-full bg-warn-soft text-warn flex items-center justify-center mx-auto mb-2">
+                <Star className="w-6 h-6 fill-star text-star" />
               </div>
-              <h3 className="text-sm font-bold text-stone-900">Takas Değerlendirmesi</h3>
-              <p className="text-xs text-stone-500">{otherUser.fullName} ile olan deneyiminizi puanlayın</p>
+              <h3 className="text-sm font-bold text-ink">Takas Değerlendirmesi</h3>
+              <p className="text-xs text-ink-soft">{otherUser.fullName} ile olan deneyiminizi puanlayın</p>
             </div>
 
             {/* Stars */}
@@ -568,7 +568,7 @@ export const TradeDetailPage: React.FC = () => {
                 >
                   <Star
                     className={`w-7 h-7 ${
-                      star <= rating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
+                      star <= rating ? 'fill-star text-star' : 'text-line'
                     }`}
                   />
                 </button>
@@ -576,18 +576,18 @@ export const TradeDetailPage: React.FC = () => {
             </div>
 
             {/* Sub-ratings */}
-            <div className="space-y-2 text-xs bg-stone-50 p-3 rounded-xl">
+            <div className="space-y-2 text-xs bg-canvas p-3 rounded-xl">
               <div className="flex justify-between items-center">
-                <span className="text-stone-600">Ürün Açıklamaya Uygunluk:</span>
-                <span className="font-bold text-amber-600">5/5</span>
+                <span className="text-ink-soft">Ürün Açıklamaya Uygunluk:</span>
+                <span className="font-bold text-warn">5/5</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-stone-600">İletişim & Nezaket:</span>
-                <span className="font-bold text-amber-600">5/5</span>
+                <span className="text-ink-soft">İletişim & Nezaket:</span>
+                <span className="font-bold text-warn">5/5</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-stone-600">Zamanında Teslimat:</span>
-                <span className="font-bold text-amber-600">5/5</span>
+                <span className="text-ink-soft">Zamanında Teslimat:</span>
+                <span className="font-bold text-warn">5/5</span>
               </div>
             </div>
 
@@ -596,21 +596,21 @@ export const TradeDetailPage: React.FC = () => {
               onChange={(e) => setReviewComment(e.target.value)}
               placeholder="Yorumunuz (İsteğe bağlı)..."
               rows={2}
-              className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs outline-hidden focus:bg-white focus:border-emerald-700"
+              className="w-full px-3 py-2 bg-canvas border border-line rounded-xl text-xs outline-hidden focus:bg-surface focus:border-brand"
             />
 
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-stone-200 text-stone-700 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl border border-line text-ink-soft font-bold text-xs"
               >
                 Vazgeç
               </button>
               <button
                 type="button"
                 onClick={handleSubmitReview}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs"
+                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-xs"
               >
                 Puanı Kaydet
               </button>

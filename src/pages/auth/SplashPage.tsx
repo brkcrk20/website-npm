@@ -31,7 +31,7 @@ export const SplashPage: React.FC = () => {
       </p>
 
       {/* Belirsiz süreli yükleme çizgisi: spinner'dan daha sakin. */}
-      <div className="w-40 h-1 rounded-full bg-white/15 overflow-hidden mt-10">
+      <div className="w-40 h-1 rounded-full bg-surface/15 overflow-hidden mt-10">
         <div className="h-full w-1/2 rounded-full bg-brand animate-[sw-slide_1.4s_ease-in-out_infinite]" />
       </div>
 

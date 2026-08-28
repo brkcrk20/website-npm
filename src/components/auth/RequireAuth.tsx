@@ -40,7 +40,7 @@ export const RequireAuth: React.FC<Props> = ({ children, adminOnly = false }) =>
   if (state === 'checking') {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -53,11 +53,11 @@ export const RequireAuth: React.FC<Props> = ({ children, adminOnly = false }) =>
   if (adminOnly && !currentUser.isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 px-6 text-center">
-        <h1 className="text-base font-bold text-stone-900">Bu sayfaya erişimin yok</h1>
-        <p className="text-xs text-stone-500 max-w-xs">
+        <h1 className="text-base font-bold text-ink">Bu sayfaya erişimin yok</h1>
+        <p className="text-xs text-ink-soft max-w-xs">
           Yönetim paneli yalnızca Swaloop ekibi içindir.
         </p>
-        <a href="/kesfet" className="text-xs font-bold text-emerald-700 hover:underline">
+        <a href="/kesfet" className="text-xs font-bold text-brand-dark hover:underline">
           Keşfete dön
         </a>
       </div>

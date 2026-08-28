@@ -71,10 +71,10 @@ const HelpPage = lazy(() => import('./pages/info/HelpPage').then((m) => ({ defau
 // + spinner yerine içeriğin silüeti).
 const RouteFallback: React.FC = () => (
   <div className="max-w-md md:max-w-2xl lg:max-w-4xl mx-auto px-4 pt-4 space-y-3" aria-hidden="true">
-    <div className="h-10 rounded-2xl bg-stone-200/70 animate-pulse" />
+    <div className="h-10 rounded-2xl bg-line/70 animate-pulse" />
     <div className="grid grid-cols-2 gap-3">
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="aspect-[3/4] rounded-2xl bg-stone-200/60 animate-pulse" />
+        <div key={i} className="aspect-[3/4] rounded-2xl bg-line/60 animate-pulse" />
       ))}
     </div>
   </div>
@@ -84,8 +84,8 @@ export default function App() {
   return (
     <AppProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans antialiased selection:bg-emerald-200 selection:text-emerald-900 transition-colors duration-200">
-          <div className="min-h-screen flex flex-col max-w-5xl mx-auto bg-stone-50 dark:bg-stone-950 shadow-xl relative border-x border-stone-200/60 dark:border-stone-800/80">
+        <div className="min-h-screen bg-canvas text-ink font-sans antialiased selection:bg-brand-soft selection:text-brand-dark transition-colors duration-200">
+          <div className="min-h-screen flex flex-col max-w-5xl mx-auto bg-canvas shadow-xl relative border-x border-line">
             <Header />
 
             <main className="flex-1">

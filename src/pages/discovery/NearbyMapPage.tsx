@@ -90,7 +90,7 @@ export const NearbyMapPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-24 text-ink">
       <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 pt-3 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -98,22 +98,22 @@ export const NearbyMapPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs"
+              className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shadow-xs"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-base font-bold text-stone-900 font-display">
+              <h1 className="text-base font-bold text-ink font-display">
                 Yakınımdaki Takas Haritası
               </h1>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-ink-soft">
                 {currentLocation.district ? `${currentLocation.district}, ` : ''}
                 {currentLocation.city} Çevresi
               </p>
             </div>
           </div>
 
-          <div className="flex gap-1 bg-white p-1 rounded-xl border border-stone-200 text-xs font-semibold">
+          <div className="flex gap-1 bg-surface p-1 rounded-xl border border-line text-xs font-semibold">
             {[2, 5, 10].map((r) => (
               <button
                 key={r}
@@ -121,8 +121,8 @@ export const NearbyMapPage: React.FC = () => {
                 onClick={() => setActiveRadius(r)}
                 className={`px-2.5 py-1 rounded-lg transition-colors ${
                   activeRadius === r
-                    ? 'bg-emerald-700 text-white shadow-xs'
-                    : 'text-stone-600 hover:bg-stone-100'
+                    ? 'bg-brand text-white shadow-xs'
+                    : 'text-ink-soft hover:bg-canvas'
                 }`}
               >
                 {r} km
@@ -145,9 +145,9 @@ export const NearbyMapPage: React.FC = () => {
 
           {/* Central Radar Pulse for User */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-            <div className="w-48 h-48 rounded-full border border-emerald-500/20 animate-ping opacity-30" />
-            <div className="w-32 h-32 rounded-full border border-emerald-500/40" />
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center">
+            <div className="w-48 h-48 rounded-full border border-brand animate-ping opacity-30" />
+            <div className="w-32 h-32 rounded-full border border-brand" />
+            <div className="w-12 h-12 rounded-full bg-brand/20 border-2 border-brand-line flex items-center justify-center">
               <div className="w-4 h-4 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/80" />
             </div>
           </div>
@@ -162,7 +162,7 @@ export const NearbyMapPage: React.FC = () => {
               className="absolute -translate-x-1/2 -translate-y-1/2 group z-20 cursor-pointer"
             >
               <div className="flex flex-col items-center">
-                <div className="p-2 rounded-2xl bg-emerald-600 text-white border-2 border-white shadow-xl group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-2xl bg-brand text-white border-2 border-white shadow-xl group-hover:scale-110 transition-transform">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <span className="mt-1 px-2 py-0.5 rounded-full bg-stone-900/90 border border-stone-700 text-white text-[10px] font-bold whitespace-nowrap backdrop-blur-sm">
@@ -189,7 +189,7 @@ export const NearbyMapPage: React.FC = () => {
                 style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                 className="absolute -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer group"
               >
-                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-lg bg-white group-hover:scale-110 transition-transform">
+                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-lg bg-surface group-hover:scale-110 transition-transform">
                   <img src={l.images[0]} alt={l.title} className="w-full h-full object-cover" />
                 </div>
               </div>
@@ -199,7 +199,7 @@ export const NearbyMapPage: React.FC = () => {
           {/* Map Controls Floating Overlay */}
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
             <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-white text-xs flex items-center gap-1.5 pointer-events-auto">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-brand" />
               <span>{safeMeetingSpots.length} Doğrulanmış Güvenli Buluşma Noktası</span>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-white text-xs font-semibold pointer-events-auto">
@@ -210,7 +210,7 @@ export const NearbyMapPage: React.FC = () => {
 
         {/* Safe Spot Details Modal / Box if selected */}
         {selectedSpot && (
-          <div className="p-4 rounded-2xl bg-emerald-900 text-white border border-emerald-700 shadow-md animate-in slide-in-from-bottom-2">
+          <div className="p-4 rounded-2xl bg-brand text-white border border-brand shadow-md animate-in slide-in-from-bottom-2">
             {(() => {
               const spot = safeMeetingSpots.find((s) => s.id === selectedSpot);
               if (!spot) return null;
@@ -218,7 +218,7 @@ export const NearbyMapPage: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-amber-300 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-brand text-star text-[10px] font-bold">
                         Doğrulanmış Güvenli Nokta
                       </span>
                       <span className="text-xs text-emerald-200">
@@ -231,7 +231,7 @@ export const NearbyMapPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedSpot(null)}
-                    className="text-emerald-300 hover:text-white text-xs font-semibold"
+                    className="text-brand hover:text-white text-xs font-semibold"
                   >
                     Kapat
                   </button>
@@ -243,7 +243,7 @@ export const NearbyMapPage: React.FC = () => {
 
         {/* Nearby Users and Listings Matching Screen 15 */}
         <div className="space-y-3 pt-2">
-          <h2 className="text-sm font-bold text-stone-900 font-display">
+          <h2 className="text-sm font-bold text-ink font-display">
             Yakınımdaki Takaslar ({allListings.length})
           </h2>
 
@@ -252,27 +252,27 @@ export const NearbyMapPage: React.FC = () => {
               <div
                 key={listing.id}
                 onClick={() => navigate(`/ilan/${listing.slug || listing.id}`)}
-                className="p-3.5 bg-white rounded-2xl border border-stone-200/90 shadow-xs flex items-center justify-between gap-3 hover:border-emerald-500/50 transition-all cursor-pointer"
+                className="p-3.5 bg-surface rounded-2xl border border-line shadow-xs flex items-center justify-between gap-3 hover:border-brand transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <img
                     src={listing.user.avatarUrl}
                     alt={listing.user.fullName}
-                    className="w-11 h-11 rounded-full object-cover border border-stone-200 shrink-0"
+                    className="w-11 h-11 rounded-full object-cover border border-line shrink-0"
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-stone-900 truncate">
+                      <span className="text-xs font-bold text-ink truncate">
                         {listing.user.fullName}
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded shrink-0">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-dark bg-brand-soft px-1.5 py-0.2 rounded shrink-0">
                         ★ {listing.user.trustScore?.toFixed(1) || '4.8'}
                       </span>
                     </div>
-                    <p className="text-xs text-stone-600 truncate mt-0.5 font-medium">
+                    <p className="text-xs text-ink-soft truncate mt-0.5 font-medium">
                       {listing.title}
                     </p>
-                    <span className="text-[11px] text-stone-400 block">
+                    <span className="text-[11px] text-ink-faint block">
                       {listing.location.district}
                       {listing.location.distanceKm !== undefined &&
                         ` • ${listing.location.distanceKm} km uzakta`}
@@ -280,7 +280,7 @@ export const NearbyMapPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-canvas border border-line shrink-0">
                   <img
                     src={listing.images[0]}
                     alt={listing.title}

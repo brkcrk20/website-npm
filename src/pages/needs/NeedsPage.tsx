@@ -109,26 +109,26 @@ export const NeedsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24 text-stone-900">
+    <div className="min-h-screen bg-canvas pb-24 text-ink">
       <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 pt-3 space-y-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 flex items-center justify-center hover:bg-stone-100 transition-colors shadow-xs"
+            className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shadow-xs"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-stone-900 font-display">Aradıklarım</h1>
-            <p className="text-xs text-stone-500">
+            <h1 className="text-lg font-bold text-ink font-display">Aradıklarım</h1>
+            <p className="text-xs text-ink-soft">
               {needs.filter((n) => n.status === 'active').length} açık ihtiyaç
             </p>
           </div>
           <button
             type="button"
             onClick={() => setFormOpen((open) => !open)}
-            className="px-4 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-md transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             İhtiyaç Ekle
@@ -138,10 +138,10 @@ export const NeedsPage: React.FC = () => {
         {formOpen && (
           <form
             onSubmit={handleCreate}
-            className="bg-white rounded-3xl p-4 border border-stone-200 space-y-3"
+            className="bg-surface rounded-3xl p-4 border border-line space-y-3"
           >
             <div>
-              <label htmlFor="need-title" className="text-xs font-bold text-stone-700">
+              <label htmlFor="need-title" className="text-xs font-bold text-ink-soft">
                 Ne arıyorsun?
               </label>
               <input
@@ -150,12 +150,12 @@ export const NeedsPage: React.FC = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Örn. Aynasız fotoğraf makinesi"
                 maxLength={80}
-                className="mt-1 w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-hidden focus:border-emerald-600"
+                className="mt-1 w-full px-4 py-3 rounded-2xl bg-canvas border border-line text-sm outline-hidden focus:border-brand"
               />
             </div>
 
             <div>
-              <span className="text-xs font-bold text-stone-700">Kategori (opsiyonel)</span>
+              <span className="text-xs font-bold text-ink-soft">Kategori (opsiyonel)</span>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {CATEGORIES.map((category) => {
                   const selected = categoryId === category.id;
@@ -168,8 +168,8 @@ export const NeedsPage: React.FC = () => {
                       aria-pressed={selected}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${
                         selected
-                          ? 'bg-emerald-700 border-emerald-700 text-white'
-                          : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-emerald-600'
+                          ? 'bg-brand border-brand text-white'
+                          : 'bg-canvas border-line text-ink-soft hover:border-brand'
                       }`}
                     >
                       {selected && <Check className="w-3 h-3 inline mr-1" />}
@@ -181,7 +181,7 @@ export const NeedsPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="need-note" className="text-xs font-bold text-stone-700">
+              <label htmlFor="need-note" className="text-xs font-bold text-ink-soft">
                 Özel isteğin (opsiyonel)
               </label>
               <textarea
@@ -191,14 +191,14 @@ export const NeedsPage: React.FC = () => {
                 rows={2}
                 maxLength={200}
                 placeholder="Örn. Sony veya Canon aynasız gövde arıyorum."
-                className="mt-1 w-full px-4 py-3 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-hidden focus:border-emerald-600 resize-none"
+                className="mt-1 w-full px-4 py-3 rounded-2xl bg-canvas border border-line text-sm outline-hidden focus:border-brand resize-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={!title.trim() || saving}
-              className="w-full py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-stone-300 text-white font-bold text-sm transition-colors"
+              className="w-full py-3 rounded-2xl bg-brand hover:bg-brand-dark disabled:bg-line text-white font-bold text-sm transition-colors"
             >
               {saving ? 'Ekleniyor…' : 'Listeme Ekle'}
             </button>
@@ -208,17 +208,17 @@ export const NeedsPage: React.FC = () => {
         {loading ? (
           <div className="space-y-2" aria-hidden="true">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-20 rounded-3xl bg-stone-200/60 animate-pulse" />
+              <div key={i} className="h-20 rounded-3xl bg-line/60 animate-pulse" />
             ))}
           </div>
         ) : needs.length === 0 ? (
-          <div className="bg-white rounded-3xl p-10 border border-stone-200 text-center space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto">
+          <div className="bg-surface rounded-3xl p-10 border border-line text-center space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-brand-soft text-brand-dark flex items-center justify-center mx-auto">
               <Search className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-stone-900">Ne arıyorsun?</h3>
-              <p className="text-xs text-stone-500 max-w-xs mx-auto mt-1">
+              <h3 className="text-base font-bold text-ink">Ne arıyorsun?</h3>
+              <p className="text-xs text-ink-soft max-w-xs mx-auto mt-1">
                 Aradığın şeyleri buraya ekle; ilan vermek zorunda değilsin. Uyan bir ilan
                 yayınlandığında burada göreceksin.
               </p>
@@ -226,7 +226,7 @@ export const NeedsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setFormOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-colors"
+              className="px-5 py-2.5 rounded-2xl bg-brand hover:bg-brand-dark text-white font-bold text-xs shadow-md transition-colors"
             >
               İlk İhtiyacını Ekle
             </button>
@@ -239,18 +239,18 @@ export const NeedsPage: React.FC = () => {
               return (
                 <li
                   key={need.id}
-                  className="bg-white rounded-3xl p-4 border border-stone-200 flex items-start gap-3"
+                  className="bg-surface rounded-3xl p-4 border border-line flex items-start gap-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-stone-900 truncate">{need.title}</p>
-                    <p className="text-xs text-stone-500 mt-0.5">
+                    <p className="font-bold text-sm text-ink truncate">{need.title}</p>
+                    <p className="text-xs text-ink-soft mt-0.5">
                       {/* Renk tek başına durum belirtmiyor (rapor md. 98):
                           durum her zaman metinle birlikte yazılıyor. */}
                       ● {STATUS_LABEL[need.status]}
                       {category ? ` · ${category.name}` : ''}
                     </p>
                     {need.note && (
-                      <p className="text-xs text-stone-600 mt-1.5 line-clamp-2">{need.note}</p>
+                      <p className="text-xs text-ink-soft mt-1.5 line-clamp-2">{need.note}</p>
                     )}
                   </div>
 
@@ -261,7 +261,7 @@ export const NeedsPage: React.FC = () => {
                         onClick={() => handleStatus(need, 'paused')}
                         aria-label="Duraklat"
                         title="Duraklat"
-                        className="w-11 h-11 rounded-2xl bg-stone-50 border border-stone-200 text-stone-600 flex items-center justify-center hover:bg-stone-100"
+                        className="w-11 h-11 rounded-2xl bg-canvas border border-line text-ink-soft flex items-center justify-center hover:bg-canvas"
                       >
                         <Pause className="w-4 h-4" />
                       </button>
@@ -271,7 +271,7 @@ export const NeedsPage: React.FC = () => {
                         onClick={() => handleStatus(need, 'active')}
                         aria-label="Tekrar ara"
                         title="Tekrar ara"
-                        className="w-11 h-11 rounded-2xl bg-stone-50 border border-stone-200 text-stone-600 flex items-center justify-center hover:bg-stone-100"
+                        className="w-11 h-11 rounded-2xl bg-canvas border border-line text-ink-soft flex items-center justify-center hover:bg-canvas"
                       >
                         <Play className="w-4 h-4" />
                       </button>
@@ -281,7 +281,7 @@ export const NeedsPage: React.FC = () => {
                       onClick={() => handleDelete(need)}
                       aria-label="Sil"
                       title="Sil"
-                      className="w-11 h-11 rounded-2xl bg-stone-50 border border-stone-200 text-stone-600 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600"
+                      className="w-11 h-11 rounded-2xl bg-canvas border border-line text-ink-soft flex items-center justify-center hover:bg-danger-soft hover:text-danger"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -295,16 +295,16 @@ export const NeedsPage: React.FC = () => {
         {!loading && needs.some((n) => n.status === 'active') && (
           <section className="space-y-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-700" />
-              <h2 className="text-sm font-bold text-stone-900 font-display">
+              <Sparkles className="w-4 h-4 text-brand-dark" />
+              <h2 className="text-sm font-bold text-ink font-display">
                 Aradıklarına uyan ilanlar
               </h2>
             </div>
 
             {matches.length === 0 ? (
-              <div className="bg-white rounded-3xl p-6 border border-stone-200 text-center">
-                <p className="text-sm font-bold text-stone-900">Henüz uyan bir ilan yok</p>
-                <p className="text-xs text-stone-500 mt-1">
+              <div className="bg-surface rounded-3xl p-6 border border-line text-center">
+                <p className="text-sm font-bold text-ink">Henüz uyan bir ilan yok</p>
+                <p className="text-xs text-ink-soft mt-1">
                   Aradıkların kayıtlı. Uygun bir ilan yayınlandığında burada listelenecek.
                 </p>
               </div>
@@ -313,8 +313,8 @@ export const NeedsPage: React.FC = () => {
                 {matches.map((match) => (
                   <div key={`${match.need.id}-${match.listing.id}`} className="space-y-1.5">
                     <ProductCard listing={match.listing} variant="horizontal" />
-                    <p className="text-[11px] text-stone-500 px-1">
-                      <span className="font-semibold text-emerald-800">
+                    <p className="text-[11px] text-ink-soft px-1">
+                      <span className="font-semibold text-brand-dark">
                         "{match.need.title}" ile takas uyumu %{match.score}
                       </span>
                       {match.reasons.length > 0 && ` · ${match.reasons.join(' · ')}`}

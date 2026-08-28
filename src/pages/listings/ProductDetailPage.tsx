@@ -224,7 +224,7 @@ export const ProductDetailPage: React.FC = () => {
             type="button"
             onClick={() => navigate(-1)}
             aria-label="Geri"
-            className="absolute top-3 left-3 w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-ink cursor-pointer"
+            className="absolute top-3 left-3 w-10 h-10 rounded-full bg-surface/90 backdrop-blur flex items-center justify-center text-ink cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -234,7 +234,7 @@ export const ProductDetailPage: React.FC = () => {
               type="button"
               onClick={handleShare}
               aria-label="Paylaş"
-              className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-ink cursor-pointer"
+              className="w-10 h-10 rounded-full bg-surface/90 backdrop-blur flex items-center justify-center text-ink cursor-pointer"
             >
               <Share2 className="w-4 h-4" />
             </button>
@@ -242,7 +242,7 @@ export const ProductDetailPage: React.FC = () => {
               type="button"
               onClick={handleFavoriteToggle}
               aria-label={isFavorite ? 'Favorilerden çıkar' : 'Favorilere ekle'}
-              className="w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center text-ink cursor-pointer"
+              className="w-10 h-10 rounded-full bg-surface/90 backdrop-blur flex items-center justify-center text-ink cursor-pointer"
             >
               <Heart className={`w-4 h-4 ${isFavorite ? 'fill-brand text-brand' : ''}`} />
             </button>
@@ -257,7 +257,7 @@ export const ProductDetailPage: React.FC = () => {
                   aria-label={`${index + 1}. fotoğraf`}
                   onClick={() => setActiveImageIndex(index)}
                   className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                    index === activeImageIndex ? 'w-5 bg-white' : 'w-1.5 bg-white/60'
+                    index === activeImageIndex ? 'w-5 bg-surface' : 'w-1.5 bg-surface/60'
                   }`}
                 />
               ))}
@@ -302,7 +302,7 @@ export const ProductDetailPage: React.FC = () => {
               {listing.lookingForCategories.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {listing.lookingForCategories.map((catId) => (
-                    <span key={catId} className="sw-badge bg-white">
+                    <span key={catId} className="sw-badge bg-surface">
                       {CATEGORIES.find((c) => c.id === catId)?.name ?? catId}
                     </span>
                   ))}
