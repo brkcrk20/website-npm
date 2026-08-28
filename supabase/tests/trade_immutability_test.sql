@@ -494,6 +494,89 @@ $$, 'tanınmayan condition değeri reddediliyor');
 
 
 \echo ''
+\echo '=== 15) Takasın geçmişi uydurulamıyor (20260905000000)'
+-- `trade_events_insert_parties` yalnızca "ekleyen taraflardan biri mi?"
+-- diye soruyordu; `event_type`/`note` serbestti ve `actor_id is null`
+-- açıkça izinliydi. Yani takasın herhangi bir tarafı, olmamış bir onayı
+-- SİSTEM olayı gibi yazabiliyordu — üstelik tabloda DELETE politikası da
+-- yok, satır bir daha silinemiyordu. Yöneticinin anlaşmazlıkta baktığı
+-- kanıt bu tablodur.
+
+select set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999', true);
+
+select pg_temp.rejects(format($$
+  insert into public.trade_events (trade_id, actor_id, event_type, note)
+  values (%L, null, 'verified', 'İki taraf da teslimatı onayladı.')
+$$, (select id from public.trades where offer_id = 'cccccccc-0000-0000-0000-00000000000b')),
+  'taraf, olmamış bir onayı sistem olayı gibi yazamıyor');
+
+select pg_temp.rejects(format($$
+  insert into public.trade_events (trade_id, actor_id, event_type)
+  values (%L, null, 'offer_accepted')
+$$, (select id from public.trades where offer_id = 'cccccccc-0000-0000-0000-00000000000b')),
+  'kabul olayı elle yazılamıyor');
+
+select pg_temp.rejects(format($$
+  insert into public.trade_events (trade_id, actor_id, event_type)
+  values (%L, null, 'her_sey_yolunda')
+$$, (select id from public.trades where offer_id = 'cccccccc-0000-0000-0000-00000000000b')),
+  'tanınmayan olay türü reddediliyor');
+
+-- Meşru akış: istemcinin yazdığı türler geçiyor ve olay YAZANA bağlanıyor.
+insert into public.trade_events (trade_id, actor_id, event_type)
+select id, null, 'delivery_planned'
+  from public.trades where offer_id = 'cccccccc-0000-0000-0000-00000000000b';
+
+select pg_temp.ok(
+  (select actor_id from public.trade_events
+    where event_type = 'delivery_planned'
+      and trade_id = (select id from public.trades
+                       where offer_id = 'cccccccc-0000-0000-0000-00000000000b'))
+    = '99999999-9999-9999-9999-999999999999',
+  'boş bırakılan actor_id, olayı yazana bağlanıyor');
+
+
+\echo ''
+\echo '=== 16) Güven sayaçları kaynaktan türetiliyor (20260905000000)'
+-- Sayaçlar kör `+1` ile artıyor, `recalc_trust_score` da onları
+-- doğrulamadan okuyup güven puanını hesaplıyordu: sayaç bir kez bozulunca
+-- düzelten hiçbir yol yoktu ve hata puana kalıcı geçiyordu.
+
+update public.trust_profiles
+   set completed_trades = 999, cancelled_trades = 42
+ where user_id = '11111111-1111-1111-1111-111111111111';
+
+select public.recalc_trust_score('11111111-1111-1111-1111-111111111111');
+
+select pg_temp.ok(
+  (select completed_trades from public.trust_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111')
+  = (select count(*) from public.trades
+      where status = 'completed'
+        and (sender_id = '11111111-1111-1111-1111-111111111111'
+             or receiver_id = '11111111-1111-1111-1111-111111111111')),
+  'şişirilmiş completed_trades kaynaktan onarılıyor');
+
+select pg_temp.ok(
+  (select cancelled_trades from public.trust_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111')
+  = (select count(*) from public.trades
+      where status = 'cancelled'
+        and (sender_id = '11111111-1111-1111-1111-111111111111'
+             or receiver_id = '11111111-1111-1111-1111-111111111111')),
+  'şişirilmiş cancelled_trades kaynaktan onarılıyor');
+
+-- Güven profili olmayan bir kullanıcı için satır oluşturuluyor
+-- (eskiden `update ... where` sessizce hiçbir şey yapmıyordu).
+delete from public.trust_profiles where user_id = '11111111-1111-1111-1111-111111111111';
+select public.recalc_trust_score('11111111-1111-1111-1111-111111111111');
+select pg_temp.ok(
+  exists (select 1 from public.trust_profiles
+           where user_id = '11111111-1111-1111-1111-111111111111'),
+  'eksik güven profili yeniden oluşturuluyor');
+
+
+\echo ''
 \echo '=== TÜM KONTROLLER GEÇTİ ==='
 
 rollback;

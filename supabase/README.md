@@ -25,7 +25,9 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 `20260831000000_rpc_grants_and_row_guards.sql` ve
 `20260901000000_seed_categories.sql` ve
 `20260902000000_single_trade_per_listing.sql` ve
-`20260903000000_align_need_match_notifications.sql` HENÜZ UYGULANMADI.**
+`20260903000000_align_need_match_notifications.sql` ve
+`20260904000000_listing_column_integrity.sql` ve
+`20260905000000_trade_event_and_trust_integrity.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -103,7 +105,30 @@ ekranında o ilanı bulamıyordu. İki taraf artık aynı sadeleştirmeyi
 (`fold_tr` ↔ `foldTurkish`), aynı dolgu kelime listesini ve aynı eşiği
 kullanıyor.
 
-**SEKİZİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`20260904000000` ilan kolonlarını kilitliyor. `listings_update_own`
+politikası sahibe TÜM kolonları açıyor (Postgres'te kolon bazlı RLS yok):
+`view_count`/`favorite_count` tek bir `PATCH /rest/v1/listings` ile
+şişirilebiliyor — `20260827000000`'in `increment_listing_view()` RPC'si
+politika kapatılmadığı için hiçbir şeyi kapatmamış; `created_at` ileri bir
+zamana yazılarak keşif sıralaması (`order created_at desc`) kalıcı olarak
+ele geçirilebiliyor; UNIQUE olan `slug` değiştirilerek daha önce
+paylaşılmış `/ilan/<slug>` bağlantıları kırılabiliyordu. Ayrıca durum
+tetikleyicisi yalnızca UPDATE'e bağlı olduğu için ilan doğrudan
+`status='in_trade'` ile OLUŞTURULABİLİYOR ve bir daha ne düzeltilebiliyor
+ne kaldırılabiliyordu. `condition` de kapalı kümeye alındı.
+
+`20260905000000` takasın geçmişini ve güven sayaçlarını kaynağına
+bağlıyor. `trade_events_insert_parties` yalnızca "ekleyen taraflardan biri
+mi?" diye soruyor; `event_type`/`note` serbest ve `actor_id is null`
+açıkça izinliydi. Yani takasın herhangi bir tarafı `('verified', 'İki
+taraf da teslimatı onayladı.')` satırını SİSTEM olayı gibi yazabiliyordu —
+tabloda DELETE politikası olmadığı için de silinemiyordu. Yönetici
+panelinin "son aktivite" akışı ve anlaşmazlık incelemesi doğrudan bu
+tablodan besleniyor. Aynı dosyada `recalc_trust_score()` artık
+`trust_profiles`'ın kendi sayaçlarını değil `trades` tablosunu okuyor:
+kör `+1` ile bozulan bir sayaç artık kendiliğinden onarılıyor.
+
+**ONU SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
 `trade_status_rank()` ve `enforce_trade_transition()` üzerine;
 `20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
 ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.
