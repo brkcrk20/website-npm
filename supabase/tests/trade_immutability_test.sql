@@ -247,6 +247,45 @@ select pg_temp.ok(
   'uydurma yönetici kararı sıfırlandı, şikayet kaydı korundu');
 
 
+
+\echo ''
+\echo '=== 10) Bir ilan aynı anda tek takasta (20260902000000)'
+insert into auth.users (id) values ('99999999-9999-9999-9999-999999999999');
+insert into public.profiles (id, phone, full_name)
+values ('99999999-9999-9999-9999-999999999999', '+905550000009', 'Üçüncü kişi C');
+
+-- Bu bölüm için taze ilanlar: yukarıdaki takas tamamlandığı için B'nin
+-- ilk ilanı artık `traded` ve yeniden kilitlenemez.
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-000000000009', '99999999-9999-9999-9999-999999999999',
+   '33333333-3333-3333-3333-333333333333', 'C ürünü', 'good', 'active'),
+  ('aaaaaaaa-0000-0000-0000-00000000000b', '22222222-2222-2222-2222-222222222222',
+   '33333333-3333-3333-3333-333333333333', 'B''nin ikinci ürünü', 'good', 'active');
+
+-- C, B'nin ikinci ilanını istiyor.
+insert into public.trade_offers (id, sender_id, receiver_id, status) values
+  ('cccccccc-0000-0000-0000-000000000009',
+   '99999999-9999-9999-9999-999999999999', '22222222-2222-2222-2222-222222222222', 'pending');
+
+insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
+  ('cccccccc-0000-0000-0000-000000000009', 'aaaaaaaa-0000-0000-0000-000000000009',
+   '99999999-9999-9999-9999-999999999999', 'offered'),
+  ('cccccccc-0000-0000-0000-000000000009', 'aaaaaaaa-0000-0000-0000-00000000000b',
+   '22222222-2222-2222-2222-222222222222', 'requested');
+
+-- O ilan başka bir takasta kilitliymiş gibi davran. `in_trade` yalnızca
+-- sistem tarafından yazılabildiği için (20260828000000) kilit bayrağıyla.
+set local swaloop.trade_lock = 'on';
+update public.listings set status = 'in_trade'
+ where id = 'aaaaaaaa-0000-0000-0000-00000000000b';
+set local swaloop.trade_lock = 'off';
+
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+select pg_temp.rejects($$
+  select public.accept_trade_offer('cccccccc-0000-0000-0000-000000000009')
+$$, 'aynı ürün için ikinci teklifi de kabul etmek');
+
+
 \echo ''
 \echo '=== TÜM KONTROLLER GEÇTİ ==='
 

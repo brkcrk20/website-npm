@@ -417,10 +417,16 @@ select pg_temp.ok(
 
 \echo ''
 \echo '=== 14) accept_trade_offer(): atomik kabul + yetki'
+-- Taze bir ilan: 'aaaaaaaa-…001' bu noktada önceki takaslarda kullanıldı
+-- ve artık `active` değil. 20260902000000, ürünü takasa kapalı olan bir
+-- teklifin kabul edilmesini engelliyor.
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-0000000000c1', '11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333', 'Kabul testi ürünü', 'good', 'active');
+
 insert into public.trade_offers (id, sender_id, receiver_id, status, delivery_method) values
   ('bbbbbbbb-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'pending', 'cargo');
 insert into public.trade_offer_items (offer_id, listing_id, owner_id, role) values
-  ('bbbbbbbb-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'offered');
+  ('bbbbbbbb-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-0000000000c1', '11111111-1111-1111-1111-111111111111', 'offered');
 
 -- Teklifi GÖNDEREN kendi teklifini kabul edemez.
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
@@ -594,20 +600,20 @@ select pg_temp.rejects($$
   select public.delete_listing('aaaaaaaa-0000-0000-0000-000000000012')
 $$, 'başkasının ilanı kaldırılamıyor');
 
--- 14. adımdaki teklif (bbbbbbbb-…-05) 'aaaaaaaa-…-01' ilanını kapsıyor ve
+-- 14. adımdaki teklif (bbbbbbbb-…-05) 'aaaaaaaa-…-c1' ilanını kapsıyor ve
 -- takası hâlâ açık: bu ilan kaldırılamaz.
 select pg_temp.rejects($$
-  select public.delete_listing('aaaaaaaa-0000-0000-0000-000000000001')
+  select public.delete_listing('aaaaaaaa-0000-0000-0000-0000000000c1')
 $$, 'devam eden takastaki ilan kaldırılamıyor');
 
 update public.trades set status = 'cancelled' where offer_id = 'bbbbbbbb-0000-0000-0000-000000000005';
 
 select pg_temp.ok(
-  public.delete_listing('aaaaaaaa-0000-0000-0000-000000000001') = 'archived',
+  public.delete_listing('aaaaaaaa-0000-0000-0000-0000000000c1') = 'archived',
   'teklif geçmişi olan ilan siliniyor değil arşivleniyor');
 
 select pg_temp.ok(
-  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-000000000001') = 'removed',
+  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-0000000000c1') = 'removed',
   'arşivlenen ilan "removed" oldu ve takas geçmişi bozulmadı');
 
 -- Döngüde geçen ilan da referanslıdır: `loop_participants.offering_listing_id`
