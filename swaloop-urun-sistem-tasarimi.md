@@ -472,6 +472,24 @@ bir ürün yaratmak olur.
     `Sitemap:` satırı. Build sonrası üretilen basit bir sitemap ucuz;
     bot'lara özel ön-render ayrı ve pahalı bir karar, organik trafik
     oluşmadan yapılmamalı.
+16. **Erişilebilirlik temeli — EN BÜYÜK AÇIK KALAN BOŞLUK.** Depoda
+    `role="dialog"`, `aria-live` ve `prefers-reduced-motion` ifadelerinin
+    TOPLAM eşleşme sayısı sıfır. Sekiz modalın hiçbiri odağı içine
+    hapsetmiyor, Esc ile kapanmıyor ve ekran okuyucuya "burada bir iletişim
+    kutusu açıldı" demiyor; bildirimler ekran okuyucuya hiç ulaşmıyor;
+    hareket duyarlılığı olan kullanıcı için `animate-ping`/`animate-bounce`
+    kapanmıyor. Bu turda ikon düğmelerine ad, kartlara klavye erişimi ve
+    kontrast (WCAG AA) yapıldı; geri kalanı ayrı bir tur.
+17. **Onay sormayan yıkıcı eylemler.** "İlanlarım"da *Kaldır*, hiçbir onay
+    istemeden ilanı kalıcı siliyor ve *Düzenle* ile aynı boyutta, üç piksel
+    yanında duruyor; aynı işlem ilan düzenleme ekranında onay istiyor, yani
+    ürün kendi içinde tutarsız. "Aradıklarım"daki çöp kutusu da *Duraklat*
+    ile aynı boyutta ve renkte. (Bu turda moderasyon tarafındaki uydurma
+    gerekçe düzeltildi; onay kutuları açık kaldı.)
+18. **Gerçek zamanlı mesajlaşma.** Gelen mesaj ancak sayfa değişince
+    görünüyor; Supabase Realtime aboneliği yok.
+19. **Engellenen kişiler ekranı.** Engelleme var, engeli KALDIRMANIN
+    arayüzde yolu yok.
 
 ## 7. Tasarım dili (md. 62-72, 98-103)
 

@@ -170,10 +170,64 @@ Eşleştirmenin girdileri:
   için canlıdaki her ilanda boştu. İlan formuna tek satırlık opsiyonel
   etiket alanı eklendi.
 
+### Üçüncü geçiş: sunucudaki doğruluk ekrana taşınıyor
+
+Gözden geçirme 178 bulgu üretti; çelişkili hakemlerden geçirilip 30 iş
+kalemine indirildi. Teşhis tek cümleyle: **backend'de kazanılan doğruluk
+arayüze taşınmıyordu.** Sunucu doğru davranıyor, ekran ya susuyor ya
+uyduruyor.
+
+En net örneği kendi işimizdi: `accept_trade_offer()` reddetme sebebini net
+bir Türkçe cümleyle söylüyor ("Bu tekliften 'X' artık takasa açık değil"),
+ama `acceptOffer()` bunu `undefined`'a çeviriyor ve sayfalar `if (updated)`
+yazdığı için hata dalı hiç yoktu — kullanıcı "Kabul Et"e basıyor, ekranda
+hiçbir şey olmuyordu.
+
+Kapatılanlar:
+
+- **Sunucunun cümlesi ekrana ulaşıyor.** `acceptOffer`/`rejectOffer` artık
+  `{ trade?, error? }` dönüyor; üç çağıran ekran da sebebi gösteriyor.
+- **`/takas-istekleri` silindi.** Hiçbir yerden bağlantı verilmiyordu,
+  `/takaslarim` ile aynı listeleri gösteriyordu ve tek özgün bölümü
+  ("Akıllı Algoritma Eşleşmeleri") tamamen uydurmaydı: ilk dört ilana
+  sırayla %96/%92/%88/%84 yazıyor, hiç ilanı olmayan kullanıcıya
+  BAŞKASININ ilanını "Senin Eşyan" diye gösteriyordu.
+- **Karşılıklı onayda sessizlik.** İlk onaydan sonra karşı tarafa hiçbir
+  bildirim gitmiyordu; takas iki taraf birbirini beklerken asılı kalıyordu.
+- **Karşılıksız takas.** Sıfır kalemli ya da tek taraflı ("ver bana")
+  teklif kabul edilebiliyor, hiçbir ürün el değiştirmeden iki tarafın da
+  `completed_trades` sayacı artıyordu.
+- **İlan kolonları.** Sahibi `view_count`/`favorite_count`'u şişirebiliyor,
+  `created_at`'i ileri yazarak keşif sıralamasını kalıcı ele
+  geçirebiliyor, `slug`'ı değiştirerek paylaşılmış bağlantıları
+  kırabiliyordu. İlan doğrudan `in_trade` ile oluşturulabiliyor ve bir daha
+  ne düzeltilebiliyor ne kaldırılabiliyordu.
+- **Takasın geçmişi.** Takasın herhangi bir tarafı `('verified', 'İki taraf
+  da teslimatı onayladı.')` satırını `actor_id = null` ile SİSTEM olayı
+  gibi yazabiliyordu — yöneticinin anlaşmazlıkta baktığı kanıt tam olarak
+  bu tablo ve tabloda DELETE politikası yok.
+- **Güven sayaçları** kör `+1` ile artıyor, `recalc_trust_score` onları
+  doğrulamadan okuyordu; artık `trades` tablosundan türetiliyor, yani her
+  hesaplama aynı zamanda bir onarım.
+- **Oturum bütünlüğü.** Profilsiz oturumla uygulamanın içinde gezinme,
+  çıkmış kullanıcının ekranda kalan kimliği, her gezinmede atılan ağ
+  isteği ve giriş sonrası kaybolan hedef — dördü de tek bir
+  `sessionState` kaynağına bağlandı. Doğrulama ekranındaki sabit "DEMO"
+  kodu tuşu kaldırıldı.
+- **Kaybolan ilan formu.** Yayınlama akışında try/catch yoktu: bir hata
+  düğmeyi kalıcı kilitliyor, kullanıcı sayfayı yenilemek zorunda kalıyor ve
+  üç adımlık formun tamamı gidiyordu.
+- **Uydurulan moderasyon gerekçesi.** Not boş bırakıldığında denetim
+  kaydına "Rapor asılsız bulundu." yazılıyordu — kimsenin vermediği bir
+  karar, üstelik şikayet edilen kullanıcıya gösterilen gerekçe tam olarak
+  orası.
+- **Eksik FK indeksleri.** `listing_images.listing_id` indekssizdi ve o
+  tablo neredeyse her ekranda embed ediliyor.
+
 **Doğrulama:** her commit'te `npm run lint` + `npm test` + `npm run build`;
-migration'lar sıfırdan kurulan yerel PostgreSQL 16'da uygulanıp iki SQL
-test paketiyle (93 + 31 kontrol) denendi; arayüz Chromium ile iki temada
-ekran görüntüleriyle doğrulandı.
+migration'lar sıfırdan kurulan yerel PostgreSQL 16'ya (32 dosya) uygulanıp
+iki SQL test paketiyle (93 + 56 kontrol) denendi; arayüz Chromium ile iki
+temada on rota üzerinde konsol hatası aranarak doğrulandı.
 
 ---
 
