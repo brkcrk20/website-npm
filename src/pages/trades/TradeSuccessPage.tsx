@@ -167,21 +167,35 @@ export const TradeSuccessPage: React.FC = () => {
         )}
       </div>
 
-      {/* Bottom Action Button Matching Screen 12 */}
+      {/* DEĞERLENDİRME GÜNCELLENEMİYOR, O YÜZDEN ÖYLE DENMİYOR.
+          Düğme, değerlendirme bırakılmışken "Değerlendirmeyi Güncelle"
+          diyordu; oysa `submitReview` yalnızca INSERT yapıyor ve
+          `reviews_one_per_reviewer_key` ikincisini reddediyor. Yani düğmeye
+          basan kullanıcı, dört yıldızı yeniden verip kaydete bastıktan
+          sonra "Bu takas için değerlendirmeni zaten bıraktın." hatası
+          alıyordu. Takas detay ekranı bunu zaten doğru yapıyordu; iki ekran
+          artık aynı şeyi söylüyor. */}
       <div className="max-w-md md:max-w-xl mx-auto px-4 w-full pt-4 space-y-2.5">
-        <button
-          type="button"
-          onClick={() => setShowReviewModal(true)}
-          className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-        >
-          <Star className="w-5 h-5 fill-star text-star" />
-          <span>{isReviewed ? 'Değerlendirmeyi Güncelle' : 'Değerlendir'}</span>
-        </button>
+        {isReviewed ? (
+          <div className="w-full py-3.5 rounded-2xl bg-brand-soft border border-brand-line text-brand-dark font-bold text-sm flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Bu takas için değerlendirmeni bıraktın</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowReviewModal(true)}
+            className="w-full py-4 rounded-2xl bg-brand hover:bg-brand-dark text-on-brand font-bold text-base shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <Star className="w-5 h-5 fill-star text-star" />
+            <span>Değerlendir</span>
+          </button>
+        )}
 
         <button
           type="button"
           onClick={() => navigate('/kesfet')}
-          className="w-full py-3 rounded-2xl bg-surface border border-line text-ink-soft font-bold text-sm hover:bg-canvas transition-colors"
+          className="w-full py-3 rounded-2xl bg-surface border border-line text-ink-soft font-bold text-sm hover:bg-canvas transition-colors cursor-pointer"
         >
           Keşfet'e Dön
         </button>
