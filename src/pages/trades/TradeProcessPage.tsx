@@ -85,7 +85,7 @@ export const TradeProcessPage: React.FC = () => {
         showToast('Adım ilerletilemedi', result.error, 'error');
         return;
       }
-      showToast('Teslimat Planlandı', 'Karşı tarafa buluşma detayları bildirildi.', 'success');
+      showToast('Teslimat Adımına Geçildi', 'Buluşma detaylarını sohbetten kararlaştırın.', 'success');
     } else if (currentStep === 4) {
       // Adım 5 karşılıklı: onayın kaydediliyor, takas ancak karşı taraf da
       // onayladığında ilerliyor (bkz. tradeService.confirmReceipt).

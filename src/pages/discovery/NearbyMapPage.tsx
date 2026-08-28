@@ -1,31 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingService } from '../../services/listingService';
-import { ProductCard } from '../../components/common/ProductCard';
 import { Listing } from '../../types';
+import { SAFE_MEETING_POINTS } from '../../constants';
 import {
   ArrowLeft,
   MapPin,
   Star,
-  ShieldCheck,
   Navigation,
-  Layers,
-  Sparkles,
   Info,
+  Clock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getCurrentCoords } from '../../services/geoLocationService';
+
+// YAKINIMDAKİLER
+//
+// Bu ekran eskiden bir HARİTA taklidiydi ve gösterdiği hemen her şey
+// uydurmaydı:
+//
+//   * Noktalı bir arka planın üstüne ilanlar SABİT yüzdelere (30/25,
+//     72/60, 22/70…) yerleştiriliyordu. Kullanıcı bir harita gördüğünü
+//     ve pinlerin konum anlattığını sanıyordu; anlatmıyorlardı.
+//   * "3 Doğrulanmış Güvenli Buluşma Noktası" — hiçbir noktayı kimse
+//     doğrulamamıştı; liste bileşenin içine elle yazılmıştı.
+//   * "8 aktif takas planlandı" — böyle bir sayaç hiç var olmadı.
+//   * 2/5/10 km düğmeleri: `activeRadius` state'e yazılıyor ama HİÇBİR
+//     yerde okunmuyordu. Kullanıcı 2 km'ye basıyor, liste değişmiyordu.
+//   * "Yakınımdaki Takaslar (N)" — N, Türkiye genelindeki ilan sayısıydı.
+//
+// Bir takas uygulamasında buluşma noktası tavsiyesi güvenlik tavsiyesidir;
+// arkasında bir doğrulama yokken "doğrulanmış" demek, kullanıcının gerçek
+// dünyada bir yabancıyla buluşacağı yeri uydurulmuş bir güvenceye
+// dayandırmaktır. Bu yüzden ekran, elimizde GERÇEKTEN olan iki şeyin
+// üstüne yeniden kuruldu: hesaplanmış mesafe ve şehir bazlı öneri listesi.
+//
+// Harita gerçekten gerektiğinde (gerçek tile'lar, gerçek koordinatlar)
+// ayrı bir iş olarak eklenir; taklidi burada durmaz.
+
+const RADIUS_OPTIONS = [2, 5, 10] as const;
 
 export const NearbyMapPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentLocation, setCurrentLocation } = useApp();
   const [allListings, setAllListings] = useState<Listing[]>([]);
-  const [selectedSpot, setSelectedSpot] = useState<string | null>(null);
-  const [activeRadius, setActiveRadius] = useState<number>(5);
+  const [activeRadius, setActiveRadius] = useState<number | null>(5);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [requestingLocation, setRequestingLocation] = useState(false);
 
-  // "Yakınımdakiler" ekranı mesafenin tek anlamlı olduğu yer; konumu burada
-  // bir kez isteyip AppContext'e yazıyoruz. enrichListings mesafeyi buradan
-  // okur — izin verilmezse mesafe hiç gösterilmez, liste yine çalışır.
+  const hasCoords =
+    typeof currentLocation.lat === 'number' && typeof currentLocation.lon === 'number';
+
+  // "Yakınımdakiler" mesafenin tek anlamlı olduğu ekran; konumu burada bir
+  // kez isteyip AppContext'e yazıyoruz. enrichListings mesafeyi buradan
+  // okur — izin verilmezse mesafe HİÇ gösterilmez, liste yine çalışır ama
+  // bunu kullanıcıya açıkça söylüyoruz (aşağıdaki uyarı kartı).
   useEffect(() => {
     let cancelled = false;
 
@@ -44,7 +73,8 @@ export const NearbyMapPage: React.FC = () => {
           });
         })
         .catch(() => {
-          // Konum izni yok/başarısız: mesafe gösterilmez, liste yine yüklenir.
+          if (cancelled) return;
+          setLocationDenied(true);
           load();
         });
       return () => {
@@ -60,246 +90,252 @@ export const NearbyMapPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentLocation.lat, currentLocation.lon]);
 
-  const safeMeetingSpots = [
-    {
-      id: 'spot-1',
-      name: 'Moda Sahil Güvenli Takas Noktası',
-      district: 'Kadıköy',
-      address: 'Moda Parkı Girişi, Kadıköy / İstanbul',
-      verified: true,
-      activeTradesCount: 8,
-      coords: { x: 38, y: 44 },
-    },
-    {
-      id: 'spot-2',
-      name: 'Beşiktaş İskele Meydanı',
-      district: 'Beşiktaş',
-      address: 'Şehir Hatları İskelesi Önü',
-      verified: true,
-      activeTradesCount: 14,
-      coords: { x: 62, y: 32 },
-    },
-    {
-      id: 'spot-3',
-      name: 'Akasya AVM Topluluk Alanı',
-      district: 'Üsküdar',
-      address: 'Zemin Kat Metro Çıkışı',
-      verified: true,
-      activeTradesCount: 5,
-      coords: { x: 50, y: 68 },
-    },
-  ];
+  const requestLocation = () => {
+    setRequestingLocation(true);
+    getCurrentCoords()
+      .then((position) => {
+        setLocationDenied(false);
+        setCurrentLocation({
+          ...currentLocation,
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        });
+      })
+      .catch(() => setLocationDenied(true))
+      .finally(() => setRequestingLocation(false));
+  };
+
+  // Mesafeye göre sıralı ve yarıçapa göre süzülmüş liste. Mesafesi
+  // BİLİNMEYEN ilan elenmez (listingService'teki kuralın aynısı) ama
+  // sıralamada sona gider — "yakınımdakiler" başlığı altında mesafesi
+  // bilinmeyen bir ilanı en üste koymak yanıltıcı olurdu.
+  const nearbyListings = useMemo(() => {
+    const withinRadius = allListings.filter((listing) => {
+      if (activeRadius === null) return true;
+      const distance = listing.location.distanceKm;
+      if (distance === undefined) return true;
+      return distance <= activeRadius;
+    });
+
+    return [...withinRadius].sort((a, b) => {
+      const da = a.location.distanceKm;
+      const db = b.location.distanceKm;
+      if (da === undefined && db === undefined) return 0;
+      if (da === undefined) return 1;
+      if (db === undefined) return -1;
+      return da - db;
+    });
+  }, [allListings, activeRadius]);
+
+  // Öneri listesi src/constants/index.ts'te duruyordu ve hiçbir ekran
+  // okumuyordu; bu ekran ise kendi içine yazdığı üç İstanbul noktasını
+  // "doğrulanmış" diye gösteriyordu. Artık tek kaynak var ve şehre göre
+  // süzülüyor — kullanıcının şehri yoksa İstanbul'a DÜŞMÜYOR.
+  const meetingPoints = useMemo(
+    () => SAFE_MEETING_POINTS.filter((point) => point.city === currentLocation.city),
+    [currentLocation.city]
+  );
 
   return (
     <div className="min-h-screen bg-canvas pb-24 text-ink">
       <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 pt-3 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shadow-xs"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-base font-bold text-ink font-display">
-                Yakınımdaki Takas Haritası
-              </h1>
-              <p className="text-xs text-ink-soft">
-                {currentLocation.district ? `${currentLocation.district}, ` : ''}
-                {currentLocation.city} Çevresi
+        {/* Başlık */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Geri"
+            className="w-10 h-10 rounded-2xl bg-surface border border-line text-ink-soft flex items-center justify-center hover:bg-canvas transition-colors shadow-xs shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-ink font-display">Yakınımdakiler</h1>
+            <p className="text-xs text-ink-soft truncate">
+              {currentLocation.district ? `${currentLocation.district}, ` : ''}
+              {currentLocation.city}
+            </p>
+          </div>
+        </div>
+
+        {/* Konum izni yoksa mesafe hesaplanamaz; bunu saklamak yerine
+            söylüyoruz — yoksa "yakınımdakiler" başlığı yalan olur. */}
+        {!hasCoords && (
+          <div className="p-4 rounded-2xl bg-surface border border-line shadow-xs space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-ink-soft shrink-0 mt-0.5" />
+              <p className="text-xs text-ink-soft leading-relaxed">
+                {locationDenied
+                  ? 'Konum izni verilmediği için mesafe hesaplanamıyor. Aşağıdaki liste mesafeye göre sıralanmıyor.'
+                  : 'Konumun alınıyor. Mesafe hesaplanana kadar liste sıralanmadan gösteriliyor.'}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={requestLocation}
+              disabled={requestingLocation}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-dark hover:underline disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              {requestingLocation ? 'Konum isteniyor…' : 'Konumumu paylaş'}
+            </button>
           </div>
+        )}
 
-          <div className="flex gap-1 bg-surface p-1 rounded-xl border border-line text-xs font-semibold">
-            {[2, 5, 10].map((r) => (
+        {/* Yarıçap: yalnızca mesafe gerçekten hesaplanabiliyorsa gösterilir.
+            Çalışmayan bir filtre düğmesi göstermek, filtre olmamasından
+            daha kötüdür. */}
+        {hasCoords && (
+          <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-line text-xs font-semibold w-fit">
+            {RADIUS_OPTIONS.map((radius) => (
               <button
-                key={r}
+                key={radius}
                 type="button"
-                onClick={() => setActiveRadius(r)}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
-                  activeRadius === r
+                onClick={() => setActiveRadius(radius)}
+                aria-pressed={activeRadius === radius}
+                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                  activeRadius === radius
                     ? 'bg-brand text-on-brand shadow-xs'
                     : 'text-ink-soft hover:bg-canvas'
                 }`}
               >
-                {r} km
+                {radius} km
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* Interactive Map Visual Simulator */}
-        <div className="relative w-full h-80 sm:h-96 rounded-3xl overflow-hidden bg-stone-900 border-2 border-stone-800 shadow-lg select-none">
-          {/* Topographic grid canvas pattern */}
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle at 1px 1px, #10b981 1px, transparent 0)',
-              backgroundSize: '24px 24px',
-            }}
-          />
-
-          {/* Central Radar Pulse for User */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-            <div className="w-48 h-48 rounded-full border border-brand animate-ping opacity-30" />
-            <div className="w-32 h-32 rounded-full border border-brand" />
-            <div className="w-12 h-12 rounded-full bg-brand/20 border-2 border-brand-line flex items-center justify-center">
-              <div className="w-4 h-4 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/80" />
-            </div>
-          </div>
-
-          {/* Safe Swap Spot Markers */}
-          {safeMeetingSpots.map((spot) => (
             <button
-              key={spot.id}
               type="button"
-              onClick={() => setSelectedSpot(spot.id)}
-              style={{ left: `${spot.coords.x}%`, top: `${spot.coords.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 group z-20 cursor-pointer"
+              onClick={() => setActiveRadius(null)}
+              aria-pressed={activeRadius === null}
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                activeRadius === null
+                  ? 'bg-brand text-on-brand shadow-xs'
+                  : 'text-ink-soft hover:bg-canvas'
+              }`}
             >
-              <div className="flex flex-col items-center">
-                <div className="p-2 rounded-2xl bg-brand text-on-brand border-2 border-white shadow-xl group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <span className="mt-1 px-2 py-0.5 rounded-full bg-stone-900/90 border border-stone-700 text-on-brand text-[10px] font-bold whitespace-nowrap backdrop-blur-sm">
-                  {spot.name.split(' ')[0]}
-                </span>
-              </div>
+              Tümü
             </button>
-          ))}
-
-          {/* Nearby Listing Pins */}
-          {allListings.slice(0, 5).map((l, i) => {
-            const positions = [
-              { x: 30, y: 25 },
-              { x: 72, y: 60 },
-              { x: 22, y: 70 },
-              { x: 80, y: 28 },
-              { x: 45, y: 75 },
-            ];
-            const pos = positions[i] || { x: 50, y: 50 };
-            return (
-              <div
-                key={l.id}
-                onClick={() => navigate(`/ilan/${l.slug || l.id}`)}
-                style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                className="absolute -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer group"
-              >
-                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-lg bg-surface group-hover:scale-110 transition-transform">
-                  <img src={l.images[0]} alt={l.title} className="w-full h-full object-cover" />
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Map Controls Floating Overlay */}
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-            <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-on-brand text-xs flex items-center gap-1.5 pointer-events-auto">
-              <ShieldCheck className="w-4 h-4 text-brand" />
-              <span>{safeMeetingSpots.length} Doğrulanmış Güvenli Buluşma Noktası</span>
-            </div>
-            <div className="px-3 py-1.5 rounded-xl bg-stone-950/80 backdrop-blur-md border border-stone-800 text-on-brand text-xs font-semibold pointer-events-auto">
-              {allListings.length} Aktif İlan
-            </div>
-          </div>
-        </div>
-
-        {/* Safe Spot Details Modal / Box if selected */}
-        {selectedSpot && (
-          <div className="p-4 rounded-2xl bg-brand text-on-brand border border-brand shadow-md animate-in slide-in-from-bottom-2">
-            {(() => {
-              const spot = safeMeetingSpots.find((s) => s.id === selectedSpot);
-              if (!spot) return null;
-              return (
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full bg-brand text-star text-[10px] font-bold">
-                        Doğrulanmış Güvenli Nokta
-                      </span>
-                      <span className="text-xs text-emerald-200">
-                        {spot.activeTradesCount} aktif takas planlandı
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-bold mt-1 text-on-brand">{spot.name}</h3>
-                    <p className="text-xs text-emerald-100/80 mt-0.5">{spot.address}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSpot(null)}
-                    className="text-brand hover:text-on-brand text-xs font-semibold"
-                  >
-                    Kapat
-                  </button>
-                </div>
-              );
-            })()}
           </div>
         )}
 
-        {/* Nearby Users and Listings Matching Screen 15 */}
-        <div className="space-y-3 pt-2">
+        {/* İlanlar */}
+        <div className="space-y-3">
           <h2 className="text-sm font-bold text-ink font-display">
-            Yakınımdaki Takaslar ({allListings.length})
+            {hasCoords && activeRadius !== null
+              ? `${activeRadius} km içinde ${nearbyListings.length} ilan`
+              : `${nearbyListings.length} ilan`}
           </h2>
 
-          <div className="space-y-2.5">
-            {allListings.slice(0, 4).map((listing) => (
-              <div
-                key={listing.id}
-                onClick={() => navigate(`/ilan/${listing.slug || listing.id}`)}
-                className="p-3.5 bg-surface rounded-2xl border border-line shadow-xs flex items-center justify-between gap-3 hover:border-brand transition-all cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={listing.user.avatarUrl}
-                    alt={listing.user.fullName}
-                    className="w-11 h-11 rounded-full object-cover border border-line shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-ink truncate">
-                        {listing.user.fullName}
+          {nearbyListings.length === 0 ? (
+            <div className="p-6 rounded-2xl bg-surface border border-line text-center space-y-2">
+              <MapPin className="w-6 h-6 text-ink-faint mx-auto" />
+              <p className="text-xs text-ink-soft">
+                {hasCoords && activeRadius !== null
+                  ? `${activeRadius} km içinde ilan yok. Yarıçapı genişletmeyi dene.`
+                  : 'Burada gösterilecek ilan yok.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {nearbyListings.slice(0, 20).map((listing) => (
+                <button
+                  key={listing.id}
+                  type="button"
+                  onClick={() => navigate(`/ilan/${listing.slug || listing.id}`)}
+                  className="w-full text-left p-3.5 bg-surface rounded-2xl border border-line shadow-xs flex items-center justify-between gap-3 hover:border-brand focus-visible:border-brand focus-visible:outline-hidden transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={listing.user.avatarUrl}
+                      alt=""
+                      className="w-11 h-11 rounded-full object-cover border border-line shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-ink truncate">
+                          {listing.user.fullName}
+                        </span>
+                        {/* Puan yoksa "4.8" uydurulmuyor; `★` metin glifi
+                            yerine lucide ikonu (md. 149: yalnızca lucide). */}
+                        {listing.user.reviewCount > 0 ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-dark bg-brand-soft px-1.5 py-0.5 rounded shrink-0">
+                            <Star className="w-2.5 h-2.5 fill-current" />
+                            {listing.user.trustScore.toFixed(1)}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-ink-faint shrink-0">
+                            Yeni üye
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-ink-soft truncate mt-0.5 font-medium">
+                        {listing.title}
+                      </p>
+                      <span className="text-[11px] text-ink-faint block">
+                        {listing.location.district}
+                        {listing.location.distanceKm !== undefined
+                          ? ` • ${listing.location.distanceKm} km uzakta`
+                          : ''}
                       </span>
-                      {/* Puan yoksa "4.8" uydurulmuyor; `★` metin glifi
-                          yerine lucide ikonu (md. 149: yalnızca lucide). */}
-                      {listing.user.reviewCount > 0 ? (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-dark bg-brand-soft px-1.5 py-0.5 rounded shrink-0">
-                          <Star className="w-2.5 h-2.5 fill-current" />
-                          {listing.user.trustScore.toFixed(1)}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-semibold text-ink-faint shrink-0">
-                          Yeni üye
-                        </span>
-                      )}
                     </div>
-                    <p className="text-xs text-ink-soft truncate mt-0.5 font-medium">
-                      {listing.title}
+                  </div>
+
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-canvas border border-line shrink-0">
+                    <img
+                      src={listing.images[0]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Önerilen buluşma noktaları — "doğrulanmış" DEĞİL. Swaloop bu
+            yerleri denetlemiyor; bunlar kalabalık, aydınlık ve kamusal
+            oldukları için öneriliyor. Aradaki fark, kullanıcının gerçek
+            hayatta aldığı riski değiştirir. */}
+        <div className="space-y-3 pt-2">
+          <h2 className="text-sm font-bold text-ink font-display">Önerilen buluşma noktaları</h2>
+
+          {meetingPoints.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-surface border border-line">
+              <p className="text-xs text-ink-soft leading-relaxed">
+                {currentLocation.city} için önerilen bir nokta henüz yok. Buluşmayı
+                kalabalık, aydınlık ve kamusal bir yerde — iskele meydanı, metro
+                çıkışı, alışveriş merkezi girişi gibi — gündüz saatinde yapın.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {meetingPoints.map((point) => (
+                <div
+                  key={point.id}
+                  className="p-3.5 bg-surface rounded-2xl border border-line shadow-xs flex items-start gap-3"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-brand-soft border border-brand-line text-brand-dark flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-bold text-ink">{point.name}</h3>
+                    <p className="text-[11px] text-ink-soft mt-0.5 leading-snug">
+                      {point.address}
                     </p>
-                    <span className="text-[11px] text-ink-faint block">
-                      {listing.location.district}
-                      {listing.location.distanceKm !== undefined &&
-                        ` • ${listing.location.distanceKm} km uzakta`}
+                    <span className="inline-flex items-center gap-1 text-[11px] text-ink-faint mt-1">
+                      <Clock className="w-3 h-3" />
+                      {point.hours}
                     </span>
                   </div>
                 </div>
-
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-canvas border border-line shrink-0">
-                  <img
-                    src={listing.images[0]}
-                    alt={listing.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+              <p className="text-[11px] text-ink-faint leading-relaxed px-1">
+                Bu noktalar Swaloop tarafından denetlenmiyor; kalabalık ve kamusal
+                oldukları için öneriliyor. Buluşmayı gündüz yapın, ürünü teslim
+                etmeden önce inceleyin.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

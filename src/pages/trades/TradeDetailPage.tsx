@@ -203,9 +203,9 @@ export const TradeDetailPage: React.FC = () => {
     }
 
     if (step === 4) {
-      showToast('Teslimat Aşamasına Geçildi', 'Kargo veya buluşma planı aktif.', 'info');
+      showToast('Teslimat Aşamasına Geçildi', 'Buluşma veya kargo detaylarını sohbetten kararlaştırın.', 'info');
     } else if (step === 6) {
-      showToast('Tebrikler! Takas Tamamlandı 🎉', 'Takas başarıyla tamamlandı.', 'success');
+      showToast('Tebrikler! Takas Tamamlandı', 'Takas başarıyla tamamlandı.', 'success');
       setShowReviewModal(true);
     }
     });
@@ -393,20 +393,33 @@ export const TradeDetailPage: React.FC = () => {
         {/* Meeting & Delivery Protocol Details */}
         <div className="bg-surface rounded-2xl border border-line p-4 space-y-2.5">
           <h2 className="text-xs font-bold text-ink uppercase tracking-wider">Teslimat & Güvenlik Bilgisi</h2>
+          {/* Buluşma yeri/tarihi BİLİNMİYORSA uydurulmaz. Buraya eskiden
+              "Kadıköy Güvenli Takas Noktası (Metro Çıkışı)" yazılıydı:
+              Trabzon'daki iki kullanıcı, takas ekranında buluşma yeri
+              olarak bir İstanbul adresi okuyordu. */}
           <div className="flex items-start gap-2.5 text-xs text-ink-soft">
             <MapPin className="w-4 h-4 text-brand-dark shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Buluşma / Teslim Yeri:</span>
-              <span>{trade.deliveryDetails?.locationName || 'Kadıköy Güvenli Takas Noktası (Metro Çıkışı)'}</span>
+              <span>{trade.deliveryDetails?.locationName || 'Henüz kararlaştırılmadı'}</span>
             </div>
           </div>
           <div className="flex items-start gap-2.5 text-xs text-ink-soft">
             <Calendar className="w-4 h-4 text-brand-dark shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Planlanan Tarih:</span>
-              <span>{trade.deliveryDetails?.scheduledDate || 'Belirlenmedi (Sohbet üzerinden kararlaştırılabilir)'}</span>
+              <span>{trade.deliveryDetails?.scheduledDate || 'Henüz kararlaştırılmadı'}</span>
             </div>
           </div>
+          {!trade.deliveryDetails?.locationName && (
+            <button
+              type="button"
+              onClick={handleChatOpen}
+              className="text-xs font-bold text-brand-dark hover:underline cursor-pointer"
+            >
+              Buluşmayı sohbetten planla →
+            </button>
+          )}
         </div>
 
         {/* Action Panel for Current Trade Status */}
