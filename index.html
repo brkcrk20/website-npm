@@ -15,12 +15,30 @@
     <meta property="og:title" content="Swaloop — İhtiyacın olanı, elindekini takas ederek bul." />
     <meta property="og:description" content="Elindeki eşyayı, ihtiyacın olan şeyle takas et. Para yok, fiyat yok, sadece takas." />
     <meta property="og:type" content="website" />
-    <meta name="theme-color" content="#16A36A" />
-    <!-- TODO: og:image (1200x630 PNG) hâlâ yok — link paylaşımlarında kart
-         görselsiz görünüyor (rapor.txt §3). Marka görseli hazırlanınca
-         public/ altına konup burada tanımlanmalı. -->
+    <!-- Tarayıcı arayüz rengi temaya göre değişir; sabit tek renk, koyu
+         temada açık yeşil bir şerit bırakıyordu. Değerler
+         src/index.css'teki --color-brand / --color-canvas ile aynı. -->
+    <meta name="theme-color" content="#2e9e5f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1512" media="(prefers-color-scheme: dark)" />
+    <!-- Paylaşım kartı görseli (rapor.txt §3'te açık maddeydi). 1200x630.
+         Kaynağı public/og-image.source.html — metin ya da marka değişirse
+         o dosyayı düzenleyip yeniden ekran görüntüsü alın. -->
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Swaloop — İhtiyacın olanı, elindekini takas ederek bul." />
+    <meta property="og:site_name" content="Swaloop" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Swaloop — İhtiyacın olanı, elindekini takas ederek bul." />
+    <meta name="twitter:description" content="Elindeki eşyayı, ihtiyacın olan şeyle takas et. Para yok, fiyat yok, sadece takas." />
+    <meta name="twitter:image" content="/og-image.png" />
   </head>
-  <body class="bg-stone-50 text-stone-900 antialiased selection:bg-emerald-500 selection:text-white font-sans">
+  <!-- body üzerinde sabit renk sınıfı YOK: `bg-stone-50 text-stone-900`
+       Tailwind utility katmanında olduğu için src/index.css'teki
+       `body { background-color: var(--color-canvas) }` kuralını eziyor ve
+       koyu temada gövde açık kalıyordu. Renkler artık tek kaynaktan. -->
+  <body class="antialiased font-sans">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

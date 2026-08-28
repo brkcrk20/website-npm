@@ -20,9 +20,8 @@ export default defineConfig(() => {
           // indirilmez. Sayfa bazlı bölme App.tsx'teki React.lazy ile
           // yapılıyor (rapor.txt §3).
           //
-          // NOT: package.json'daki `motion` paketi kodda hiç kullanılmıyor;
-          // bu yüzden burada listelenmiyor (listelenirse boş bir parça
-          // üretiyor). Bağımlılığın kaldırılması ayrı bir temizlik işi.
+          // NOT: kullanılmayan `motion` bağımlılığı kaldırıldı (kodda tek
+          // bir import'u yoktu).
           manualChunks: {
             react: ['react', 'react-dom', 'react-router-dom'],
             supabase: ['@supabase/supabase-js'],
