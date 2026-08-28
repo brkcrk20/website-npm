@@ -128,24 +128,26 @@ export const TradeDetailPage: React.FC = () => {
 
   const handleAccept = () =>
     runOnce('accept', async () => {
-      const updated = await tradeService.acceptOffer(trade.id);
-      if (!updated) {
-        showToast('Teklif kabul edilemedi', 'Lütfen tekrar dene.', 'error');
+      const result = await tradeService.acceptOffer(trade.id);
+      if (!result.trade) {
+        // Sunucunun söylediği sebep gösteriliyor ("… artık takasa açık
+        // değil" gibi); yoksa genel mesaja düşülüyor.
+        showToast('Teklif kabul edilemedi', result.error ?? 'Lütfen tekrar dene.', 'error');
         return;
       }
-      setTrade(updated);
+      setTrade(result.trade);
       showToast('Takas Teklifi Kabul Edildi!', 'Ürünler takas için kilitlendi.', 'success');
       navigate(`/takas-sureci/${trade.id}`);
     });
 
   const handleReject = () =>
     runOnce('reject', async () => {
-      const updated = await tradeService.rejectOffer(trade.id);
-      if (!updated) {
-        showToast('Teklif reddedilemedi', 'Lütfen tekrar dene.', 'error');
+      const result = await tradeService.rejectOffer(trade.id);
+      if (!result.trade) {
+        showToast('Teklif reddedilemedi', result.error ?? 'Lütfen tekrar dene.', 'error');
         return;
       }
-      setTrade(updated);
+      setTrade(result.trade);
       showToast('Teklif Reddedildi', undefined, 'info');
     });
 

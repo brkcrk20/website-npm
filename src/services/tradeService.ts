@@ -481,6 +481,18 @@ async function fullyHydrate(offerRow: TradeOfferRow): Promise<TradeOffer> {
  *
  * `DeleteListingResult` ile aynı desen.
  */
+/**
+ * Teklif kabul/ret sonucu.
+ *
+ * Bu iki çağrı eskiden hatada `undefined` dönüyordu ve çağıran sayfalar
+ * `if (updated)` yazdığı için hata dalı YOKTU: sunucu net bir Türkçe sebep
+ * söylüyor, kullanıcı boş bir ekran görüyordu.
+ */
+export interface AcceptOfferResult {
+  trade?: TradeOffer;
+  error?: string;
+}
+
 export interface AdvanceTradeResult {
   /** Adım gerçekten ilerlediyse güncel takas. */
   trade?: TradeOffer;
@@ -718,24 +730,31 @@ export const tradeService = {
    * (bkz. migration 20260827000000). Fonksiyon idempotent: aynı teklif için
    * tekrar çağrılırsa var olan takası döndürür.
    */
-  async acceptOffer(tradeId: string): Promise<TradeOffer | undefined> {
+  async acceptOffer(tradeId: string): Promise<AcceptOfferResult> {
     const { error } = await supabase.rpc('accept_trade_offer', {
       p_offer_id: tradeId,
     });
 
     if (error) {
       reportServiceError('Teklif kabul edilemedi:', error);
-      return undefined;
+      // `accept_trade_offer()` REDDETME SEBEBİNİ TÜRKÇE SÖYLÜYOR
+      // ("Bu tekliften 'X' artık takasa açık değil; teklif kabul
+      // edilemez.", "Bu teklifi yalnızca teklifin gönderildiği kişi kabul
+      // edebilir." …). O cümle burada `undefined`'a çevrilip yok
+      // ediliyordu; ekranda hiçbir şey olmuyor, kullanıcı düğmeye basıp
+      // uygulamanın donduğunu sanıyordu. Sunucunun söylediği artık
+      // çağırana ulaşıyor.
+      return { error: error.message };
     }
 
-    return this.getTradeById(tradeId);
+    return { trade: await this.getTradeById(tradeId) };
   },
 
   async rejectOffer(
     tradeId: string,
     reason?: TradeCancellationReason,
     note?: string
-  ): Promise<TradeOffer | undefined> {
+  ): Promise<AcceptOfferResult> {
     // DÜZELTİLDİ: burada eskiden `message: reason` yazılıyordu — yani ret
     // nedeni, teklifi gönderenin yazdığı NOTUN ÜZERİNE geçiyordu ve not
     // kalıcı olarak kayboluyordu. Neden artık kendi kolonunda tutuluyor
@@ -751,10 +770,10 @@ export const tradeService = {
 
     if (error) {
       reportServiceError('Teklif reddedilemedi:', error);
-      return undefined;
+      return { error: error.message };
     }
 
-    return this.getTradeById(tradeId);
+    return { trade: await this.getTradeById(tradeId) };
   },
 
   /**

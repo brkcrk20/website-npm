@@ -61,19 +61,28 @@ export const TradeOffersPage: React.FC = () => {
   };
 
   const handleAccept = async (tradeId: string) => {
-    const updated = await tradeService.acceptOffer(tradeId);
-    if (updated) {
-      showToast('Teklif Kabul Edildi!', 'Ürünler takas için kilitlendi. Teslimat planına geçebilirsiniz.', 'success');
-      navigate(`/teklif/${tradeId}`);
+    const result = await tradeService.acceptOffer(tradeId);
+    if (!result.trade) {
+      // Hata dalı YOKTU: `accept_trade_offer()` net bir Türkçe sebep
+      // fırlatıyor ("Bu tekliften 'X' artık takasa açık değil"), ekranda
+      // hiçbir şey olmuyordu ve kullanıcı uygulamanın donduğunu sanıyordu.
+      showToast('Teklif kabul edilemedi', result.error ?? 'Lütfen tekrar dene.', 'error');
+      loadTrades();
+      return;
     }
+    showToast('Teklif Kabul Edildi!', 'Ürünler takas için kilitlendi. Teslimat planına geçebilirsiniz.', 'success');
+    navigate(`/teklif/${tradeId}`);
   };
 
   const handleReject = async (tradeId: string) => {
-    const updated = await tradeService.rejectOffer(tradeId);
-    if (updated) {
-      showToast('Teklif Reddedildi', 'Takas teklifi geri çevrildi.', 'info');
+    const result = await tradeService.rejectOffer(tradeId);
+    if (!result.trade) {
+      showToast('Teklif reddedilemedi', result.error ?? 'Lütfen tekrar dene.', 'error');
       loadTrades();
+      return;
     }
+    showToast('Teklif Reddedildi', 'Takas teklifi geri çevrildi.', 'info');
+    loadTrades();
   };
 
   const currentList = getFilteredList();

@@ -31,7 +31,6 @@ const EditListingPage = lazy(() => import('./pages/listings/EditListingPage').th
 
 // Trade Pages
 const TradeOffersPage = lazy(() => import('./pages/trades/TradeOffersPage').then((m) => ({ default: m.TradeOffersPage })));
-const TradeRequestsPage = lazy(() => import('./pages/trades/TradeRequestsPage').then((m) => ({ default: m.TradeRequestsPage })));
 const MakeOfferPage = lazy(() => import('./pages/trades/MakeOfferPage').then((m) => ({ default: m.MakeOfferPage })));
 const CounterOfferPage = lazy(() => import('./pages/trades/CounterOfferPage').then((m) => ({ default: m.CounterOfferPage })));
 const TradeDetailPage = lazy(() => import('./pages/trades/TradeDetailPage').then((m) => ({ default: m.TradeDetailPage })));
@@ -116,8 +115,7 @@ export default function App() {
 
                 {/* Trades */}
                 <Route path="/takaslarim" element={<RequireAuth><TradeOffersPage /></RequireAuth>} />
-                <Route path="/takas-istekleri" element={<RequireAuth><TradeRequestsPage /></RequireAuth>} />
-                <Route path="/istekler" element={<Navigate to="/takas-istekleri" replace />} />
+                <Route path="/istekler" element={<Navigate to="/takaslarim" replace />} />
                 <Route path="/eslesme" element={<SwipeMatchPage />} />
                 {/* Takma adlar kanonik adrese yönlendiriliyor: aynı ekranın
                     dört ayrı adresi olması hangisinin paylaşılacağını
