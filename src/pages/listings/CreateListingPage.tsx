@@ -370,25 +370,31 @@ export const CreateListingPage: React.FC = () => {
                 Ürün Kondisyonu
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* <div onClick> idi: klavyeyle seçilemiyor, odak halkası
+                  çizilmiyor, ekran okuyucuda bir seçim olarak
+                  duyurulmuyordu. Tek seçimli olduğu için radiogroup. */}
+              <div role="radiogroup" aria-label="Ürün kondisyonu" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {CONDITION_OPTIONS.map((c) => (
-                  <div
+                  <button
                     key={c.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={condition === c.id}
                     onClick={() => setCondition(c.id as ProductCondition)}
-                    className={`p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                    className={`w-full text-left p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                       condition === c.id
                         ? 'border-brand bg-brand-soft/60'
                         : 'border-line hover:bg-canvas'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <span className="flex items-center justify-between">
                       <span className="text-xs font-bold text-ink">{c.title}</span>
                       {condition === c.id && (
                         <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                       )}
-                    </div>
+                    </span>
                     <span className="text-[11px] text-ink-soft block mt-0.5">{c.desc}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -458,39 +464,43 @@ export const CreateListingPage: React.FC = () => {
               </label>
 
               <div className="grid grid-cols-2 gap-2">
-                <div
+                <button
+                  type="button"
+                  aria-pressed={deliveryOptions.includes('in_person')}
                   onClick={() => handleToggleDelivery('in_person')}
-                  className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                  className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between text-left ${
                     deliveryOptions.includes('in_person')
                       ? 'border-brand bg-brand-soft/60'
                       : 'border-line hover:bg-canvas'
                   }`}
                 >
-                  <div>
+                  <span>
                     <span className="text-xs font-bold block text-ink">Elden Buluşma</span>
                     <span className="text-[10px] text-ink-soft">Güvenli noktalarda</span>
-                  </div>
+                  </span>
                   {deliveryOptions.includes('in_person') && (
                     <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                   )}
-                </div>
+                </button>
 
-                <div
+                <button
+                  type="button"
+                  aria-pressed={deliveryOptions.includes('cargo')}
                   onClick={() => handleToggleDelivery('cargo')}
-                  className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                  className={`p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between text-left ${
                     deliveryOptions.includes('cargo')
                       ? 'border-brand bg-brand-soft/60'
                       : 'border-line hover:bg-canvas'
                   }`}
                 >
-                  <div>
+                  <span>
                     <span className="text-xs font-bold block text-ink">Kargo ile</span>
                     <span className="text-[10px] text-ink-soft">Alıcı / Gönderici</span>
-                  </div>
+                  </span>
                   {deliveryOptions.includes('cargo') && (
                     <CheckCircle2 className="w-4 h-4 text-brand-dark" />
                   )}
-                </div>
+                </button>
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { TradeOffer, Listing } from '../../types';
 import { tradeStatusBadge } from '../../utils/tradeStatus';
 import { ArrowLeftRight, ImageOff } from 'lucide-react';
@@ -49,8 +49,6 @@ export const TradeCard: React.FC<TradeCardProps> = ({
   onCounter,
   className = '',
 }) => {
-  const navigate = useNavigate();
-
   const offeredItem = trade.offeredListings[0];
   const requestedItem = trade.requestedListings[0];
   const otherUser = isIncoming ? trade.initiator : trade.receiver;
@@ -61,8 +59,7 @@ export const TradeCard: React.FC<TradeCardProps> = ({
 
   return (
     <div
-      onClick={() => navigate(`/teklif/${trade.id}`)}
-      className={`bg-surface rounded-2xl border border-line p-4 hover:border-brand hover:shadow-md transition-all cursor-pointer ${className}`}
+      className={`relative bg-surface rounded-2xl border border-line p-4 hover:border-brand focus-within:border-brand hover:shadow-md transition-all ${className}`}
     >
       {/* Header: User & Status */}
       <div className="flex items-center justify-between pb-3 border-b border-line">
@@ -146,7 +143,7 @@ export const TradeCard: React.FC<TradeCardProps> = ({
         (trade.status === 'offer_received' || trade.status === 'offer_sent') &&
         onAccept &&
         onReject ? (
-          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="relative z-10 flex items-center gap-1.5 mr-auto">
             <button
               type="button"
               onClick={() => onReject(trade.id)}
@@ -173,9 +170,14 @@ export const TradeCard: React.FC<TradeCardProps> = ({
               Kabul Et
             </button>
           </div>
-        ) : (
-          <span className="text-[11px] font-semibold text-brand-dark">Detayları Gör →</span>
-        )}
+        ) : null}
+        <Link
+          to={`/teklif/${trade.id}`}
+          className="text-[11px] font-semibold text-brand-dark outline-hidden after:absolute after:inset-0 after:rounded-2xl"
+        >
+          Detayları Gör
+          <span className="sr-only"> — {statusInfo.label}</span> →
+        </Link>
       </div>
     </div>
   );

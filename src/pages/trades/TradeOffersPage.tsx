@@ -115,66 +115,75 @@ export const TradeOffersPage: React.FC = () => {
         </div>
 
         {/* Status Highlights Banner */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div
+        <div role="tablist" aria-label="Takas listeleri" className="grid grid-cols-3 gap-2.5">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'incoming'}
             onClick={() => setActiveTab('incoming')}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`text-left p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'incoming'
                 ? 'bg-brand text-white border-brand shadow-sm'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'incoming' ? 'text-emerald-200' : 'text-ink-faint'}`}>
+            <span className="flex items-center justify-between mb-1">
+              <span className={`text-[11px] font-bold ${activeTab === 'incoming' ? 'text-brand-soft' : 'text-ink-faint'}`}>
                 GELEN
               </span>
               <Inbox className={`w-4 h-4 ${activeTab === 'incoming' ? 'text-brand' : 'text-brand-dark'}`} />
-            </div>
-            <div className="text-xl font-extrabold">{activeIncoming.length}</div>
-            <div className={`text-[10px] ${activeTab === 'incoming' ? 'text-emerald-100' : 'text-ink-soft'}`}>
+            </span>
+            <span className="block text-xl font-extrabold">{activeIncoming.length}</span>
+            <span className={`block text-[10px] ${activeTab === 'incoming' ? 'text-brand-soft' : 'text-ink-soft'}`}>
               Onay bekleyen
-            </div>
-          </div>
+            </span>
+          </button>
 
-          <div
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'outgoing'}
             onClick={() => setActiveTab('outgoing')}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`text-left p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'outgoing'
                 ? 'bg-brand text-white border-brand shadow-sm'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'outgoing' ? 'text-emerald-200' : 'text-ink-faint'}`}>
+            <span className="flex items-center justify-between mb-1">
+              <span className={`text-[11px] font-bold ${activeTab === 'outgoing' ? 'text-brand-soft' : 'text-ink-faint'}`}>
                 GİDEN
               </span>
               <Send className={`w-4 h-4 ${activeTab === 'outgoing' ? 'text-brand' : 'text-ink-soft'}`} />
-            </div>
-            <div className="text-xl font-extrabold">{activeOutgoing.length}</div>
-            <div className={`text-[10px] ${activeTab === 'outgoing' ? 'text-emerald-100' : 'text-ink-soft'}`}>
+            </span>
+            <span className="block text-xl font-extrabold">{activeOutgoing.length}</span>
+            <span className={`block text-[10px] ${activeTab === 'outgoing' ? 'text-brand-soft' : 'text-ink-soft'}`}>
               Yanıt bekleyen
-            </div>
-          </div>
+            </span>
+          </button>
 
-          <div
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'completed'}
             onClick={() => setActiveTab('completed')}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`text-left p-3 rounded-2xl border transition-all cursor-pointer ${
               activeTab === 'completed'
                 ? 'bg-brand text-white border-brand shadow-sm'
                 : 'bg-surface text-ink-soft border-line hover:bg-canvas'
             }`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-[11px] font-bold ${activeTab === 'completed' ? 'text-emerald-200' : 'text-ink-faint'}`}>
+            <span className="flex items-center justify-between mb-1">
+              <span className={`text-[11px] font-bold ${activeTab === 'completed' ? 'text-brand-soft' : 'text-ink-faint'}`}>
                 GEÇMİŞ
               </span>
               <CheckCircle2 className={`w-4 h-4 ${activeTab === 'completed' ? 'text-brand' : 'text-brand-dark'}`} />
-            </div>
-            <div className="text-xl font-extrabold">{completedTrades.length}</div>
-            <div className={`text-[10px] ${activeTab === 'completed' ? 'text-emerald-100' : 'text-ink-soft'}`}>
+            </span>
+            <span className="block text-xl font-extrabold">{completedTrades.length}</span>
+            <span className={`block text-[10px] ${activeTab === 'completed' ? 'text-brand-soft' : 'text-ink-soft'}`}>
               Sonuçlanan
-            </div>
-          </div>
+            </span>
+          </button>
         </div>
 
         {/* Tab Navigation Pill Bar */}
