@@ -400,6 +400,100 @@ select pg_temp.ok(
 
 
 \echo ''
+\echo '=== 14) İlan kolonları istemciden yazılamaz (20260904000000)'
+-- `listings_update_own` politikası ilan sahibine TÜM kolonları açıyordu;
+-- Postgres'te kolon bazlı RLS yok. Sonuç: sayaçlar şişirilebiliyor,
+-- `created_at` tazelenerek keşif sıralaması kalıcı olarak ele
+-- geçirilebiliyor, `slug` değiştirilerek paylaşılmış bağlantılar
+-- kırılabiliyordu.
+
+insert into public.listings (id, owner_id, category_id, title, condition, status, slug) values
+  ('aaaaaaaa-0000-0000-0000-00000000000e', '11111111-1111-1111-1111-111111111111',
+   '33333333-3333-3333-3333-333333333333', 'Kolon testi ürünü', 'good', 'active',
+   'kolon-testi-urunu');
+
+select pg_temp.rejects($$
+  update public.listings set view_count = 99999
+   where id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+$$, 'görüntülenme sayacı istemciden şişirilemiyor');
+
+select pg_temp.rejects($$
+  update public.listings set favorite_count = 4242
+   where id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+$$, 'favori sayacı istemciden şişirilemiyor');
+
+-- NOT: `now()` işlem başlangıç zamanıdır ve satır aynı işlemde
+-- eklendiği için `now()` yazmak DEĞİŞİKLİK SAYILMAZ. Gerçek saldırı da
+-- zaten "ileri bir zaman" yazmaktır (liste `created_at desc` sıralı).
+select pg_temp.rejects($$
+  update public.listings set created_at = now() + interval '1 day'
+   where id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+$$, 'created_at tazelenip sıralama ele geçirilemiyor');
+
+select pg_temp.rejects($$
+  update public.listings set slug = 'baska-slug'
+   where id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+$$, 'slug değiştirilip paylaşılmış bağlantılar kırılamıyor');
+
+select pg_temp.rejects($$
+  update public.listings set owner_id = '22222222-2222-2222-2222-222222222222'
+   where id = 'aaaaaaaa-0000-0000-0000-00000000000e'
+$$, 'ilan başka bir kullanıcıya devredilemiyor');
+
+-- Meşru akış bozulmadı: başlık/açıklama hâlâ düzenlenebiliyor.
+update public.listings set title = 'Kolon testi ürünü (düzeltildi)'
+ where id = 'aaaaaaaa-0000-0000-0000-00000000000e';
+select pg_temp.ok(
+  (select title from public.listings where id = 'aaaaaaaa-0000-0000-0000-00000000000e')
+    = 'Kolon testi ürünü (düzeltildi)',
+  'başlık hâlâ düzenlenebiliyor (kural fazla geniş değil)');
+
+-- Sayacı yazan iki meşru yol çalışmayı sürdürüyor.
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+select public.increment_listing_view('aaaaaaaa-0000-0000-0000-00000000000e');
+select pg_temp.ok(
+  (select view_count from public.listings where id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 1,
+  'increment_listing_view() sayacı hâlâ artırabiliyor');
+
+insert into public.favorites (user_id, listing_id)
+values ('22222222-2222-2222-2222-222222222222', 'aaaaaaaa-0000-0000-0000-00000000000e');
+select pg_temp.ok(
+  (select favorite_count from public.listings where id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 1,
+  'favori tetikleyicisi sayacı hâlâ artırabiliyor');
+
+-- İlan sahibi kendi ilanını açtığında sayaç artmıyor (eski kural korundu).
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+select public.increment_listing_view('aaaaaaaa-0000-0000-0000-00000000000e');
+select pg_temp.ok(
+  (select view_count from public.listings where id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 1,
+  'ilan sahibinin kendi görüntülemesi sayılmıyor');
+
+-- INSERT tarafı: sistem durumuyla ilan açılamıyor. Böyle bir ilan bir daha
+-- ne düzeltilebiliyor ne kaldırılabiliyordu (in_trade'den çıkış yasak).
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-00000000000f', '11111111-1111-1111-1111-111111111111',
+   '33333333-3333-3333-3333-333333333333', 'Kilitli doğan ilan', 'good', 'in_trade');
+select pg_temp.ok(
+  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-00000000000f') = 'active',
+  'sistem durumuyla açılan ilan active''e çekiliyor');
+
+-- `paused` meşru bir başlangıç durumu; korunuyor.
+insert into public.listings (id, owner_id, category_id, title, condition, status) values
+  ('aaaaaaaa-0000-0000-0000-000000000010', '11111111-1111-1111-1111-111111111111',
+   '33333333-3333-3333-3333-333333333333', 'Duraklatılmış doğan ilan', 'good', 'paused');
+select pg_temp.ok(
+  (select status from public.listings where id = 'aaaaaaaa-0000-0000-0000-000000000010') = 'paused',
+  'paused başlangıç durumu korunuyor');
+
+-- `condition` kapalı küme: istemcinin tanıdığı beş değer.
+select pg_temp.rejects($$
+  insert into public.listings (owner_id, category_id, title, condition)
+  values ('11111111-1111-1111-1111-111111111111',
+          '33333333-3333-3333-3333-333333333333', 'Uydurma durum', 'mukemmel')
+$$, 'tanınmayan condition değeri reddediliyor');
+
+
+\echo ''
 \echo '=== TÜM KONTROLLER GEÇTİ ==='
 
 rollback;
