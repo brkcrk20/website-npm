@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingService, uploadListingImages } from '../../services/listingService';
 import { supabase } from '../../lib/supabase';
+import { reportServiceError } from '../../lib/serviceError';
 import { CATEGORIES, CONDITION_OPTIONS } from '../../constants';
 import { CategoryId, ProductCondition } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -120,6 +121,16 @@ export const CreateListingPage: React.FC = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
+  // ÜÇ ADIMLIK FORMU KAYBETTİRMEYEN YAYINLAMA.
+  //
+  // Bu fonksiyonun gövdesi dört `await` içeriyor (oturum, WebP dönüşümü,
+  // yükleme, kayıt) ve hiçbiri try/catch içinde DEĞİLDİ. Düğme
+  // `disabled={isPublishing}` olduğu için canvas dönüşümü ya da oturum
+  // çağrısı fırlattığında `setIsPublishing(false)` hiç çalışmıyor: düğme
+  // sonsuza kadar soluk ve "Fotoğraflar yükleniyor…" yazılı kalıyor,
+  // hiçbir hata mesajı çıkmıyordu. Kullanıcının tek çıkışı sayfayı
+  // yenilemek oluyor ve altı fotoğraf, başlık, açıklama, kategoriler ve
+  // teslimat tercihlerinin TAMAMI gidiyordu.
   const handlePublish = async () => {
     if (!title.trim() || !lookingFor.trim() || images.length === 0) {
       showToast('Eksik Bilgi', 'Lütfen tüm zorunlu alanları doldurun.', 'warning');
@@ -128,98 +139,103 @@ export const CreateListingPage: React.FC = () => {
 
     setIsPublishing(true);
 
-    // Gerçek dosya seçilen slotları Supabase Storage'a yükle; örnek
-    // görsel seçilen slotlar (imageFiles[i] === null) olduğu gibi kalır.
-    let finalImages = images;
-    const pendingFiles = imageFiles.filter((f): f is File => f !== null);
+    try {
+      // Gerçek dosya seçilen slotları Supabase Storage'a yükle; örnek
+      // görsel seçilen slotlar (imageFiles[i] === null) olduğu gibi kalır.
+      let finalImages = images;
+      const pendingFiles = imageFiles.filter((f): f is File => f !== null);
 
-    if (pendingFiles.length > 0) {
-      const { data: authData } = await supabase.auth.getUser();
+      if (pendingFiles.length > 0) {
+        const { data: authData } = await supabase.auth.getUser();
 
-      if (!authData.user) {
-        setIsPublishing(false);
-        showToast(
-          'Oturum Sona Ermiş',
-          'Fotoğraf yüklemek için tekrar giriş yapmanız gerekiyor. Lütfen çıkış yapıp telefon numaranızla tekrar giriş yapın.',
-          'error'
-        );
-        return;
+        if (!authData.user) {
+          showToast(
+            'Oturum Sona Ermiş',
+            'Fotoğraf yüklemek için tekrar giriş yapmanız gerekiyor. Lütfen çıkış yapıp telefon numaranızla tekrar giriş yapın.',
+            'error'
+          );
+          return;
+        }
+
+        setIsUploadingPhotos(true);
+        const uploadResults = await uploadListingImages(currentUser.id, pendingFiles);
+        setIsUploadingPhotos(false);
+
+        let uploadIdx = 0;
+        const merged: string[] = [];
+        images.forEach((img, i) => {
+          if (imageFiles[i]) {
+            const uploadedUrl = uploadResults[uploadIdx];
+            uploadIdx++;
+            if (uploadedUrl) merged.push(uploadedUrl);
+            // uploadedUrl null ise (yükleme başarısız oldu) bu fotoğraf atlanır
+          } else {
+            merged.push(img);
+          }
+        });
+
+        const failedCount = pendingFiles.length - uploadResults.filter(Boolean).length;
+        if (failedCount > 0) {
+          showToast(
+            'Bazı Fotoğraflar Yüklenemedi',
+            `${failedCount} fotoğraf yüklenemedi, ilan geri kalan fotoğraflarla yayınlanıyor.`,
+            'warning'
+          );
+        }
+
+        if (merged.length === 0) {
+          showToast('Hata', 'Hiçbir fotoğraf yüklenemedi. Lütfen tekrar deneyin.', 'error');
+          return;
+        }
+
+        finalImages = merged;
       }
 
-      setIsUploadingPhotos(true);
-      const uploadResults = await uploadListingImages(currentUser.id, pendingFiles);
-      setIsUploadingPhotos(false);
-
-      let uploadIdx = 0;
-      const merged: string[] = [];
-      images.forEach((img, i) => {
-        if (imageFiles[i]) {
-          const uploadedUrl = uploadResults[uploadIdx];
-          uploadIdx++;
-          if (uploadedUrl) merged.push(uploadedUrl);
-          // uploadedUrl null ise (yükleme başarısız oldu) bu fotoğraf atlanır
-        } else {
-          merged.push(img);
-        }
+      const newListing = await listingService.createListing({
+        userId: currentUser.id,
+        title,
+        description: description || `${title} temiz durumda, takasa uygundur.`,
+        categoryId,
+        tags: parsedTags,
+        images: finalImages,
+        condition,
+        lookingFor,
+        lookingForCategories,
+        deliveryOptions,
+        location: {
+          city: currentUser.city,
+          district: currentUser.district,
+          // Mesafe ilanın bir özelliği değil, bakan kişiye göre hesaplanan
+          // türetilmiş bir değerdir; ilan oluştururken yazılmaz.
+          distanceKm: undefined,
+        },
+        user: {
+          id: currentUser.id,
+          fullName: currentUser.fullName,
+          avatarUrl: currentUser.avatarUrl,
+          trustScore: currentUser.trustProfile.score,
+          reviewCount: currentUser.trustProfile.reviewCount,
+          city: currentUser.city,
+          district: currentUser.district,
+          isVerified: currentUser.isVerified,
+        },
       });
 
-      const failedCount = pendingFiles.length - uploadResults.filter(Boolean).length;
-      if (failedCount > 0) {
-        showToast(
-          'Bazı Fotoğraflar Yüklenemedi',
-          `${failedCount} fotoğraf yüklenemedi, ilan geri kalan fotoğraflarla yayınlanıyor.`,
-          'warning'
-        );
-      }
-
-      if (merged.length === 0) {
-        setIsPublishing(false);
-        showToast('Hata', 'Hiçbir fotoğraf yüklenemedi. Lütfen tekrar deneyin.', 'error');
+      if (!newListing) {
+        showToast('Hata', 'İlan yayınlanırken bir sorun oluştu. Lütfen tekrar deneyin.', 'error');
         return;
       }
 
-      finalImages = merged;
+      showToast('İlanın Yayında', 'Sana uygun takas teklifleri bekleyebilirsin.', 'success');
+      navigate(`/ilan/${newListing.slug || newListing.id}`);
+    } catch (error) {
+      reportServiceError('İlan yayınlanamadı:', error);
+      showToast('İlan Yayınlanamadı', 'Beklenmedik bir sorun oldu, tekrar dene.', 'error');
+    } finally {
+      // Form olduğu gibi duruyor; kullanıcı tekrar deneyebilir.
+      setIsPublishing(false);
+      setIsUploadingPhotos(false);
     }
-
-    const newListing = await listingService.createListing({
-      userId: currentUser.id,
-      title,
-      description: description || `${title} temiz durumda, takasa uygundur.`,
-      categoryId,
-      tags: parsedTags,
-      images: finalImages,
-      condition,
-      lookingFor,
-      lookingForCategories,
-      deliveryOptions,
-      location: {
-        city: currentUser.city,
-        district: currentUser.district,
-        // Mesafe ilanın bir özelliği değil, bakan kişiye göre hesaplanan
-        // türetilmiş bir değerdir; ilan oluştururken yazılmaz.
-        distanceKm: undefined,
-      },
-      user: {
-        id: currentUser.id,
-        fullName: currentUser.fullName,
-        avatarUrl: currentUser.avatarUrl,
-        trustScore: currentUser.trustProfile.score,
-        reviewCount: currentUser.trustProfile.reviewCount,
-        city: currentUser.city,
-        district: currentUser.district,
-        isVerified: currentUser.isVerified,
-      },
-    });
-
-    setIsPublishing(false);
-
-    if (!newListing) {
-      showToast('Hata', 'İlan yayınlanırken bir sorun oluştu. Lütfen tekrar deneyin.', 'error');
-      return;
-    }
-
-    showToast('İlanın Yayında', 'Sana uygun takas teklifleri bekleyebilirsin.', 'success');
-    navigate(`/ilan/${newListing.slug || newListing.id}`);
   };
 
   return (

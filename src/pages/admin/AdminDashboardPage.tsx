@@ -123,8 +123,15 @@ export const AdminDashboardPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
+  // MODERATÖRÜN YAZMADIĞI GEREKÇE YAZILMIYOR.
+  //
+  // Not boş bırakıldığında denetim kaydına "Rapor asılsız bulundu." /
+  // "İnceleme sonucunda gerekli işlem yapıldı." cümleleri yazılıyordu.
+  // Bunlar kimsenin vermediği kararlardır ve `admin_audit_logs` ile
+  // şikayet edilen kullanıcıya gösterilen gerekçe tam olarak burasıdır.
+  // Not boşsa boş kalır: denetim kaydı gerekçe YAZILMADIĞINI gösterir.
   async function handleResolveReport(report: Report, status: Report['status']) {
-    const note = noteDrafts[report.id]?.trim() || (status === 'dismissed' ? 'Rapor asılsız bulundu.' : 'İnceleme sonucunda gerekli işlem yapıldı.');
+    const note = noteDrafts[report.id]?.trim() ?? '';
     setBusyId(report.id);
     const ok = await adminService.resolveReport(report.id, note, status);
     setBusyId(null);
@@ -138,7 +145,7 @@ export const AdminDashboardPage: React.FC = () => {
   }
 
   async function handleResolveDispute(dispute: Dispute, status: Dispute['status']) {
-    const decision = noteDrafts[dispute.id]?.trim() || 'Yönetici kararıyla sonuçlandırıldı.';
+    const decision = noteDrafts[dispute.id]?.trim() ?? '';
     setBusyId(dispute.id);
     const ok = await adminService.resolveDispute(dispute.id, decision, status);
     setBusyId(null);
@@ -410,7 +417,7 @@ export const AdminDashboardPage: React.FC = () => {
                   {report.status === 'resolved' || report.status === 'dismissed' ? (
                     <div className="text-[11px] text-slate-400 bg-slate-800/60 rounded-lg p-2.5">
                       <strong className="text-slate-300">Sonuç ({report.status === 'resolved' ? 'Çözüldü' : 'Reddedildi'}):</strong>{' '}
-                      {report.resolutionNote}
+                      {report.resolutionNote || 'Gerekçe yazılmadı.'}
                     </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -465,7 +472,8 @@ export const AdminDashboardPage: React.FC = () => {
 
                   {dispute.status.startsWith('resolved') || dispute.status === 'dismissed' ? (
                     <div className="text-[11px] text-slate-400 bg-slate-800/60 rounded-lg p-2.5">
-                      <strong className="text-slate-300">Karar:</strong> {dispute.adminDecision}
+                      <strong className="text-slate-300">Karar:</strong>{' '}
+                      {dispute.adminDecision || 'Gerekçe yazılmadı.'}
                     </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row gap-2">

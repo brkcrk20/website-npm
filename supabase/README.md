@@ -27,7 +27,8 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 `20260902000000_single_trade_per_listing.sql` ve
 `20260903000000_align_need_match_notifications.sql` ve
 `20260904000000_listing_column_integrity.sql` ve
-`20260905000000_trade_event_and_trust_integrity.sql` HENÜZ UYGULANMADI.**
+`20260905000000_trade_event_and_trust_integrity.sql` ve
+`20260906000000_missing_fk_indexes.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -128,7 +129,16 @@ tablodan besleniyor. Aynı dosyada `recalc_trust_score()` artık
 `trust_profiles`'ın kendi sayaçlarını değil `trades` tablosunu okuyor:
 kör `+1` ile bozulan bir sayaç artık kendiliğinden onarılıyor.
 
-**ONU SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`20260906000000` eksik yabancı anahtar indekslerini ekliyor. Postgres FK
+kolonları için indeks AÇMAZ; en sıcak yol olan `listing_images.listing_id`
+indekssizdi ve bu tablo neredeyse her ekranda embed ediliyor, yani her
+keşif sayfası yüklemesi bir seq scan demekti. `trades.sender_id` /
+`receiver_id` de öyle — takas listelerinin ve `recalc_trust_score()`'un
+tamamı bu iki kolondan geçiyor. Yalnızca gerçek bir sorguya ya da bir
+cascade'e karşılık gelen indeksler eklendi; ekranları kaldırılmış
+`loops`/`community` tabloları kapsam dışı bırakıldı.
+
+**ON BİRİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
 `trade_status_rank()` ve `enforce_trade_transition()` üzerine;
 `20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
 ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.
