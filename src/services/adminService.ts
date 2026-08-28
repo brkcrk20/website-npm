@@ -163,7 +163,6 @@ export const adminService = {
       completedTrades,
       completedTradesThisMonth,
       completedTradesLastMonth,
-      activeLoops,
       pendingReports,
     ] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
@@ -193,14 +192,6 @@ export const adminService = {
         .eq('status', 'completed')
         .gte('completed_at', startOfLastMonth)
         .lt('completed_at', startOfThisMonth),
-      // DÜZELTİLDİ: `status = 'active'` diye bir döngü durumu hiç yok.
-      // loopService yalnızca matching/locked/in_delivery/completed/cancelled
-      // yazıyor ('active' yalnızca eski şemanın default'uydu, artık o da
-      // 'matching'), bu yüzden bu KPI her zaman 0 dönüyordu.
-      supabase
-        .from('loops')
-        .select('id', { count: 'exact', head: true })
-        .in('status', ['matching', 'locked', 'in_delivery']),
       supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
 
@@ -228,7 +219,6 @@ export const adminService = {
       totalListings: activeListings.count ?? 0,
       activeTrades: activeTrades.count ?? 0,
       completedTrades: completedTrades.count ?? 0,
-      activeLoops: activeLoops.count ?? 0,
       pendingReports: pendingReports.count ?? 0,
       userGrowthPercent,
       tradeGrowthPercent,

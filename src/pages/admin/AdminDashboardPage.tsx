@@ -8,7 +8,6 @@ import {
   Repeat,
   ShieldAlert,
   BarChart3,
-  Layers,
   MessageSquare,
   FileText,
   Calendar,
@@ -85,10 +84,11 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'users', label: 'Kullanıcılar', icon: Users },
     { id: 'listings', label: 'İlanlar', icon: Package },
     { id: 'trades', label: 'Takaslar', icon: Repeat },
-    { id: 'loops', label: "Loop'lar", icon: Layers },
     { id: 'messages', label: 'Mesajlar', icon: MessageSquare },
-    { id: 'events', label: 'Etkinlikler', icon: Calendar },
-    { id: 'community', label: 'Topluluk', icon: Users },
+    // "Loop'lar", "Etkinlikler" ve "Topluluk" kaldırıldı: karşılık geldikleri
+    // ekranlar üründen çıkarıldı (App.tsx'teki not). Diğer başlıklar "henüz
+    // veriye bağlanmadı" durumunda; bu üçü ise ARTIK YOK — ikisi aynı şey
+    // değil ve yöneticiye var olmayan bir bölüm göstermek yanıltıcı.
     { id: 'content', label: 'İçerikler', icon: FileText },
     { id: 'notifications', label: 'Bildirimler', icon: Bell },
     { id: 'settings', label: 'Ayarlar', icon: Settings },
@@ -182,7 +182,6 @@ export const AdminDashboardPage: React.FC = () => {
         { id: 'total_users', title: 'Toplam Kullanıcı', value: kpis.totalUsers.toLocaleString('tr-TR'), change: kpis.userGrowthPercent, icon: Users },
         { id: 'active_users', title: 'Aktif Kullanıcı (30g)', value: kpis.activeUsers.toLocaleString('tr-TR'), change: null, icon: Activity },
         { id: 'completed_trades', title: 'Tamamlanan Takas', value: kpis.completedTrades.toLocaleString('tr-TR'), change: kpis.tradeGrowthPercent, icon: Repeat },
-        { id: 'active_loops', title: 'Aktif Loop', value: kpis.activeLoops.toLocaleString('tr-TR'), change: null, icon: Layers },
         { id: 'pending_reports', title: 'Bekleyen Rapor', value: kpis.pendingReports.toLocaleString('tr-TR'), change: null, icon: ShieldAlert },
       ]
     : [];

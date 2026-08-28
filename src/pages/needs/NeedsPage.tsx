@@ -276,6 +276,22 @@ export const NeedsPage: React.FC = () => {
                         <Play className="w-4 h-4" />
                       </button>
                     )}
+                    {/* "Karşılandı" durumu şemada ve STATUS_LABEL'da vardı
+                        ama onu YAZAN hiçbir düğme yoktu: aradığını bulan
+                        kullanıcının tek seçeneği ihtiyacı SİLMEKTİ. Geçmişi
+                        koruyan kapanış artık ulaşılabilir; `fulfilled` olan
+                        ihtiyaç aktif olmadığı için bildirim de kesiliyor. */}
+                    {need.status !== 'fulfilled' && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatus(need, 'fulfilled')}
+                        aria-label="Karşılandı olarak işaretle"
+                        title="Karşılandı"
+                        className="w-11 h-11 rounded-2xl bg-canvas border border-line text-ink-soft flex items-center justify-center hover:bg-brand-soft hover:text-brand-dark"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleDelete(need)}

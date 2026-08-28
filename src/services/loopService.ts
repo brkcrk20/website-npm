@@ -1,3 +1,9 @@
+// NOT: Bu servis şu anda HİÇBİR ekrandan çağrılmıyor. 3+ kişilik takas
+// döngüsü ekranları (LoopsPage, PaperclipPage, MysterySwapPage) üründen
+// çıkarıldı — ürünün temel akışı iki kişilik takas ve döngüler FAZ 3'e
+// bırakıldı. Servis ve `loops`/`loop_participants` tabloları o gün için
+// duruyor; silinmediler ama arayüzde karşılıkları yok.
+
 import { Loop, LoopParticipant, CategoryId, Listing } from '../types';
 import { supabase } from '../lib/supabase';
 import { mapProfile } from './authService';

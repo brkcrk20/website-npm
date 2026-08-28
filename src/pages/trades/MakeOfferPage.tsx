@@ -166,6 +166,42 @@ export const MakeOfferPage: React.FC = () => {
     );
   }
 
+  // İlan takasa kapalıysa form hiç açılmıyor. Eskiden form açılıyor, teklif
+  // gönderiliyor ve karşı taraf onu KABUL EDEMİYORDU (accept_trade_offer
+  // 20260902000000'den beri ürünlerin hâlâ `active` olduğunu doğruluyor);
+  // iki taraf da nedenini bilmiyordu.
+  if (targetListing.status !== 'active') {
+    const reason =
+      targetListing.status === 'in_trade'
+        ? 'Bu ürün şu an başka bir takasta.'
+        : targetListing.status === 'traded'
+        ? 'Bu ürün takas edildi.'
+        : targetListing.status === 'paused'
+        ? 'İlan şu an yayında değil.'
+        : 'İlanın süresi doldu.';
+
+    return (
+      <div className="sw-screen flex flex-col items-center justify-center px-6 text-center">
+        <h1 className="text-lg text-ink">Bu ilan takasa açık değil</h1>
+        <p className="text-sm text-ink-soft mt-1.5">{reason}</p>
+        <button
+          type="button"
+          onClick={() => navigate(`/arama?q=${encodeURIComponent(targetListing.title)}`)}
+          className="sw-btn sw-btn-primary mt-5"
+        >
+          Benzer ilanlara bak
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="sw-btn sw-btn-ghost mt-2"
+        >
+          Geri dön
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="sw-screen">
       <form onSubmit={handleSubmit} className="sw-container pt-3 space-y-5">

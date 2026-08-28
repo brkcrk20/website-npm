@@ -452,7 +452,6 @@ export interface AdminKPI {
   totalListings: number;
   activeTrades: number;
   completedTrades: number;
-  activeLoops: number;
   pendingReports: number;
   userGrowthPercent: number;
   tradeGrowthPercent: number;

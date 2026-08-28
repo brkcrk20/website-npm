@@ -13,13 +13,14 @@ import {
   Package,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
   Clock,
 } from 'lucide-react';
 import { listingService } from '../../services/listingService';
 import { messageService } from '../../services/messageService';
 import { needService } from '../../services/needService';
 import { reportService, REPORT_REASONS, ReportReason } from '../../services/reportService';
-import { Listing } from '../../types';
+import { Listing, Need } from '../../types';
 import { CATEGORIES } from '../../constants';
 import { expiryLabel, isExpiringSoon } from '../../utils/listingExpiry';
 import { useApp } from '../../context/AppContext';
@@ -56,7 +57,12 @@ export const ProductDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [seekerCount, setSeekerCount] = useState(0);
+  // Bu ilanı arayan İHTİYAÇLAR. Eskiden yalnızca `.length` saklanıyor,
+  // düğmeye basınca `/aradiklarim`'a — yani KULLANICININ KENDİ ihtiyaç
+  // listesine — gidiliyordu: bir sayı okunuyor, alakasız bir ekrana
+  // düşülüyordu. Artık aynı veriden gerekçeler de gösteriliyor.
+  const [seekers, setSeekers] = useState<Array<{ need: Need; score: number; reasons: string[] }>>([]);
+  const [showSeekers, setShowSeekers] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason | ''>('');
   const [isReporting, setIsReporting] = useState(false);
@@ -73,14 +79,14 @@ export const ProductDetailPage: React.FC = () => {
       setIsLoading(false);
 
       if (data) {
-        needService.getSeekersForListing(data).then((seekers) => setSeekerCount(seekers.length));
+        needService.getSeekersForListing(data).then(setSeekers);
         // Görüntülenme sayacı: kolon baştan beri vardı ve aşağıda
         // gösteriliyordu ama hiçbir yerden artırılmıyordu, bu yüzden her
         // ilan hep "0 görüntülenme" idi. İlan sahibinin kendi görüntülemesi
         // sunucu tarafında elenir.
         listingService.incrementViewCount(data.id);
       } else {
-        setSeekerCount(0);
+        setSeekers([]);
       }
     });
   }, [id]);
@@ -116,6 +122,21 @@ export const ProductDetailPage: React.FC = () => {
   }
 
   const isOwnListing = listing.user.id === currentUser.id;
+  // İlan takasa açık mı? Teklif düğmesi yalnızca `!isOwnListing` ile
+  // korunuyordu; paylaşılan bir bağlantıdan ya da favorilerden gelen
+  // kullanıcı, başka bir takasa kilitlenmiş veya çoktan takas edilmiş bir
+  // ilana teklif gönderebiliyordu. Teklif gidiyor, karşı taraf KABUL
+  // EDEMİYOR (accept_trade_offer 20260902000000'den beri reddediyor) ve iki
+  // taraf da nedenini bilmiyordu.
+  const isTradable = listing.status === 'active';
+  const notTradableReason =
+    listing.status === 'in_trade'
+      ? 'Bu ürün şu an başka bir takasta'
+      : listing.status === 'traded'
+      ? 'Bu ürün takas edildi'
+      : listing.status === 'paused'
+      ? 'İlan şu an yayında değil'
+      : 'İlanın süresi doldu';
   const categoryName = CATEGORIES.find((c) => c.id === listing.categoryId)?.name ?? 'Diğer';
 
   const handleFavoriteToggle = async () => {
@@ -312,19 +333,42 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bu ürünü arayanlar (md. 77) */}
-        {seekerCount > 0 && (
-          <button
-            type="button"
-            onClick={() => navigate('/aradiklarim')}
-            className="sw-card w-full p-3 mt-3 flex items-center gap-2.5 text-left hover:bg-canvas transition-colors cursor-pointer"
-          >
-            <Search className="w-4 h-4 text-brand shrink-0" />
-            <span className="text-xs font-semibold text-ink flex-1">
-              Bu ürünü arayan {seekerCount} kişi var
-            </span>
-            <ChevronRight className="w-4 h-4 text-ink-faint" />
-          </button>
+        {/* Bu ürünü arayanlar (md. 77). Arayanın KİMLİĞİ burada
+            gösterilmiyor — kim ne aradığını ilan sahibine değil, arama
+            ekranındaki "Arayanlar" sekmesine açar. Burada gösterilen şey,
+            bu ilanın hangi aramalara denk geldiği. */}
+        {seekers.length > 0 && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowSeekers((prev) => !prev)}
+              aria-expanded={showSeekers}
+              className="sw-card w-full p-3 flex items-center gap-2.5 text-left hover:bg-canvas transition-colors cursor-pointer"
+            >
+              <Search className="w-4 h-4 text-brand shrink-0" />
+              <span className="text-xs font-semibold text-ink flex-1">
+                Bu ürünü arayan {seekers.length} kişi var
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-ink-faint transition-transform ${
+                  showSeekers ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {showSeekers && (
+              <ul className="mt-2 space-y-1.5">
+                {seekers.map(({ need, reasons }) => (
+                  <li key={need.id} className="sw-card p-3">
+                    <p className="text-xs font-semibold text-ink">{need.title}</p>
+                    {reasons.length > 0 && (
+                      <p className="text-[11px] text-ink-soft mt-0.5">{reasons[0]}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
 
         {/* Açıklama */}
@@ -422,13 +466,19 @@ export const ProductDetailPage: React.FC = () => {
               <MessageSquare className="w-4 h-4" />
               Mesaj
             </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/teklif-ver?targetId=${listing.id}`)}
-              className="sw-btn sw-btn-primary flex-[2]"
-            >
-              Takas Teklifi Yap
-            </button>
+            {isTradable ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/teklif-ver?targetId=${listing.id}`)}
+                className="sw-btn sw-btn-primary flex-[2]"
+              >
+                Takas Teklifi Yap
+              </button>
+            ) : (
+              <span className="flex-[2] text-center text-xs font-semibold text-ink-soft bg-canvas border border-line rounded-2xl py-3 px-2">
+                {notTradableReason}
+              </span>
+            )}
           </div>
         </div>
       )}
