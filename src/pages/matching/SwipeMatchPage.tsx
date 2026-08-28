@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { listingService } from '../../services/listingService';
@@ -95,18 +95,33 @@ export const SwipeMatchPage: React.FC = () => {
   // ihtiyaçları bu ilana karşı puanlanıyor ve kullanıcıya sayı değil,
   // motorun kendi GEREKÇELERİ ("Aradığın kategoride", "Aradığın
   // kelimelerle eşleşiyor: bisiklet") gösteriliyor.
-  const bestNeedMatch = (target: Listing) => {
-    let best: { needTitle: string; score: number; reasons: string[] } | null = null;
+  const bestNeedMatch = useCallback(
+    (target: Listing) => {
+      let best: { needTitle: string; score: number; reasons: string[] } | null = null;
 
-    for (const need of myNeeds) {
-      const { score, reasons } = scoreNeedAgainstListing(need, target, currentUser.city);
-      if (score >= MATCH_THRESHOLD && (!best || score > best.score)) {
-        best = { needTitle: need.title, score, reasons };
+      for (const need of myNeeds) {
+        const { score, reasons } = scoreNeedAgainstListing(need, target, currentUser.city);
+        if (score >= MATCH_THRESHOLD && (!best || score > best.score)) {
+          best = { needTitle: need.title, score, reasons };
+        }
       }
-    }
 
-    return best;
-  };
+      return best;
+    },
+    [myNeeds, currentUser.city]
+  );
+
+  // ÜSTTEKİ KART İÇİN SONUÇ HATIRLANIYOR.
+  //
+  // Rozet doğrudan render içinde hesaplanıyordu; `handleTouchMove` her
+  // parmak hareketinde `setDragOffset` çağırdığı için kaydırma boyunca
+  // saniyede onlarca render oluyor ve her birinde kullanıcının BÜTÜN
+  // ihtiyaç başlıkları yeniden parçalanıp ilanla karşılaştırılıyordu.
+  // Kart değişmedikçe sonuç da değişmez.
+  const currentMatch = useMemo(
+    () => (currentListing ? bestNeedMatch(currentListing) : null),
+    [currentListing, bestNeedMatch]
+  );
 
   // Perform Swipe Action
   const handleSwipe = (action: 'like' | 'pass' | 'super') => {
@@ -319,16 +334,14 @@ export const SwipeMatchPage: React.FC = () => {
                 ihtiyacı bu ilanı tuttuğunda çıkıyor ve neyi tuttuğunu
                 söylüyor. */}
             <div className="relative top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none z-10">
-              {(() => {
-                const match = bestNeedMatch(currentListing);
-                if (!match) return <span />;
-                return (
-                  <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-emerald-300 text-[11px] font-bold border border-emerald-500/30 flex items-center gap-1 min-w-0">
-                    <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span className="truncate">Aradığın: {match.needTitle}</span>
-                  </span>
-                );
-              })()}
+              {currentMatch ? (
+                <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-emerald-300 text-[11px] font-bold border border-emerald-500/30 flex items-center gap-1 min-w-0">
+                  <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span className="truncate">Aradığın: {currentMatch.needTitle}</span>
+                </span>
+              ) : (
+                <span />
+              )}
 
               <span className="px-2.5 py-1 rounded-full bg-stone-900/85 backdrop-blur-md text-stone-200 text-[11px] font-medium border border-stone-700 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-emerald-400" />
