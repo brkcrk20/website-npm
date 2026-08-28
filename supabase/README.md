@@ -24,7 +24,8 @@ npx supabase link --project-ref <REF>   # REF: Supabase Studio → Project Setti
 `20260830000000_trade_column_immutability.sql` ve
 `20260831000000_rpc_grants_and_row_guards.sql` ve
 `20260901000000_seed_categories.sql` ve
-`20260902000000_single_trade_per_listing.sql` HENÜZ UYGULANMADI.**
+`20260902000000_single_trade_per_listing.sql` ve
+`20260903000000_align_need_match_notifications.sql` HENÜZ UYGULANMADI.**
 
 `20260827000000` şemadaki bütünlük boşluklarını kapatıyor (durum kısıtları,
 bir teklife tek takas, değerlendirme kuralları, `increment_listing_view()`,
@@ -92,7 +93,17 @@ teklifi de kabul edebiliyor ve ürünü iki kişiye birden söz vermiş oluyordu
 `traded` oluyor, diğer takasın karşı tarafı artık var olmayan bir ürünü
 bekliyordu.
 
-**YEDİSİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
+`20260903000000` "Aradığın bulundu" bildirimini ekrandaki eşleşmeyle aynı
+kurala bağlıyor. DB tetikleyicisi 3+ harfli HERHANGİ bir kelimenin ilan
+başlığında geçmesine bakıyor ve dolgu kelimeleri elemiyordu: "Bir bisiklet
+arıyorum" ihtiyacındaki "bir", içinde "bir" geçen HER ilanla eşleşiyordu
+("Birinci el kitap", "Bira bardağı"). Üstelik istemcinin 40 puanlık eşiği
+bu ilanları elediği için kullanıcı bildirime dokunup "Aradıklarım"
+ekranında o ilanı bulamıyordu. İki taraf artık aynı sadeleştirmeyi
+(`fold_tr` ↔ `foldTurkish`), aynı dolgu kelime listesini ve aynı eşiği
+kullanıyor.
+
+**SEKİZİ SIRAYLA uygulanmalı** — `20260828000000`, `20260827000000` ile gelen
 `trade_status_rank()` ve `enforce_trade_transition()` üzerine;
 `20260829000000` da `20260828000000`'deki `enforce_listing_status_transition()`
 ve `release_listings_on_trade_end()` gövdeleri üzerine kuruluyor.

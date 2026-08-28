@@ -286,6 +286,42 @@ select pg_temp.rejects($$
 $$, 'aynı ürün için ikinci teklifi de kabul etmek');
 
 
+
+\echo ''
+\echo '=== 11) "Aradığın bulundu" bildirimi ekrandaki eşleşmeyle aynı şeyi söylüyor'
+-- Eski kural: 3+ harfli HERHANGİ bir kelime ilan başlığında geçiyorsa
+-- bildirim. Dolgu kelimeler elenmediği için "Bir bisiklet arıyorum"
+-- ihtiyacındaki "bir", içinde "bir" geçen HER ilanla eşleşiyordu.
+
+select pg_temp.ok(
+  public.need_content_word_count('Bir bisiklet arıyorum') = 1,
+  'dolgu kelimeler (bir / arıyorum) içerik sayılmıyor');
+
+select pg_temp.ok(
+  public.need_word_hits('Bir bisiklet arıyorum', 'Birinci el kitap seti') = 0,
+  '"bir" artık "Birinci el kitap" ile eşleşmiyor (bildirim çöplüğü)');
+
+select pg_temp.ok(
+  public.need_word_hits('Bir bisiklet arıyorum', 'Bira bardağı') = 0,
+  '"bir" artık "Bira bardağı" ile eşleşmiyor');
+
+select pg_temp.ok(
+  public.need_word_hits('Bir bisiklet arıyorum', 'Bisikletim takasa açık') = 1,
+  'ek almış başlıkla eşleşiyor (bisiklet → bisikletim)');
+
+select pg_temp.ok(
+  public.need_word_hits('bisiklet', 'BISIKLET SATILIK') = 1,
+  'Türkçe klavyesiz yazılmış başlıkla da eşleşiyor');
+
+select pg_temp.ok(
+  public.fold_tr('BISIKLET') = 'bisiklet' and public.fold_tr('Kılıf') = 'kilif',
+  'fold_tr, istemcideki foldTurkish ile aynı sonucu veriyor');
+
+select pg_temp.ok(
+  not has_function_privilege('authenticated', 'public.need_word_hits(text,text)', 'execute'),
+  'yardımcı eşleştirme fonksiyonları istemciye kapalı');
+
+
 \echo ''
 \echo '=== TÜM KONTROLLER GEÇTİ ==='
 
